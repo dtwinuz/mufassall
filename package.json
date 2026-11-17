@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "pnpm --filter @mufassall/web dev",
-    "build": "pnpm --filter @mufassall/web build",
+    "build": "pnpm --filter @mufassall/web build && node tools/postbuild.mjs",
     "preview": "pnpm --filter @mufassall/web preview",
     "typecheck": "pnpm -r --parallel typecheck",
     "test": "vitest run",

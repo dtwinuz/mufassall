@@ -1,0 +1,92 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time, never cancelled half-way.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SITE: https://mufassall.dtwin.uz
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck && pnpm test && pnpm check:i18n
+      - run: pnpm build
+      - name: leak-guard
+        run: pnpm check:leaks
+        env:
+          LEAK_GUARD_EXTRA: ${{ secrets.LEAK_GUARD_EXTRA }}
+
+      - name: Package
+        run: |
+          printf '%s\n' "$GITHUB_SHA" > apps/web/dist/version.txt
+          mkdir .ship && cp -r apps/web/dist .ship/site && cp deploy/Caddyfile .ship/Caddyfile
+
+      # The key is bound on the server to bin/receive (authorized_keys: restrict,command=...),
+      # so it can publish a release and nothing else. Host key is pinned, never trusted on first use.
+      - name: Ship
+        id: ship
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          tar -czf - -C .ship site Caddyfile \
+            | ssh -i ~/.ssh/deploy -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+                "root@$DEPLOY_HOST" "deploy $GITHUB_SHA"
+
+      - name: Verify live revision
+        run: |
+          for _ in $(seq 1 20); do
+            if curl -fsS --retry 4 --retry-all-errors --retry-delay 3 --connect-timeout 10 --max-time 30 "$SITE/version.txt" | grep -qx "$GITHUB_SHA"; then echo "live: $GITHUB_SHA"; exit 0; fi
+            sleep 3
+          done
+          echo "::error::$SITE/version.txt did not return $GITHUB_SHA"; exit 1
+
+      - name: Smoke test
+        run: |
+          fail=0
+          for p in / /uz/ /ru/ /en/ /uz/l/callbacks/ /en/l/callbacks/ /robots.txt /sitemap.xml /favicon.svg /theme.js; do
+            code=$(curl -s --retry 4 --retry-all-errors --retry-delay 3 --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' "$SITE$p")
+            echo "$code $p"; [ "$code" = 200 ] || fail=1
+          done
+          code=$(curl -s --retry 4 --retry-all-errors --retry-delay 3 --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' "$SITE/this-page-does-not-exist/")
+          echo "$code /this-page-does-not-exist/ (want 404)"; [ "$code" = 404 ] || fail=1
+          curl -sI --retry 4 --retry-all-errors --retry-delay 3 --connect-timeout 10 --max-time 30 "$SITE/uz/" | tr -d '\r' | grep -qi "^content-security-policy: default-src 'self'" || { echo "::error::CSP missing"; fail=1; }
+          exit $fail
+
+      - name: Roll back
+        if: failure() && steps.ship.outcome == 'success'
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: ssh -i ~/.ssh/deploy -o BatchMode=yes -o IdentitiesOnly=yes "root@$DEPLOY_HOST" rollback
+
+      - name: Clean up key
+        if: always()
+        run: rm -f ~/.ssh/deploy
+
+      - name: Summary
+        if: success()
+        run: echo "### Deployed [\`${GITHUB_SHA::7}\`]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA) to $SITE" >> "$GITHUB_STEP_SUMMARY"

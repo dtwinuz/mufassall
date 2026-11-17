@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mufassall.dtwin.uz/sitemap.xml
