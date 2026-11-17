@@ -13,6 +13,40 @@ services:
     networks:
       - edge
 
+  # Feedback, Lab gallery and the Telegram bot (apps/api/server.mjs, no npm dependencies).
+  # The site Caddy proxies /api/* to mufassall-api:8080; no port is published.
+  mufassall-api:
+    image: node:22-alpine
+    container_name: mufassall-api
+    restart: unless-stopped
+    command: ["node", "/app/server.mjs"]
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    environment:
+      PORT: "8080"
+      DATA_DIR: /data
+      # releases/current is a symlink swapped on every deploy: mount the parent, read through the link.
+      SITE_DIR: /releases/current
+      NODE_ENV: production
+    # TG_BOT_TOKEN, ADMIN_CHAT_ID, ADMIN_TOKEN (all optional); mode 600, created by deploy.sh bootstrap
+    env_file: ./api.env
+    volumes:
+      - ./api:/app:ro
+      - ./data:/data
+      - ./releases:/releases:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - edge
+
 # The shared edge Caddy is on this network and proxies mufassall.dtwin.uz -> mufassall-site:80
 networks:
   edge:

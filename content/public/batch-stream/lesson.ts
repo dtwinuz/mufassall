@@ -76,7 +76,7 @@ export default defineLesson({
       id: "stream",
       kind: "fix",
       nodes: {
-        topic: { kind: "queue", at: [6, 2] },
+        topic: { kind: "queue", at: [5, 2] },
         stream: { kind: "worker", at: [9, 2], load: 40 },
       },
       edges: {

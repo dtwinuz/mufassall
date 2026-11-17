@@ -50,3 +50,56 @@ describe("lab challenges", () => {
     expect(passes("fast-at-scale", farm(3, { cache: true, cdn: true }))).toBe(true);
   });
 });
+
+describe("challenges cannot be gamed", () => {
+  const cheats: Record<string, LabDoc> = {
+    empty: sanitize({}),
+    "lone balancer": sanitize({ nodes: { lb: { kind: "lb", at: [2, 2] } }, edges: {}, labels: {} }),
+    "lone queue behind users": sanitize({
+      nodes: { u: { kind: "client", at: [0, 2] }, lb: { kind: "lb", at: [3, 2] }, q: { kind: "queue", at: [6, 2] } },
+      edges: { a: { from: "u", to: "lb" }, b: { from: "lb", to: "q" } },
+      labels: {},
+    }),
+  };
+  it.each(Object.keys(cheats))("%s solves nothing", (name) => {
+    for (const c of CHALLENGES) expect(c.rules.every((r) => checkRule(cheats[name]!, r)), `${name} / ${c.id}`).toBe(false);
+  });
+  it("unconnected extra clients do not dilute the load", () => {
+    const d = byId("fast-at-scale").start();
+    for (let i = 0; i < 10; i++) d.nodes[`c${i}`] = { id: `c${i}`, kind: "client", at: [12, i], state: "ok" };
+    expect(passes("fast-at-scale", d)).toBe(false);
+  });
+});
+
+describe("interview scenarios", () => {
+  it("url shortener: a CDN, two servers and a cache", () => {
+    expect(passes("design-url-shortener", farm(2, { cache: true }))).toBe(false);
+    expect(passes("design-url-shortener", farm(2, { cache: true, cdn: true }))).toBe(true);
+  });
+  it("chat: messages go through a queue to workers", () => {
+    const chat = (workers: number) => {
+      const nodes: Record<string, unknown> = {
+        users: { kind: "client", at: [0, 6] },
+        lb: { kind: "lb", at: [2, 6] },
+        s0: { kind: "service", at: [4, 4] },
+        s1: { kind: "service", at: [4, 8] },
+        q: { kind: "queue", at: [6, 6] },
+        db: { kind: "db", at: [11, 6] },
+      };
+      const edges: Record<string, unknown> = { a: { from: "users", to: "lb" }, b: { from: "lb", to: "s0" }, c: { from: "lb", to: "s1" }, d: { from: "s0", to: "q" }, e: { from: "s1", to: "q" } };
+      for (let i = 0; i < workers; i++) {
+        nodes[`w${i}`] = { kind: "worker", at: [8, 3 + i * 2] };
+        edges[`qw${i}`] = { from: "q", to: `w${i}` };
+        edges[`wd${i}`] = { from: `w${i}`, to: "db" };
+      }
+      return sanitize({ nodes, edges, labels: {} });
+    };
+    expect(passes("design-chat", chat(2))).toBe(false);
+    expect(passes("design-chat", chat(3))).toBe(true);
+  });
+  it("feed: no CDN, the cache and enough servers carry it", () => {
+    expect(passes("design-feed", farm(4, { cache: true, cdn: true }))).toBe(false);
+    expect(passes("design-feed", farm(3, { cache: true }))).toBe(false);
+    expect(passes("design-feed", farm(4, { cache: true }))).toBe(true);
+  });
+});

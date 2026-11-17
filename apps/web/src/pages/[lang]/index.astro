@@ -6,6 +6,7 @@ import "@mufassall/scene-engine/player.css";
 import Base from "../../layouts/Base.astro";
 import { player } from "../../i18n/ui";
 import { site } from "../../i18n/site";
+import { courseLd } from "../../og/ld";
 
 export function getStaticPaths() {
   return LANGS.map((lang) => ({ params: { lang } }));
@@ -14,11 +15,12 @@ export function getStaticPaths() {
 const lang = Astro.params.lang as Lang;
 const s = site[lang];
 const ui = player[lang];
+const L = s.learner;
 const first = order[0];
 const minutesOf = (slugs: string[]) => slugs.reduce((sum, sl) => sum + lessons[sl]!.lesson.minutes, 0);
 ---
 
-<Base lang={lang}>
+<Base lang={lang} jsonLd={courseLd(lang)}>
   <svg class="scene-defs" aria-hidden="true" focusable="false"><SceneDefs /></svg>
   <section class="home-hero">
     <h1>{s.home.title}</h1>
@@ -31,6 +33,49 @@ const minutesOf = (slugs: string[]) => slugs.reduce((sum, sl) => sum + lessons[s
       </button>
     </div>
     <p class="home-hero__status" data-offline-status role="status"></p>
+  </section>
+
+  <section
+    class="rhythm"
+    aria-labelledby="rhythm"
+    data-streak
+    data-days-n={L.streak.daysN}
+    data-active={L.streak.active}
+    data-idle={L.streak.idle}
+    data-today={L.streak.today}
+    data-reached={L.streak.reached}
+  >
+    <div class="rhythm__main">
+      <h2 id="rhythm">{L.streak.title}</h2>
+      <dl class="rhythm__stats">
+        <div>
+          <dt>{L.streak.current}</dt>
+          <dd data-streak-current>–</dd>
+        </div>
+        <div>
+          <dt>{L.streak.best}</dt>
+          <dd data-streak-best>–</dd>
+        </div>
+      </dl>
+      <div class="rhythm__goal">
+        <label for="rhythm-goal">{L.streak.goal}</label>
+        <select id="rhythm-goal" data-streak-goal>
+          {Object.entries(L.streak.goals).map(([id, label]) => <option value={id}>{label}</option>)}
+        </select>
+        <progress data-streak-bar max="5" value="0" aria-labelledby="rhythm-today"></progress>
+        <p id="rhythm-today" data-streak-today>{L.streak.today.replace("{n}", "0").replace("{goal}", "5")}</p>
+      </div>
+      <a class="rhythm__paths" href={`/${lang}/paths/`}>{L.streak.paths} →</a>
+      <div class="rhythm__cert" data-share-course hidden>
+        <p>{L.share.courseText}</p>
+        <button type="button" class="mf-btn mf-btn--primary" data-share="course" data-course data-title={s.tagline} data-count={order.length}>
+          {L.share.course}
+        </button>
+      </div>
+    </div>
+    <div class="heat" data-heat role="group" aria-label={L.streak.heat}>
+      {Array.from({ length: 84 }, () => <span class="heat__cell" data-cell></span>)}
+    </div>
   </section>
 
   <section class="course-map" aria-labelledby="course-map">
@@ -62,6 +107,9 @@ const minutesOf = (slugs: string[]) => slugs.reduce((sum, sl) => sum + lessons[s
           <p class="track__n">{String(i + 1).padStart(2, "0")}</p>
           <h2 id={`track-${sec.id}`}>{s.sections[sec.id]?.title}</h2>
           <p>{s.sections[sec.id]?.text}</p>
+          <button type="button" class="mf-btn track__share" data-share={sec.id} data-title={s.sections[sec.id]?.title} data-count={sec.lessons.length} hidden>
+            ✓ {L.share.sectionDone} · {L.share.button}
+          </button>
         </div>
         <ul class="lessons">
           {sec.lessons.map((slug) => {
@@ -110,5 +158,30 @@ const minutesOf = (slugs: string[]) => slugs.reduce((sum, sl) => sum + lessons[s
       {s.home.upcomingList.map((item) => <li>{item}</li>)}
     </ul>
   </section>
+  <dialog
+    class="share-dlg"
+    data-share-dialog
+    aria-labelledby="share-title"
+    data-section-done={L.share.sectionDone}
+    data-course-done={L.share.courseDone}
+    data-lessons-n={L.share.lessonsN}
+    data-text={L.share.text}
+  >
+    <form method="dialog" class="share-dlg__box">
+      <h2 id="share-title">{L.share.title}</h2>
+      <canvas class="share-dlg__canvas" width="1200" height="630" role="img" aria-label={L.share.preview}></canvas>
+      <label class="share-dlg__name">
+        <span>{L.share.name}</span>
+        <input name="name" type="text" maxlength="48" autocomplete="off" aria-describedby="share-note" />
+      </label>
+      <p id="share-note" class="share-dlg__note">{L.share.nameNote}</p>
+      <div class="share-dlg__actions">
+        <button type="button" class="mf-btn mf-btn--primary" data-share-download>{L.share.download}</button>
+        <button type="button" class="mf-btn" data-share-send hidden>{L.share.send}</button>
+        <button type="submit" class="mf-btn" value="close">{L.share.close}</button>
+      </div>
+    </form>
+  </dialog>
   <script is:inline src="/progress.js" defer></script>
+  <script is:inline src="/share.js" defer></script>
 </Base>

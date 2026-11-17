@@ -1,0 +1,59 @@
+---
+import { LANGS, type Lang, lessons } from "@mufassall/content";
+import Base from "../../layouts/Base.astro";
+import { site } from "../../i18n/site";
+import { paths } from "../../lib/learner";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const s = site[lang];
+const P = s.learner.paths;
+const list = paths.map((p) => ({
+  ...p,
+  text: P.items[p.id] ?? { title: p.id, text: "" },
+  minutes: p.slugs.reduce((sum, sl) => sum + lessons[sl]!.lesson.minutes, 0),
+}));
+---
+
+<Base lang={lang} title={P.title} description={P.lead} active="paths">
+  <header class="page-head">
+    <h1>{P.title}</h1>
+    <p>{P.lead}</p>
+  </header>
+  <ul class="paths" data-paths data-progress-label={P.progress} data-start={P.start} data-continue={P.continue} data-done={P.done} data-label-done={s.course.done} data-label-started={s.course.started}>
+    {
+      list.map((p) => (
+        <li class="path" id={`p-${p.id}`} data-path={p.id}>
+          <div class="path__head">
+            <h2>{p.text.title}</h2>
+            <p>{p.text.text}</p>
+            <p class="path__meta">{P.lessonsN.replace("{n}", String(p.slugs.length)).replace("{m}", String(p.minutes))}</p>
+          </div>
+          <div class="path__bar">
+            <progress max={p.slugs.length} value="0" aria-labelledby={`p-${p.id}-count`} />
+            <span id={`p-${p.id}-count`} data-path-count>
+              {P.progress.replace("{done}", "0").replace("{total}", String(p.slugs.length))}
+            </span>
+          </div>
+          <ol class="path__lessons">
+            {p.slugs.map((sl) => (
+              <li>
+                <a href={`/${lang}/l/${sl}/`} data-path-lesson={sl} data-steps={lessons[sl]!.lesson.steps.length}>
+                  <span class="path__title">{lessons[sl]!.text[lang].title}</span>
+                  <span class="path__min">{s.home.minutesN.replace("{n}", String(lessons[sl]!.lesson.minutes))}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+          <a class="mf-btn mf-btn--primary path__go" href={`/${lang}/l/${p.slugs[0]}/`} data-path-go>
+            {P.start} →
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+  <script is:inline src="/progress.js" defer></script>
+</Base>

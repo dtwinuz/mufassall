@@ -1,0 +1,38 @@
+---
+import { LANGS, type Lang } from "@mufassall/content";
+import Base from "../../../layouts/Base.astro";
+import { site } from "../../../i18n/site";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const L = site[lang].learner;
+const items = [
+  { id: "estimate", href: `/${lang}/tools/estimate/` },
+  { id: "compare", href: `/${lang}/compare/` },
+  { id: "paths", href: `/${lang}/paths/` },
+  { id: "lab", href: `/${lang}/lab/` },
+] as const;
+---
+
+<Base lang={lang} title={L.tools.title} description={L.tools.lead} active="tools">
+  <header class="page-head">
+    <h1>{L.tools.title}</h1>
+    <p>{L.tools.lead}</p>
+  </header>
+  <ul class="tool-list">
+    {
+      items.map((it) => (
+        <li>
+          <a class="tool-card" href={it.href}>
+            <h2>{L.tools.items[it.id].title}</h2>
+            <p>{L.tools.items[it.id].text}</p>
+            <span class="tool-card__cta">{L.tools.open} →</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</Base>

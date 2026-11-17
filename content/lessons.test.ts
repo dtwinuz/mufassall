@@ -122,4 +122,36 @@ describe("scene layout", () => {
     }
     expect(bad).toEqual([]);
   });
+
+  it.each(Object.entries(lessons))("%s: no edge crosses another node's name", (_slug, { lesson, text }) => {
+    const scr = ([x, y]: readonly [number, number]) => [(x - y) * 32, (x + y) * 16] as const;
+    const widest = (id: string) =>
+      Math.max(...LANGS.map((l) => ((text[l].nodes as Record<string, string>)[id] ?? id).length));
+    const bad: string[] = [];
+    for (const [i, s] of resolve(lesson).entries()) {
+      for (const e of Object.values(s.edges)) {
+        const a = s.nodes[e.from];
+        const b = s.nodes[e.to];
+        if (!a || !b) continue;
+        const [ax, ay] = scr(a.at);
+        const [bx, by] = scr(b.at);
+        for (const n of Object.values(s.nodes)) {
+          if (n.id === e.from || n.id === e.to) continue;
+          const [nx, ny] = scr(n.at);
+          const half = widest(n.id) * 3.7 + 2;
+          for (let k = 0; k <= 50; k++) {
+            const t = k * 0.02;
+            const px = ax + (bx - ax) * t;
+            const py = ay + (by - ay) * t;
+            if (px > nx - half && px < nx + half && py > ny + 24 && py < ny + 38) {
+              bad.push(`${lesson.steps[i]!.id}: ${e.id} over ${n.id}`);
+              break;
+            }
+          }
+        }
+      }
+    }
+    const crossings = [...new Set(bad)];
+    expect(crossings, crossings.join(" | ")).toEqual([]);
+  });
 });

@@ -22,7 +22,12 @@ export function fromIso(sx: number, sy: number): [number, number] {
 
 /** Fixed view over a grid rectangle, used by the editor so the camera never follows a drag. */
 export function gridBounds(min: number, max: number): Box {
-  const corners = [iso([min, min]), iso([max, max]), iso([min, max]), iso([max, min])];
+  return rectBounds(min, min, max, max);
+}
+
+/** View over the cells x0..x1 × y0..y1. */
+export function rectBounds(x0: number, y0: number, x1: number, y1: number): Box {
+  const corners = [iso([x0, y0]), iso([x1, y1]), iso([x0, y1]), iso([x1, y0])];
   const xs = corners.map((c) => c[0]);
   const ys = corners.map((c) => c[1]);
   const x = Math.min(...xs) - 40;

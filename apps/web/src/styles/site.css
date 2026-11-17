@@ -429,10 +429,68 @@ main.wrap {
     flex-wrap: wrap;
     gap: 0 12px;
   }
+  /* one row that scrolls sideways when the links do not fit (5-6 links, long Russian labels) */
   .site-nav {
     order: 3;
     width: 100%;
-    padding-bottom: 8px;
+    padding: 3px 2px 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .site-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .site-nav a {
+    flex: none;
+    white-space: nowrap;
+  }
+  .site-nav a:focus-visible {
+    outline-offset: -2px;
+  }
+}
+@media (max-width: 420px) {
+  .site-nav {
+    gap: 0;
+  }
+  .site-nav a {
+    padding-inline: 9px;
+  }
+}
+/* fade the edge the row can still scroll towards; no fade when nothing overflows (timeline inactive) */
+@property --nav-fl {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --nav-fr {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes nav-fade {
+  from {
+    --nav-fl: 0px;
+    --nav-fr: 28px;
+  }
+  12% {
+    --nav-fl: 28px;
+  }
+  88% {
+    --nav-fr: 28px;
+  }
+  to {
+    --nav-fl: 28px;
+    --nav-fr: 0px;
+  }
+}
+@supports (animation-timeline: scroll()) {
+  @media (max-width: 600px) {
+    .site-nav {
+      animation: nav-fade linear both;
+      animation-timeline: scroll(self inline);
+      mask-image: linear-gradient(to right, transparent, #000 var(--nav-fl), #000 calc(100% - var(--nav-fr)), transparent);
+    }
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -715,4 +773,34 @@ main.wrap {
 }
 .review .lab-skeleton {
   min-height: 240px;
+}
+
+/* 404: the same message in all three languages */
+.not-found__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.not-found__list li {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.not-found__list h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+.not-found__list p {
+  margin: 0 0 14px;
+  font-size: 15px;
+}
+.review__card legend:focus {
+  outline: none;
+}
+.review__summary-title:focus {
+  outline: none;
 }

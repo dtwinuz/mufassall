@@ -1,0 +1,112 @@
+---
+import { LANGS, type Lang } from "@mufassall/content";
+import "@mufassall/scene-engine/player.css";
+import Base from "../../layouts/Base.astro";
+import { site } from "../../i18n/site";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const g = site[lang].gallery;
+const locale = { uz: "uz-Latn-UZ", ru: "ru-RU", en: "en-GB" }[lang];
+---
+
+<Base lang={lang} title={g.title} description={g.lead} active="lab">
+  <header class="page-head">
+    <h1>{g.title}</h1>
+    <p>{g.lead}</p>
+  </header>
+  <section
+    class="gallery"
+    data-gallery
+    aria-live="polite"
+    aria-busy="true"
+    data-lang={lang}
+    data-locale={locale}
+    data-open={g.open}
+    data-by={g.by}
+    data-empty={g.empty}
+    data-empty-lead={g.emptyLead}
+    data-to-lab={g.toLab}
+    data-fail={g.fail}
+    data-retry={g.retry}
+  >
+    <div class="gallery__grid" aria-hidden="true">
+      <div class="gallery__card gallery__card--ghost"></div>
+      <div class="gallery__card gallery__card--ghost"></div>
+      <div class="gallery__card gallery__card--ghost"></div>
+    </div>
+  </section>
+  <noscript><p class="gallery__note">{g.fail}</p></noscript>
+  <script is:inline src="/gallery.js" defer></script>
+</Base>
+
+<style is:global>
+  .gallery__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .gallery__card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 148px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .gallery__card h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+  .gallery__meta {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+  }
+  .gallery__card .mf-btn {
+    align-self: flex-start;
+    margin-top: auto;
+  }
+  .gallery__card--ghost {
+    background: linear-gradient(90deg, var(--surface), var(--stage), var(--surface));
+    background-size: 200% 100%;
+    animation: gallery-ghost 1.4s ease-in-out infinite;
+  }
+  @keyframes gallery-ghost {
+    to {
+      background-position: -200% 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gallery__card--ghost {
+      animation: none;
+    }
+  }
+  .gallery__state {
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .gallery__state h2 {
+    margin: 0 0 8px;
+  }
+  .gallery__state p {
+    margin: 0 0 16px;
+    color: var(--muted);
+  }
+  .gallery__note {
+    color: var(--muted);
+  }
+</style>

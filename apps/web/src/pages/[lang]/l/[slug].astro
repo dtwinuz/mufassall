@@ -4,6 +4,7 @@ import "@mufassall/scene-engine/player.css";
 import Lesson from "../../../components/Lesson";
 import Base from "../../../layouts/Base.astro";
 import { site } from "../../../i18n/site";
+import { lessonLd } from "../../../og/ld";
 
 export function getStaticPaths() {
   return LANGS.flatMap((lang) => Object.keys(lessons).map((slug) => ({ params: { lang, slug } })));
@@ -24,8 +25,12 @@ const titleOf = (sl: string) => lessons[sl]!.text[lang].title;
 const next = nextSlug ? { title: titleOf(nextSlug), href: `/${lang}/l/${nextSlug}/` } : undefined;
 ---
 
-<Base lang={lang} title={text.title} description={text.summary}>
+<Base lang={lang} title={text.title} description={text.summary} image={`/og/${lang}/${slug}.png`} jsonLd={lessonLd(lang, slug)}>
   <Lesson client:load lesson={entry.lesson} text={text} lang={lang} crumbs={crumbs} next={next} />
+  <p class="lesson-extras">
+    <a href={`/${lang}/l/${slug}/sheet/`}>{s.learner.sheet.link}</a>
+    <a href={`/${lang}/compare/?a=${slug}`}>{s.learner.compare.title}</a>
+  </p>
   <nav class="lesson-pager" aria-label={s.course.pager}>
     {
       prevSlug ? (

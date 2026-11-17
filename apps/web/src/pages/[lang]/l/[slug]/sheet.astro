@@ -1,0 +1,134 @@
+---
+import { LANGS, type Lang, lessons, sectionOf } from "@mufassall/content";
+import { Scene, lessonBounds } from "@mufassall/scene-engine";
+import { resolve } from "@mufassall/scene-schema";
+import "@mufassall/scene-engine/player.css";
+import Base from "../../../../layouts/Base.astro";
+import { site } from "../../../../i18n/site";
+import { rich, sheetOf } from "../../../../lib/learner";
+
+export function getStaticPaths() {
+  return LANGS.flatMap((lang) => Object.keys(lessons).map((slug) => ({ params: { lang, slug } })));
+}
+
+const lang = Astro.params.lang as Lang;
+const slug = Astro.params.slug!;
+const s = site[lang];
+const L = s.learner.sheet;
+const entry = lessons[slug]!;
+const text = entry.text[lang];
+const sheet = sheetOf(slug, lang);
+const states = resolve(entry.lesson);
+const last = states[states.length - 1]!;
+const section = sectionOf(slug);
+const where = section ? s.sections[section.id]?.title : undefined;
+const href = `/${lang}/l/${slug}/`;
+---
+
+<Base lang={lang} title={`${sheet.title} · ${L.title}`} description={sheet.summary}>
+  <article class="sheet" data-sheet={slug}>
+    <header class="sheet__head">
+      <p class="sheet__kicker">{L.title}{where && ` · ${where}`}</p>
+      <h1 data-part="title">{sheet.title}</h1>
+      <p class="sheet__meta">
+        {s.home.minutesN.replace("{n}", String(sheet.minutes))} · {sheet.level} · mufassall.dtwin.uz{href}
+      </p>
+      <div class="sheet__actions">
+        <a class="mf-btn" href={href}>← {L.open}</a>
+        <button type="button" class="mf-btn mf-btn--primary" data-print hidden>{L.print}</button>
+      </div>
+    </header>
+
+    <div class="sheet__grid">
+      <section class="sheet__block" data-part="summary">
+        <h2>{L.problem}</h2>
+        <p>{sheet.summary}</p>
+      </section>
+      <section class="sheet__block" data-part="learn">
+        <h2>{L.learn}</h2>
+        <ul>{sheet.learn.map((l) => <li set:html={rich(l)} />)}</ul>
+      </section>
+    </div>
+
+    <figure class="sheet__scene" data-part="scene">
+      <figcaption>{L.scene}</figcaption>
+      <div class="sheet__stage">
+        <Scene state={{ ...last, focus: [] }} box={lessonBounds(states)} labels={text.nodes as Record<string, string>} title={text.title} paused reduced runKey={0} />
+      </div>
+    </figure>
+
+    {
+      sheet.recap.length > 0 && (
+        <section class="sheet__block sheet__recap" data-part="recap">
+          <h2>{L.recap}</h2>
+          {sheet.recap.map((p) => (
+            <p set:html={rich(p)} />
+          ))}
+        </section>
+      )
+    }
+
+    {
+      sheet.metrics.length > 0 && (
+        <section class="sheet__block" data-part="metrics">
+          <h2>{L.metrics}</h2>
+          <table class="sheet__table">
+            <thead>
+              <tr>
+                <th scope="col">{L.metric}</th>
+                <th scope="col">{L.before}</th>
+                <th scope="col">{L.after}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sheet.metrics.map((m) => (
+                <tr>
+                  <th scope="row">{m.label}</th>
+                  <td>{m.before}</td>
+                  <td class={`sheet__trend--${m.trend}`}>
+                    {m.after} <span aria-hidden="true">{m.trend === "better" ? "✓" : m.trend === "worse" ? "!" : ""}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )
+    }
+
+    <section class="sheet__block" data-part="steps">
+      <h2>{L.steps}</h2>
+      <ol class="sheet__steps">
+        {
+          sheet.steps.map((st) => (
+            <li>
+              <a href={`${href}?step=${st.n}`}>
+                <span class="sheet__kind">{st.kind}</span> <strong set:html={rich(st.title)} />
+              </a>
+              {st.line && <p set:html={rich(st.line)} />}
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    {
+      sheet.terms.length > 0 && (
+        <section class="sheet__block" data-part="terms">
+          <h2>{L.terms}</h2>
+          <dl class="sheet__terms">
+            {sheet.terms.map((g) => (
+              <div>
+                <dt>
+                  <a href={`/${lang}/glossary/#${g.id}`}>{g.name}</a>
+                </dt>
+                <dd>{g.short}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )
+    }
+  </article>
+  <script is:inline src="/sheet.js" defer></script>
+</Base>

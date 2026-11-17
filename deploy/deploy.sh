@@ -8,6 +8,23 @@
 #                                            (the same path CI uses, for when Actions is down)
 #   bash deploy/deploy.sh rollback [host]    switch back to the previous release
 #   bash deploy/deploy.sh status [host]      print the live commit
+#
+# API container (mufassall-api, apps/api/server.mjs): bootstrap ships apps/api/*.mjs (no tests) to
+# $REMOTE_DIR/api, creates data/ (uid 1000) and an empty api.env (mode 600), and restarts the
+# container when the API files change. CI deploys never touch it; the site Caddy proxies /api/*.
+#
+#   Settings, all optional, in $REMOTE_DIR/api.env (KEY=value lines, never committed):
+#     ADMIN_TOKEN=<long random>   enables GET /api/feedback/summary (Authorization: Bearer <token>)
+#     TG_BOT_TOKEN=<token>        enables the Telegram bot: create it with @BotFather (/newbot),
+#                                 optionally /setcommands: start, karta, card, obuna, subscribe, stop, til, lang
+#     ADMIN_CHAT_ID=<number>      chat that gets gallery submissions (Approve/Reject buttons) and
+#                                 "error" feedback; your id: send /start to @userinfobot, or a group id
+#   After editing: cd $REMOTE_DIR && docker compose up -d --force-recreate mufassall-api
+#
+#   Gallery moderation (besides the bot buttons):
+#     docker exec mufassall-api node /app/server.mjs list
+#     docker exec mufassall-api node /app/server.mjs approve <id>    # reject <id> deletes it
+#   Data: $REMOTE_DIR/data/{feedback.jsonl,gallery.json,subscribers.json}; no IPs are stored.
 set -euo pipefail
 
 MODE="${1:-}"
@@ -22,17 +39,36 @@ case "$MODE" in
   bootstrap)
     # docker-compose.yml and receive stay server-managed: CI can publish files, not change containers.
     pnpm build >/dev/null
-    tar -czf - deploy/receive.sh deploy/docker-compose.yml deploy/Caddyfile | ssh "$HOST" "set -euo pipefail
+    mapfile -t API_FILES < <(find apps/api -maxdepth 1 -type f -name '*.mjs' ! -name '*.test.mjs' | sort)
+    [ "${#API_FILES[@]}" -gt 0 ] || fail "apps/api has no .mjs files"
+    tar -czf - deploy/receive.sh deploy/docker-compose.yml deploy/Caddyfile "${API_FILES[@]}" | ssh "$HOST" "set -euo pipefail
       mkdir -p '$REMOTE_DIR'; cd '$REMOTE_DIR'
-      T=\$(mktemp -d); tar --no-same-owner -xzf - -C \"\$T\"
-      install -d -m 755 bin conf releases
+      T=\$(mktemp -d); trap 'rm -rf \"\$T\"' EXIT
+      tar --no-same-owner -xzf - -C \"\$T\"
+      install -d -m 755 bin conf releases api
+      [ -d data ] || install -d -m 750 -o 1000 -g 1000 data
+      [ -f api.env ] || install -m 600 /dev/null api.env
       install -m 755 -o root -g root \"\$T/deploy/receive.sh\" bin/receive
       [ -f conf/Caddyfile ] || install -m 644 \"\$T/deploy/Caddyfile\" conf/Caddyfile
+      API_CHANGED=0
+      if [ \"\$(cd \"\$T/apps/api\" && sha256sum *.mjs)\" != \"\$(cd api && sha256sum *.mjs 2>/dev/null || true)\" ]; then
+        rm -f api/*.mjs; install -m 644 -o root -g root \"\$T\"/apps/api/*.mjs api/; API_CHANGED=1
+      fi
       if ! cmp -s \"\$T/deploy/docker-compose.yml\" docker-compose.yml; then
         install -m 644 \"\$T/deploy/docker-compose.yml\" docker-compose.yml
         docker compose up -d --force-recreate --remove-orphans
+      elif [ \"\$API_CHANGED\" = 1 ]; then
+        docker compose up -d --force-recreate mufassall-api
+      else
+        docker compose up -d
       fi
-      rm -rf \"\$T\"; echo \"bootstrap ok, live: \$(readlink releases/current 2>/dev/null || echo none)\""
+      # through the site container: the same network path Caddy uses for /api/*
+      for i in \$(seq 1 15); do
+        if docker exec mufassall-site wget -qO- http://mufassall-api:8080/api/health 2>/dev/null | grep -qx ok; then echo 'api: ok'; break; fi
+        if [ \"\$i\" = 15 ]; then echo 'api: health check failed, see: docker logs mufassall-api' >&2; exit 1; fi
+        sleep 2
+      done
+      echo \"bootstrap ok (api \$([ \"\$API_CHANGED\" = 1 ] && echo updated || echo unchanged)), live: \$(readlink releases/current 2>/dev/null || echo none)\""
     ;;
   ship)
     git fetch --quiet origin main

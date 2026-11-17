@@ -1207,3 +1207,162 @@
 .mf-lab__goal:empty {
   display: none;
 }
+
+/* shortcut switch (WCAG 2.1.4); touch screens have no keyboard to hint at */
+.mf-keys__toggle {
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--signal);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.mf-check__result:focus {
+  outline: none;
+}
+.mf-check__result:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+@media (hover: none) and (pointer: coarse) {
+  .mf-keys {
+    display: none;
+  }
+}
+
+/* names stay readable when a scene is scaled down to a phone (--mf-ls set by Scene.tsx) */
+.mf-labels .mf-node__label {
+  font-size: calc(12px * var(--mf-ls, 1));
+}
+.mf-scene--edit .mf-edge:focus {
+  outline: none;
+}
+.mf-scene--edit .mf-edge:focus-visible .mf-edge__line {
+  stroke: var(--signal);
+  stroke-width: 4;
+}
+
+/* phone Lab: the canvas comes right after the tools, a running challenge's brief before it */
+@media (max-width: 640px) {
+  .mf-lab__side {
+    display: contents;
+  }
+  .mf-lab__stage {
+    order: 1;
+  }
+  .mf-lab__side > * {
+    order: 2;
+  }
+  .mf-lab__side > .mf-lab__challenge--on {
+    order: 0;
+  }
+  .mf-lab__palette ul {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .mf-lab__palette ul::-webkit-scrollbar {
+    display: none;
+  }
+  .mf-lab__palette .mf-lab__muted {
+    display: none;
+  }
+  .mf-lab__kind {
+    white-space: nowrap;
+  }
+}
+
+/* "break it" panel above the lesson scene */
+.mf-try {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 13px;
+}
+.mf-try__traffic {
+  display: grid;
+  gap: 4px;
+  min-width: min(100%, 220px);
+  flex: 1;
+}
+.mf-try__traffic input {
+  width: 100%;
+}
+.mf-try__kill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex-basis: 100%;
+}
+.mf-try .mf-note {
+  flex-basis: 100%;
+  margin: 0;
+}
+.mf-btn--chip {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+.mf-btn--chip[aria-pressed="true"] {
+  border-color: var(--bad);
+  color: var(--bad);
+  text-decoration: line-through;
+}
+.mf-feedback .mf-btn--chip[aria-pressed="true"] {
+  text-decoration: none;
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+/* "was this step clear?" */
+.mf-feedback {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.mf-feedback__title {
+  color: var(--muted);
+}
+.mf-feedback__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mf-feedback__form {
+  display: grid;
+  gap: 8px;
+}
+.mf-feedback__form textarea {
+  width: 100%;
+  min-height: 56px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  resize: vertical;
+}
+.mf-feedback__form .mf-btn {
+  justify-self: start;
+}
+.mf-feedback--done {
+  color: var(--ok);
+}
+.mf-feedback__fail {
+  margin: 0;
+  color: var(--bad);
+}

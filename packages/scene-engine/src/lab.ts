@@ -40,6 +40,8 @@ export function fromScene(state: SceneState, labels: Record<string, string>): La
 
 const inGrid = (v: unknown) => Number.isInteger(v) && (v as number) >= GRID_MIN && (v as number) <= GRID_MAX;
 const isId = (v: unknown): v is string => typeof v === "string" && /^[a-z][a-z0-9-]{0,31}$/.test(v);
+/** own keys only: "constructor" or "toString" must never resolve through the prototype */
+export const has = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
 
 /** Untrusted input (URL, file, storage) → a valid doc; anything malformed is dropped. */
 export function sanitize(raw: unknown): LabDoc {
@@ -62,13 +64,13 @@ export function sanitize(raw: unknown): LabDoc {
     };
     if (Number.isInteger(n.load) && (n.load as number) >= 0 && (n.load as number) <= 100) node.load = n.load;
     doc.nodes[id] = node;
-    const label = (r.labels ?? {})[id];
+    const label = r.labels && has(r.labels, id) ? r.labels[id] : undefined;
     doc.labels[id] = (typeof label === "string" && label.trim() ? label : id).slice(0, MAX_LABEL);
   }
   for (const [id, v] of Object.entries(r.edges ?? {}).slice(0, MAX_EDGES)) {
     const e = v as Partial<EdgeState> | null;
     if (!isId(id) || !e || !isId(e.from) || !isId(e.to) || e.from === e.to) continue;
-    if (!doc.nodes[e.from] || !doc.nodes[e.to]) continue;
+    if (!has(doc.nodes, e.from) || !has(doc.nodes, e.to)) continue;
     doc.edges[id] = {
       id,
       from: e.from,
@@ -165,6 +167,6 @@ export function nextId(existing: Record<string, unknown>, base: string): string 
   const stem = base.replace(/[^a-z0-9-]/g, "") || "n";
   for (let i = 1; ; i++) {
     const id = `${stem}-${i}`;
-    if (!(id in existing)) return id;
+    if (!has(existing, id)) return id;
   }
 }

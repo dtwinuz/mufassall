@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { KeyHint, useShortcuts } from "./keys";
 import {
   type Change,
   type LessonInput,
@@ -17,6 +18,7 @@ import { encodeDoc, fromScene } from "./lab";
 import { inline, paragraphs, plain } from "./text";
 import { type UiStrings, fill, formatNumber } from "./ui";
 import { Wire } from "./Wire";
+import { Feedback, TryPanel, useSpeech, useTry } from "./extras";
 
 const PROGRESS_KEY = "mufassall:v1:progress";
 
@@ -61,6 +63,13 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
   const reduced = useReducedMotion();
   const stageRef = useRef<HTMLElement>(null);
 
+  // "break it": the current step under live traffic, nodes can be switched off
+  const [tryOn, setTryOn] = useState(false);
+  const [tryRps, setTryRps] = useState(500);
+  const [down, setDown] = useState<ReadonlySet<string>>(new Set());
+  const speech = useSpeech(lang);
+  const [listening, setListening] = useState(false);
+
   const go = (i: number) => {
     const clamped = Math.max(0, Math.min(total - 1, i));
     setIndex(clamped);
@@ -87,6 +96,22 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
     }
   }, [index, lesson.slug]);
 
+  const [keysOn, toggleKeys] = useShortcuts();
+  const keysRef = useRef(keysOn);
+  keysRef.current = keysOn;
+  // the step strip scrolls sideways on its own, never the page: the current step stays in view
+  const timelineRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = timelineRef.current;
+    const btn = nav?.querySelector<HTMLElement>("[aria-current=step]");
+    if (!nav || !btn) return;
+    const box = [nav, ...Array.from(nav.querySelectorAll<HTMLElement>("ol"))].find((el) => el.scrollWidth > el.clientWidth + 1);
+    if (!box) return;
+    const a = box.getBoundingClientRect();
+    const b = btn.getBoundingClientRect();
+    const left = box.scrollLeft + (b.left - a.left) - box.clientWidth / 2 + b.width / 2;
+    box.scrollTo({ left: Math.max(0, left), behavior: "auto" });
+  }, [index]);
   const indexRef = useRef(index);
   indexRef.current = index;
   useEffect(() => {
@@ -96,6 +121,8 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
       if (e.key === "ArrowRight") go(indexRef.current + 1);
       else if (e.key === "ArrowLeft") go(indexRef.current - 1);
+      // arrows are not character keys (WCAG 2.1.4), so only R and Space follow the switch
+      else if (!keysRef.current) return;
       else if (e.key === "r" || e.key === "R") setRunKey((k) => k + 1);
       else if (e.key === " " && !(t && t.tagName === "BUTTON")) setPaused((p) => !p);
       else return;
@@ -112,6 +139,23 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
   const t = steps[step.id]!;
   const nextStep = index < total - 1 ? steps[lesson.steps[index + 1]!.id] : undefined;
   const exchange = step.exchange;
+  const tried = useTry(state, labels, tryOn, tryRps, down);
+  // a new step starts with every node back on
+  useEffect(() => setDown(new Set()), [index]);
+  // listening mode reads each step as the reader moves on
+  const spoken = `${plain(t.title)}. ${plain(t.body)}`;
+  useEffect(() => {
+    if (listening) speech.speak(spoken);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listening, spoken]);
+  useEffect(() => {
+    if (listening && !speech.speaking) {
+      const id = window.setTimeout(() => {
+        if (!window.speechSynthesis?.speaking) setListening(false);
+      }, 400);
+      return () => window.clearTimeout(id);
+    }
+  }, [listening, speech.speaking]);
   const wireEdge = exchange ? state.edges[exchange.edge] : undefined;
 
   const metricOf = (id: string) => lesson.metrics.find((m) => m.id === id);
@@ -187,6 +231,25 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
                 <button type="button" className="mf-btn" aria-pressed={paused} onClick={() => setPaused((p) => !p)}>
                   {paused ? ui.play : ui.pause}
                 </button>
+                <button type="button" className="mf-btn mf-btn--sim" aria-pressed={tryOn} onClick={() => setTryOn((v) => !v)}>
+                  {tryOn ? ui.tryIt.close : ui.tryIt.open}
+                </button>
+                {speech.supported && (
+                  <button
+                    type="button"
+                    className="mf-btn"
+                    aria-pressed={listening}
+                    title={speech.hasVoice ? undefined : ui.listen.noVoice}
+                    onClick={() => {
+                      if (listening) {
+                        speech.stop();
+                        setListening(false);
+                      } else setListening(true);
+                    }}
+                  >
+                    {listening ? ui.listen.stop : ui.listen.start}
+                  </button>
+                )}
                 {labHref && (
                   <a className="mf-btn" href={`${labHref}#d=${encodeDoc(fromScene(state, labels))}`}>
                     {ui.openInLab}
@@ -205,8 +268,27 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
               </div>
             </div>
 
+            {tried && (
+              <TryPanel
+                ui={ui.tryIt}
+                lang={lang}
+                state={state}
+                labels={labels}
+                result={tried.result}
+                rps={tryRps}
+                setRps={setTryRps}
+                down={down}
+                toggle={(id) =>
+                  setDown((d) => {
+                    const n = new Set(d);
+                    if (!n.delete(id)) n.add(id);
+                    return n;
+                  })
+                }
+              />
+            )}
             <Scene
-              state={state}
+              state={tried ? tried.scene : state}
               box={box}
               labels={labels}
               title={plain(t.title)}
@@ -289,7 +371,8 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
                   <span className="mf-btn mf-btn--done">{ui.finish}</span>
                 )}
               </div>
-              <p className="mf-keys">{ui.keys}</p>
+              <Feedback ui={ui.feedback} lesson={lesson.slug} step={step.id} lang={lang} />
+              <KeyHint text={ui.keys} on={keysOn} toggle={toggleKeys} labels={{ on: ui.keysOn, off: ui.keysOff }} />
             </div>
 
             <div className="mf-panel__card mf-learn">
@@ -303,7 +386,7 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
           </aside>
         </div>
 
-        <nav className="mf-timeline" aria-label={ui.inLesson}>
+        <nav className="mf-timeline" aria-label={ui.inLesson} ref={timelineRef}>
           <ol>
             {lesson.steps.map((s, i) => (
               <li key={s.id} className={i < index ? "mf-tl--past" : i === index ? "mf-tl--now" : ""}>

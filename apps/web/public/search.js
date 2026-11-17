@@ -141,8 +141,21 @@
       mark();
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (hits[active]) window.location.href = hits[active].href;
+      if (hits[active]) go(hits[active].href);
     }
+  });
+  // a result on the same page (glossary term, another step) only changes the hash:
+  // nothing unloads, so the dialog must be closed by hand
+  function go(href) {
+    if (dialog.open) dialog.close();
+    window.location.href = href;
+  }
+  list.addEventListener("click", function (e) {
+    var a = e.target instanceof Element ? e.target.closest("a") : null;
+    if (a && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0 && dialog.open) dialog.close();
+  });
+  window.addEventListener("hashchange", function () {
+    if (dialog.open) dialog.close();
   });
   dialog.addEventListener("click", function (e) {
     if (e.target === dialog) dialog.close();
@@ -167,9 +180,17 @@
 (function () {
   try {
     var st = JSON.parse(localStorage.getItem("mufassall:v1:review") || "{}");
+    // ids still in review.json (review.js writes the list): a card dropped from the course is not due
+    var known = JSON.parse(localStorage.getItem("mufassall:v1:review:known") || "null");
+    var live = Array.isArray(known)
+      ? known.reduce(function (m, id) {
+          m[id] = 1;
+          return m;
+        }, {})
+      : null;
     var now = Date.now();
     var n = Object.keys(st).filter(function (k) {
-      return st[k] && st[k].d <= now;
+      return st[k] && st[k].d <= now && (!live || live[k]);
     }).length;
     if (!n) return;
     document.querySelectorAll("[data-review-badge]").forEach(function (b) {

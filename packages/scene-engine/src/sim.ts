@@ -1,5 +1,5 @@
 import type { NodeKind } from "@mufassall/scene-schema";
-import type { LabDoc } from "./lab";
+import { type LabDoc, has } from "./lab";
 
 /**
  * A small steady-state traffic model for the Lab. Deterministic, no randomness:
@@ -32,6 +32,9 @@ export const KIND_MODEL: Record<NodeKind, KindModel> = {
 };
 
 const PASSING = new Set(["request", "retry", "dup"]);
+/** kinds that can answer a request themselves; anything else must pass it on or it is lost */
+const ANSWERS = new Set<NodeKind>(["service", "worker", "db", "storage", "external"]);
+const linked = (doc: LabDoc, e: { from: string; to: string }) => has(doc.nodes, e.from) && has(doc.nodes, e.to);
 const MAX_RHO = 0.97;
 
 export interface NodeSim {
@@ -61,7 +64,8 @@ export interface SimResult {
 
 /** Traffic split over a node's outgoing request edges, weighted by edge rate. */
 function outEdges(doc: LabDoc, id: string, drop: Set<string>) {
-  return Object.values(doc.edges).filter((e) => e.from === id && PASSING.has(e.flow) && !drop.has(e.id) && doc.nodes[e.to]);
+  // a rate-0 link is drawn idle (no packets), so it carries nothing in the model either
+  return Object.values(doc.edges).filter((e) => e.from === id && PASSING.has(e.flow) && e.rate > 0 && !drop.has(e.id) && linked(doc, e));
 }
 
 /** Edges that close a cycle are ignored, so traffic always terminates. */
@@ -71,7 +75,7 @@ function backEdges(doc: LabDoc): Set<string> {
   const visit = (id: string) => {
     state.set(id, 1);
     for (const e of Object.values(doc.edges)) {
-      if (e.from !== id || !PASSING.has(e.flow) || !doc.nodes[e.to]) continue;
+      if (e.from !== id || !PASSING.has(e.flow) || !linked(doc, e)) continue;
       const s = state.get(e.to);
       if (s === 1) drop.add(e.id);
       else if (!s) visit(e.to);
@@ -85,7 +89,7 @@ function backEdges(doc: LabDoc): Set<string> {
 function topoOrder(doc: LabDoc, drop: Set<string>): string[] {
   const indeg = new Map<string, number>(Object.keys(doc.nodes).map((id) => [id, 0]));
   for (const e of Object.values(doc.edges)) {
-    if (PASSING.has(e.flow) && !drop.has(e.id) && doc.nodes[e.from] && doc.nodes[e.to]) indeg.set(e.to, (indeg.get(e.to) ?? 0) + 1);
+    if (PASSING.has(e.flow) && e.rate > 0 && !drop.has(e.id) && linked(doc, e)) indeg.set(e.to, (indeg.get(e.to) ?? 0) + 1);
   }
   const queue = [...indeg].filter(([, d]) => d === 0).map(([id]) => id);
   const out: string[] = [];
@@ -105,7 +109,7 @@ function topoOrder(doc: LabDoc, drop: Set<string>): string[] {
 export function sources(doc: LabDoc): string[] {
   const named = Object.values(doc.nodes).filter((n) => n.kind === "actor" || n.kind === "client").map((n) => n.id);
   if (named.length) return named;
-  const targets = new Set(Object.values(doc.edges).filter((e) => PASSING.has(e.flow)).map((e) => e.to));
+  const targets = new Set(Object.values(doc.edges).filter((e) => PASSING.has(e.flow) && linked(doc, e)).map((e) => e.to));
   return Object.keys(doc.nodes).filter((id) => !targets.has(id));
 }
 
@@ -139,11 +143,12 @@ export function simulate(doc: LabDoc, inputRps: number): SimResult {
     const outs = outEdges(doc, id, drop);
     // a balancer skips targets that are down; anything else just sends and fails
     const live = n.kind === "lb" ? outs.filter((e) => doc.nodes[e.to]!.state !== "down") : outs;
-    const weight = live.reduce((s, e) => s + Math.max(1, e.rate), 0);
+    const weight = live.reduce((s, e) => s + e.rate, 0);
     const list: { to: string; share: number }[] = [];
-    if (forwarded > 0 && live.length === 0 && outs.length > 0) lost += forwarded;
+    // nowhere to send it: a server answers, a balancer, queue, cache miss or client with no link loses it
+    if (forwarded > 0 && live.length === 0 && !ANSWERS.has(n.kind)) lost += forwarded;
     for (const e of live) {
-      const part = (forwarded * Math.max(1, e.rate)) / weight;
+      const part = (forwarded * e.rate) / weight;
       if (e.cut) {
         lost += part;
         continue;
@@ -170,8 +175,10 @@ export function simulate(doc: LabDoc, inputRps: number): SimResult {
   // nodes cut off by a cycle-break or never reached stay at zero
   for (const id of Object.keys(doc.nodes)) nodes[id] ??= { rps: 0, rho: 0, dropped: 0, ms: 0 };
 
+  // no source at all: nothing can be served
+  if (src.length === 0) dropped = input;
   const ok = Math.max(0, input - dropped);
-  const ms = src.length ? src.reduce((s, id) => s + (nodes[id]?.ms ?? 0), 0) / src.length : 0;
+  const ms = ok > 0 && src.length ? src.reduce((s, id) => s + (nodes[id]?.ms ?? 0), 0) / src.length : 0;
   return {
     nodes,
     input,
