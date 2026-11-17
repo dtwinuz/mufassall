@@ -162,3 +162,18 @@
     }
   });
 })();
+
+// due review cards next to the "Review" link (state written by /review.js)
+(function () {
+  try {
+    var st = JSON.parse(localStorage.getItem("mufassall:v1:review") || "{}");
+    var now = Date.now();
+    var n = Object.keys(st).filter(function (k) {
+      return st[k] && st[k].d <= now;
+    }).length;
+    if (!n) return;
+    document.querySelectorAll("[data-review-badge]").forEach(function (b) {
+      b.textContent = String(n);
+    });
+  } catch (e) {}
+})();

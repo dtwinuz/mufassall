@@ -14,7 +14,7 @@ interface Props {
   lang: Lang;
   title?: string;
   description?: string;
-  active?: "learn" | "lab" | "glossary";
+  active?: "learn" | "lab" | "glossary" | "review";
 }
 
 const { lang, title, description, active = "learn" } = Astro.props;
@@ -60,6 +60,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
           <a href={`/${lang}/`} aria-current={active === "learn" ? "page" : undefined}>{s.nav.learn}</a>
           <a href={`/${lang}/lab/`} aria-current={active === "lab" ? "page" : undefined}>{s.nav.lab}</a>
           <a href={`/${lang}/glossary/`} aria-current={active === "glossary" ? "page" : undefined}>{s.nav.glossary}</a>
+          <a href={`/${lang}/review/`} aria-current={active === "review" ? "page" : undefined}>{s.nav.review}<span class="nav-badge" data-review-badge></span></a>
         </nav>
         <div class="site-tools">
           <button type="button" class="search-btn" data-search-open aria-label={s.search.label} aria-keyshortcuts="Control+K Meta+K /">
@@ -88,7 +89,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <footer class="site-foot wrap">{s.footer}</footer>
     <dialog class="search" data-search aria-label={s.search.label} data-hint={s.search.hint} data-empty={s.search.empty} data-lesson={s.search.lesson} data-step={s.search.step} data-term={s.search.term}>
       <div class="search__box">
-        <input type="search" role="combobox" aria-expanded="true" aria-controls="search-list" aria-autocomplete="list" placeholder={s.search.placeholder} aria-label={s.search.label} autocomplete="off" spellcheck="false" />
+        <input name="q" type="search" role="combobox" aria-expanded="true" aria-controls="search-list" aria-autocomplete="list" placeholder={s.search.placeholder} aria-label={s.search.label} autocomplete="off" spellcheck="false" />
         <ul id="search-list" role="listbox" class="search__list"></ul>
       </div>
     </dialog>

@@ -5,7 +5,7 @@ export interface SiteStrings {
   langName: string;
   tagline: string;
   description: string;
-  nav: { learn: string; map: string; practice: string; lab: string; soon: string; glossary: string };
+  nav: { learn: string; map: string; practice: string; lab: string; soon: string; glossary: string; review: string };
   theme: string;
   skip: string;
   search: { open: string; label: string; placeholder: string; hint: string; empty: string; lesson: string; step: string; term: string };
@@ -29,6 +29,24 @@ export interface SiteStrings {
   course: { title: string; prev: string; next: string; pager: string; done: string; started: string };
   labPage: { title: string; lead: string };
   glossary: { title: string; lead: string; inLesson: string; letters: string };
+  review: {
+    title: string;
+    lead: string;
+    left: string;
+    right: string;
+    wrong: string;
+    continue: string;
+    open: string;
+    keys: string;
+    done: string;
+    noneDue: string;
+    empty: string;
+    stats: string;
+    next: string;
+    add: string;
+    go: string;
+    fail: string;
+  };
   footer: string;
 }
 
@@ -38,7 +56,7 @@ export const site: Record<Lang, SiteStrings> = {
     tagline: "Jarayonlarni mufassal, qadamma-qadam",
     description:
       "Tizimlar va biznes jarayonlarini jonli sahnada qadamma-qadam o'rgatadigan platforma: xabar qayerga boradi, qayerda yo'qoladi va qanday tuzatiladi.",
-    nav: { learn: "Darslar", map: "Xarita", practice: "Mashq", lab: "Lab", soon: "tez kunda", glossary: "Lug'at" },
+    nav: { learn: "Darslar", map: "Xarita", practice: "Mashq", lab: "Lab", soon: "tez kunda", glossary: "Lug'at", review: "Takrorlash" },
     theme: "Mavzuni almashtirish",
     skip: "Asosiy qismga o'tish",
     search: { open: "Qidirish", label: "Kurs bo'yicha qidiruv", placeholder: "Dars, qadam yoki atama…", hint: "Yozing: kesh, navbat, replika…", empty: "Hech narsa topilmadi", lesson: "Dars", step: "Qadam", term: "Atama" },
@@ -73,6 +91,24 @@ export const site: Record<Lang, SiteStrings> = {
       systems: { title: "Butun tizimlar", text: "Hamma bilimni yig'ib, real tizimni boshidan loyihalash." },
       business: { title: "Biznes jarayonlar", text: "Real to'lov va hujjat oqimlari: pul va mol qayerda yo'qoladi." },
     },
+    review: {
+      title: "Takrorlash",
+      lead: "Darslardagi savollar kun oralatib qaytadi: xato javob ertaga, to'g'risi 3, 7, 16 kundan keyin. Shunda o'qilgan narsa esdan chiqmaydi.",
+      left: "Qoldi: {n}",
+      right: "To'g'ri.",
+      wrong: "Unchalik emas.",
+      continue: "Keyingisi",
+      open: "Darsda ko'rish",
+      keys: "1–4 bilan tanlang",
+      done: "Bugungi takrorlash tugadi",
+      noneDue: "Hozircha takrorlanadigan karta yo'q",
+      empty: "Hali karta yo'q",
+      stats: "Kartalar: {total}, mustahkam o'zlashtirilgan: {learned}",
+      next: "Keyingi karta: {date}",
+      add: "{n} ta yangi savol qo'shish",
+      go: "Darslarga o'tish",
+      fail: "Kartalarni yuklab bo'lmadi. Internetni tekshiring.",
+    },
     glossary: { title: "Atamalar lug'ati", lead: "Kursdagi asosiy atamalar: har biri bir-ikki gapda va uni tushuntiradigan dars bilan.", inLesson: "Darsda", letters: "Harflar" },
     course: { title: "Kurs", prev: "Oldingi dars", next: "Keyingi dars", pager: "Oldingi va keyingi dars", done: "tugatilgan", started: "boshlangan" },
     labPage: {
@@ -86,7 +122,7 @@ export const site: Record<Lang, SiteStrings> = {
     tagline: "Процессы подробно, шаг за шагом",
     description:
       "Платформа, которая показывает системы и бизнес-процессы в живой сцене шаг за шагом: куда идёт сообщение, где оно теряется и как это исправить.",
-    nav: { learn: "Уроки", map: "Карта", practice: "Практика", lab: "Лаборатория", soon: "скоро", glossary: "Словарь" },
+    nav: { learn: "Уроки", map: "Карта", practice: "Практика", lab: "Лаборатория", soon: "скоро", glossary: "Словарь", review: "Повторение" },
     theme: "Сменить тему",
     skip: "Перейти к содержимому",
     search: { open: "Поиск", label: "Поиск по курсу", placeholder: "Урок, шаг или термин…", hint: "Например: кэш, очередь, реплика…", empty: "Ничего не найдено", lesson: "Урок", step: "Шаг", term: "Термин" },
@@ -121,6 +157,24 @@ export const site: Record<Lang, SiteStrings> = {
       systems: { title: "Целые системы", text: "Собираем всё вместе и проектируем реальную систему с нуля." },
       business: { title: "Бизнес-процессы", text: "Реальные платёжные и документные потоки: где теряются деньги и товар." },
     },
+    review: {
+      title: "Повторение",
+      lead: "Вопросы из уроков возвращаются с интервалами: ошибка — завтра, верный ответ — через 3, 7, 16 дней. Так прочитанное не забывается.",
+      left: "Осталось: {n}",
+      right: "Верно.",
+      wrong: "Не совсем.",
+      continue: "Дальше",
+      open: "Открыть в уроке",
+      keys: "Выбор — клавиши 1–4",
+      done: "На сегодня повторение закончено",
+      noneDue: "Сейчас нечего повторять",
+      empty: "Карточек пока нет",
+      stats: "Карточек: {total}, усвоено прочно: {learned}",
+      next: "Следующая карточка: {date}",
+      add: "Добавить новых вопросов: {n}",
+      go: "К урокам",
+      fail: "Не удалось загрузить карточки. Проверьте интернет.",
+    },
     glossary: { title: "Словарь терминов", lead: "Главные термины курса: каждый в одной-двух фразах и со ссылкой на урок, где он объясняется.", inLesson: "В уроке", letters: "Буквы" },
     course: { title: "Курс", prev: "Предыдущий урок", next: "Следующий урок", pager: "Предыдущий и следующий урок", done: "пройден", started: "начат" },
     labPage: {
@@ -134,7 +188,7 @@ export const site: Record<Lang, SiteStrings> = {
     tagline: "Processes, step by step, in detail",
     description:
       "A platform that shows systems and business processes in a live scene, step by step: where a message goes, where it gets lost and how to fix it.",
-    nav: { learn: "Lessons", map: "Map", practice: "Practice", lab: "Lab", soon: "soon", glossary: "Glossary" },
+    nav: { learn: "Lessons", map: "Map", practice: "Practice", lab: "Lab", soon: "soon", glossary: "Glossary", review: "Review" },
     theme: "Switch theme",
     skip: "Skip to content",
     search: { open: "Search", label: "Search the course", placeholder: "Lesson, step or term…", hint: "Try: cache, queue, replica…", empty: "Nothing found", lesson: "Lesson", step: "Step", term: "Term" },
@@ -165,6 +219,24 @@ export const site: Record<Lang, SiteStrings> = {
       shipping: { title: "Shipping", text: "Testing and getting code to production safely." },
       systems: { title: "Whole systems", text: "Put it all together and design a real system from scratch." },
       business: { title: "Business processes", text: "Real payment and document flows: where money and goods get lost." },
+    },
+    review: {
+      title: "Review",
+      lead: "Questions from the lessons come back at growing gaps: a miss tomorrow, a hit after 3, 7, then 16 days. That way what you read sticks.",
+      left: "Left: {n}",
+      right: "Right.",
+      wrong: "Not quite.",
+      continue: "Next",
+      open: "See it in the lesson",
+      keys: "Pick with 1–4",
+      done: "Today's review is done",
+      noneDue: "Nothing to review right now",
+      empty: "No cards yet",
+      stats: "Cards: {total}, well learned: {learned}",
+      next: "Next card: {date}",
+      add: "Add {n} new questions",
+      go: "Go to the lessons",
+      fail: "Could not load the cards. Check your connection.",
     },
     glossary: { title: "Glossary", lead: "The key terms of the course, each in a sentence or two, with the lesson that explains it.", inLesson: "In the lesson", letters: "Letters" },
     course: { title: "Course", prev: "Previous lesson", next: "Next lesson", pager: "Previous and next lesson", done: "done", started: "started" },

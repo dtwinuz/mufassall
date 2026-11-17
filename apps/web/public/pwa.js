@@ -43,7 +43,7 @@
     var pages = Array.prototype.map.call(document.querySelectorAll("a.lesson-card"), function (a) {
       return a.getAttribute("href");
     });
-    pages.push("/" + lang + "/", "/" + lang + "/lab/", "/" + lang + "/search.json");
+    pages.push("/" + lang + "/", "/" + lang + "/lab/", "/" + lang + "/search.json", "/" + lang + "/glossary/", "/" + lang + "/review/", "/" + lang + "/review.json", "/review.js");
     btn.disabled = true;
     say(btn.getAttribute("data-busy"));
     Promise.all([fetch(pages[0]), fetch("/" + lang + "/lab/")])

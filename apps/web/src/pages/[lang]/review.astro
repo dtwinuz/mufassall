@@ -1,0 +1,43 @@
+---
+import { LANGS, type Lang } from "@mufassall/content";
+import "@mufassall/scene-engine/player.css";
+import Base from "../../layouts/Base.astro";
+import { site } from "../../i18n/site";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const s = site[lang];
+const r = s.review;
+---
+
+<Base lang={lang} title={r.title} description={r.lead} active="review">
+  <header class="page-head">
+    <h1>{r.title}</h1>
+    <p>{r.lead}</p>
+  </header>
+  <section
+    class="review"
+    data-review
+    aria-live="polite"
+    data-left={r.left}
+    data-right={r.right}
+    data-wrong={r.wrong}
+    data-continue={r.continue}
+    data-open={r.open}
+    data-keys={r.keys}
+    data-done={r.done}
+    data-none-due={r.noneDue}
+    data-empty={r.empty}
+    data-stats={r.stats}
+    data-next={r.next}
+    data-add={r.add}
+    data-go={r.go}
+    data-fail={r.fail}
+  >
+    <div class="lab-skeleton" aria-hidden="true"></div>
+  </section>
+  <script is:inline src="/review.js" defer></script>
+</Base>
