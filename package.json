@@ -1,0 +1,23 @@
+{
+  "name": "mufassall",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @mufassall/web dev",
+    "build": "pnpm --filter @mufassall/web build",
+    "preview": "pnpm --filter @mufassall/web preview",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "test": "vitest run",
+    "check:i18n": "node tools/check-i18n.mjs",
+    "check:leaks": "node tools/leak-guard.mjs apps/web/dist",
+    "check": "pnpm typecheck && pnpm test && pnpm check:i18n && pnpm build && pnpm check:leaks"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.0"
+  }
+}

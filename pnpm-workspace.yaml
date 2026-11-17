@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+  - content
+
+# Supply chain: a version must be at least 7 days old before pnpm installs it.
+minimumReleaseAge: 10080
+
+onlyBuiltDependencies:
+  - esbuild
+  - sharp

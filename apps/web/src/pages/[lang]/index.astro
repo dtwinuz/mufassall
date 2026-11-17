@@ -1,0 +1,78 @@
+---
+import { LANGS, type Lang, lessons, tracks } from "@mufassall/content";
+import { Scene, lessonBounds } from "@mufassall/scene-engine";
+import { resolve } from "@mufassall/scene-schema";
+import "@mufassall/scene-engine/player.css";
+import Base from "../../layouts/Base.astro";
+import { player, site } from "../../i18n/ui";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const s = site[lang];
+const ui = player[lang];
+---
+
+<Base lang={lang}>
+  <section class="home-hero">
+    <h1>{s.home.title}</h1>
+    <p>{s.home.lead}</p>
+  </section>
+
+  {
+    tracks.map((track) => (
+      <section class="track" aria-labelledby={`track-${track.id}`}>
+        <div class="track__head">
+          <h2 id={`track-${track.id}`}>{s.home.tracks[track.id]?.title}</h2>
+          <p>{s.home.tracks[track.id]?.text}</p>
+        </div>
+        <ul class="lessons">
+          {track.lessons.map((slug) => {
+            const entry = lessons[slug]!;
+            const text = entry.text[lang];
+            const states = resolve(entry.lesson);
+            const last = states[states.length - 1]!;
+            return (
+              <li>
+                <a class="lesson-card" href={`/${lang}/l/${slug}/`} data-progress={slug} data-steps={states.length}>
+                  <div class="lesson-card__preview" aria-hidden="true">
+                    <Scene
+                      state={{ ...last, focus: [] }}
+                      box={lessonBounds(states)}
+                      labels={text.nodes as Record<string, string>}
+                      title={text.title}
+                      paused
+                      reduced
+                      runKey={0}
+                    />
+                  </div>
+                  <h3>{text.title}</h3>
+                  <p>{text.summary}</p>
+                  <div class="lesson-card__meta">
+                    <span>
+                      {ui.minutes.replace("{n}", String(entry.lesson.minutes))} · {ui.steps.replace("{n}", String(states.length))} ·{" "}
+                      {ui.levels[entry.lesson.level]}
+                    </span>
+                    <span class="lesson-card__cta" data-label-start={s.home.start} data-label-continue={s.home.continue} data-label-done={s.home.done}>
+                      {s.home.start} →
+                    </span>
+                  </div>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    ))
+  }
+
+  <section class="upcoming" aria-labelledby="upcoming">
+    <h2 id="upcoming">{s.home.upcoming}</h2>
+    <ul>
+      {s.home.upcomingList.map((item) => <li>{item}</li>)}
+    </ul>
+  </section>
+  <script is:inline src="/progress.js" defer></script>
+</Base>

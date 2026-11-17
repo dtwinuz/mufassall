@@ -1,0 +1,23 @@
+---
+import { LANGS, type Lang, lessons, tracks } from "@mufassall/content";
+import "@mufassall/scene-engine/player.css";
+import Lesson from "../../../components/Lesson";
+import Base from "../../../layouts/Base.astro";
+import { site } from "../../../i18n/ui";
+
+export function getStaticPaths() {
+  return LANGS.flatMap((lang) => Object.keys(lessons).map((slug) => ({ params: { lang, slug } })));
+}
+
+const lang = Astro.params.lang as Lang;
+const slug = Astro.params.slug!;
+const entry = lessons[slug]!;
+const text = entry.text[lang];
+const track = tracks.find((t) => t.lessons.includes(slug));
+const position = track ? track.lessons.indexOf(slug) + 1 : 1;
+const crumbs = track ? `${site[lang].home.tracks[track.id]?.title} / ${position} / ${track.lessons.length}` : "";
+---
+
+<Base lang={lang} title={text.title} description={text.summary}>
+  <Lesson client:load slug={slug} lang={lang} crumbs={crumbs} />
+</Base>
