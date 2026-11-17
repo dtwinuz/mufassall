@@ -1,5 +1,6 @@
 import type { StepCheck } from "@mufassall/scene-schema";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useShortcuts } from "./keys";
 import { inline } from "./text";
 import type { UiStrings } from "./ui";
 
@@ -28,6 +29,12 @@ export interface CheckProps {
 /** "What happens next?" before the next step reveals it. Keys 1-4 pick; nothing is locked. */
 export function Check({ id, check, ui }: CheckProps) {
   const [chosen, setChosen] = useState<number | null>(null);
+  const [keysOn] = useShortcuts();
+  const resultRef = useRef<HTMLDivElement>(null);
+  // the chosen button turns disabled and drops focus: hand it to the explanation
+  useEffect(() => {
+    if (chosen !== null) resultRef.current?.focus({ preventScroll: true });
+  }, [chosen]);
 
   const pick = (i: number) => {
     if (chosen !== null) return;
@@ -36,7 +43,7 @@ export function Check({ id, check, ui }: CheckProps) {
   };
 
   useEffect(() => {
-    if (chosen !== null) return;
+    if (chosen !== null || !keysOn) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       const t = e.target as HTMLElement | null;
@@ -72,14 +79,14 @@ export function Check({ id, check, ui }: CheckProps) {
           );
         })}
       </ol>
-      <div className="mf-check__result" role="status">
+      <div className="mf-check__result" role="status" tabIndex={-1} ref={resultRef}>
         {chosen !== null && (
           <p>
             <strong>{right ? ui.right : ui.wrong}</strong> {inline(check.why)}
           </p>
         )}
       </div>
-      {chosen === null && <p className="mf-keys">{ui.keys}</p>}
+      {chosen === null && keysOn && <p className="mf-keys">{ui.keys}</p>}
     </fieldset>
   );
 }

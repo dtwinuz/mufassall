@@ -1,0 +1,104 @@
+---
+import { LANGS, type Lang } from "@mufassall/content";
+import Base from "../../../layouts/Base.astro";
+import { site } from "../../../i18n/site";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const e = site[lang].learner.estimate;
+
+// defaults = the URL shortener preset in /estimate.js; inputs keep the server values when JS is off
+const fields = [
+  { id: "dau", value: 1000000, step: "1" },
+  { id: "actions", value: 10, step: "any" },
+  { id: "ratio", value: 100, step: "any" },
+  { id: "payload", value: 0.5, step: "any" },
+  { id: "retention", value: 1825, step: "1" },
+  { id: "peak", value: 3, step: "any" },
+  { id: "replicas", value: 3, step: "1" },
+  { id: "perServer", value: 2000, step: "1" },
+] as const;
+const groups = [
+  { id: "traffic", rows: ["requests", "avgReads", "avgWrites", "peakReads", "peakWrites"] },
+  { id: "bandwidth", rows: ["bwIn", "bwOut"] },
+  { id: "storage", rows: ["storeDay", "storeYear", "storeKept"] },
+  { id: "fleet", rows: ["servers", "cache"] },
+] as const;
+const presets = ["url", "feed", "chat", "video"] as const;
+---
+
+<Base lang={lang} title={e.title} description={e.lead} active="tools">
+  <header class="page-head">
+    <h1>{e.title}</h1>
+    <p>{e.lead}</p>
+  </header>
+  <noscript><p class="est-noscript">{e.noscript}</p></noscript>
+  <div
+    class="est"
+    data-estimate
+    data-per-day={e.perDay}
+    data-per-sec={e.perSec}
+    data-days={e.days}
+    data-servers={e.servers}
+    data-copied={e.copied}
+  >
+    <form class="est__form" aria-labelledby="est-inputs" method="get">
+      <h2 id="est-inputs" class="est__h">{e.inputs}</h2>
+      <div class="est__presets" role="group" aria-label={e.presets}>
+        <span class="est__presets-label" aria-hidden="true">{e.presets}:</span>
+        {
+          presets.map((p) => (
+            <button type="button" class="est__preset" data-preset={p} aria-pressed={p === "url" ? "true" : "false"}>
+              {e.presetNames[p]}
+            </button>
+          ))
+        }
+      </div>
+      <div class="est__fields">
+        {
+          fields.map((f) => (
+            <label class="est__field" for={`est-${f.id}`}>
+              <span class="est__label">{e.fields[f.id].label}</span>
+              <input id={`est-${f.id}`} name={f.id} type="number" inputmode="decimal" min="0" step={f.step} value={f.value} aria-describedby={`est-${f.id}-hint`} />
+              <small id={`est-${f.id}-hint`}>{e.fields[f.id].hint}</small>
+            </label>
+          ))
+        }
+      </div>
+      <div class="est__actions">
+        <button type="button" class="mf-btn" data-est-copy>{e.copy}</button>
+        <span class="est__status" role="status" data-est-status></span>
+      </div>
+    </form>
+    <section class="est__results" aria-labelledby="est-results">
+      <h2 id="est-results" class="est__h">{e.results}</h2>
+      {
+        groups.map((g) => (
+          <div class="est__group">
+            <h3>{e.groups[g.id]}</h3>
+            <dl>
+              {g.rows.map((r) => (
+                <div class="est__row">
+                  <dt>{e.rows[r]}</dt>
+                  <dd>
+                    <span class="est__value" data-out={r}>
+                      —
+                    </span>
+                    <code class="est__formula" data-formula={r}>
+                      &nbsp;
+                    </code>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ))
+      }
+      <p class="est__note">{e.note}</p>
+    </section>
+  </div>
+  <script is:inline src="/estimate.js" defer></script>
+</Base>

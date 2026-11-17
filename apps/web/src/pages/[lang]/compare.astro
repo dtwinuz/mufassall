@@ -1,0 +1,119 @@
+---
+import { LANGS, type Lang, lessons, sections } from "@mufassall/content";
+import { Scene, SceneDefs, lessonBounds } from "@mufassall/scene-engine";
+import { resolve } from "@mufassall/scene-schema";
+import "@mufassall/scene-engine/player.css";
+import Base from "../../layouts/Base.astro";
+import { site } from "../../i18n/site";
+import { pairs, rich, sheetOf } from "../../lib/learner";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const s = site[lang];
+const C = s.learner.compare;
+const S = s.learner.sheet;
+const slugs = Object.keys(lessons);
+const [defA, defB] = pairs[0] ?? [slugs[0]!, slugs[1] ?? slugs[0]!];
+const titleOf = (sl: string) => lessons[sl]!.text[lang].title;
+
+// the default pair is rendered here; /compare.js swaps a column by reading that lesson's cheat sheet
+const cols = [
+  { key: "a", slug: defA },
+  { key: "b", slug: defB },
+].map((c) => {
+  const entry = lessons[c.slug]!;
+  const states = resolve(entry.lesson);
+  return { ...c, sheet: sheetOf(c.slug, lang), states, last: states[states.length - 1]!, nodes: entry.text[lang].nodes as Record<string, string> };
+});
+---
+
+<Base lang={lang} title={C.title} description={C.lead} active="tools">
+  <svg class="scene-defs" aria-hidden="true" focusable="false"><SceneDefs /></svg>
+  <header class="page-head">
+    <h1>{C.title}</h1>
+    <p>{C.lead}</p>
+  </header>
+
+  <form class="cmp__pick" method="get" data-compare-form>
+    {
+      cols.map((c) => (
+        <label>
+          <span>{c.key === "a" ? C.a : C.b}</span>
+          <select name={c.key}>
+            {sections.map((sec) => (
+              <optgroup label={s.sections[sec.id]?.title}>
+                {sec.lessons.map((sl) => (
+                  <option value={sl} selected={sl === c.slug}>
+                    {titleOf(sl)}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+      ))
+    }
+    <div class="cmp__buttons">
+      <button type="button" class="mf-btn" data-compare-swap hidden>{C.swap}</button>
+      <button type="submit" class="mf-btn mf-btn--primary">{C.show}</button>
+    </div>
+  </form>
+
+  <div class="cmp" data-compare data-loading={C.loading} data-fail={C.fail} data-sheet-label={S.link} data-learn={S.learn} data-recap={S.recap} data-scene={S.scene} aria-live="polite">
+    {
+      cols.map((c) => (
+        <article class="cmp__col" data-col={c.key} data-slug={c.slug}>
+          <h2>
+            <a href={`/${lang}/l/${c.slug}/`}>{c.sheet.title}</a>
+          </h2>
+          <p class="cmp__summary">{c.sheet.summary}</p>
+          <div class="cmp__stage" aria-label={S.scene}>
+            <div class="sheet__stage">
+              <Scene state={{ ...c.last, focus: [] }} box={lessonBounds(c.states)} labels={c.nodes} title={c.sheet.title} paused reduced runKey={0} defs={false} />
+            </div>
+          </div>
+          <h3>{S.learn}</h3>
+          <ul>
+            {c.sheet.learn.map((l) => (
+              <li set:html={rich(l)} />
+            ))}
+          </ul>
+          {c.sheet.recap.length > 0 && (
+            <>
+              <h3>{S.recap}</h3>
+              <div class="cmp__recap">
+                {c.sheet.recap.map((p) => (
+                  <p set:html={rich(p)} />
+                ))}
+              </div>
+            </>
+          )}
+          <a class="cmp__sheet" href={`/${lang}/l/${c.slug}/sheet/`}>
+            {S.link} →
+          </a>
+        </article>
+      ))
+    }
+  </div>
+
+  {
+    pairs.length > 0 && (
+      <section class="cmp__pairs" aria-labelledby="cmp-pairs">
+        <h2 id="cmp-pairs">{C.suggested}</h2>
+        <ul>
+          {pairs.map(([a, b]) => (
+            <li>
+              <a href={`/${lang}/compare/?a=${a}&b=${b}`} data-pair={`${a} ${b}`}>
+                {titleOf(a)} <span>{C.vs}</span> {titleOf(b)}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+  <script is:inline src="/compare.js" defer></script>
+</Base>

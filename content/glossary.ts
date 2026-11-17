@@ -932,4 +932,200 @@ export const glossary: Term[] = [
     },
     lesson: "design-news-feed",
   },
+  // ---- terms from earlier lessons ----
+  {
+    id: "sse",
+    term: { uz: "Server-Sent Events (SSE)", ru: "Server-Sent Events (SSE)", en: "Server-Sent Events (SSE)" },
+    short: {
+      uz: "Server bitta ochiq HTTP javob orqali mijozga hodisalarni ketma-ket yuborib turadi. Faqat bir tomonlama (serverdan mijozga), lekin oddiy HTTP ustida ishlaydi va uzilsa o'zi qayta ulanadi.",
+      ru: "Сервер по одному открытому HTTP-ответу шлёт клиенту события одно за другим. Связь только в одну сторону (от сервера к клиенту), зато это обычный HTTP, и после обрыва браузер переподключается сам.",
+      en: "The server keeps one HTTP response open and pushes events down it one after another. It is one-way (server to client), but it is plain HTTP and the browser reconnects by itself after a drop.",
+    },
+    lesson: "realtime",
+  },
+  {
+    id: "idor",
+    term: { uz: "IDOR (begona obyektga to'g'ridan murojaat)", ru: "IDOR (прямой доступ к чужому объекту)", en: "IDOR (insecure direct object reference)" },
+    short: {
+      uz: "Server so'rovdagi id bo'yicha yozuvni qaytaradi, lekin u shu foydalanuvchiniki ekanini tekshirmaydi. URL'dagi raqamni o'zgartirib, begona buyurtma yoki hujjatni ochish mumkin bo'lib qoladi.",
+      ru: "Сервер отдаёт запись по id из запроса, но не проверяет, что она принадлежит этому пользователю. Поменяв число в URL, можно открыть чужой заказ или документ.",
+      en: "The server returns a record by the id in the request but never checks that it belongs to this user. Changing a number in the URL opens someone else's order or document.",
+    },
+    lesson: "authorization",
+  },
+  {
+    id: "refresh-token",
+    term: { uz: "Refresh token", ru: "Refresh-токен", en: "Refresh token" },
+    short: {
+      uz: "Qisqa yashaydigan access token tugaganda yangisini olish uchun ishlatiladigan uzoq muddatli token. U faqat auth serverga yuboriladi, har ishlatilganda almashtiriladi va o'g'irlansa bekor qilinadi.",
+      ru: "Долгоживущий токен, которым получают новый короткий access-токен, когда старый истёк. Его шлют только серверу авторизации, меняют при каждом использовании и отзывают при краже.",
+      en: "A long-lived token used to get a new short-lived access token when the old one expires. It goes only to the auth server, is rotated on every use and can be revoked if stolen.",
+    },
+    lesson: "authentication",
+  },
+  {
+    id: "visibility-timeout",
+    term: { uz: "Visibility timeout (lease)", ru: "Visibility timeout (аренда сообщения)", en: "Visibility timeout (lease)" },
+    short: {
+      uz: "Navbat xabarni worker'ga berganda uni o'chirmaydi, shu vaqtga boshqalardan yashiradi. Worker vaqt ichida ack bermasa, xabar yana ko'rinadi va boshqa worker'ga ketadi.",
+      ru: "Выдав сообщение воркеру, очередь не удаляет его, а прячет от остальных на это время. Если воркер не подтвердит обработку вовремя, сообщение снова становится видимым и уходит другому.",
+      en: "When a queue hands a message to a worker it does not delete it, it hides it from others for this long. If the worker does not ack in time, the message becomes visible again and goes to another worker.",
+    },
+    lesson: "queues",
+  },
+  // ---- data: bloom filter, geo ----
+  {
+    id: "bloom-filter",
+    term: { uz: "Bloom filtr", ru: "Фильтр Блума", en: "Bloom filter" },
+    short: {
+      uz: "Bit massivi va bir nechta hash: \"bu kalit to'plamda yo'q\" deganida doim to'g'ri, \"bor bo'lishi mumkin\" deganida esa ba'zan xato qiladi. Kalitiga 10 bit va 7 hash bilan xato taxminan 1% bo'ladi, oddiy filtrdan kalitni o'chirib bo'lmaydi.",
+      ru: "Битовый массив и несколько хешей: ответ «ключа точно нет» всегда верен, а «возможно, есть» иногда ошибочен. При 10 битах на ключ и 7 хешах ошибка около 1%, удалить ключ из обычного фильтра нельзя.",
+      en: "A bit array plus several hashes: \"this key is definitely not here\" is always right, \"it might be here\" is sometimes wrong. With 10 bits per key and 7 hashes the error is about 1%, and a plain filter cannot delete a key.",
+    },
+    lesson: "bloom-filter",
+  },
+  {
+    id: "geohash",
+    term: { uz: "Geohash", ru: "Geohash", en: "Geohash" },
+    short: {
+      uz: "Kenglik va uzunlikni bitta qisqa satrga aylantirish: umumiy prefiksi uzun nuqtalar odatda yaqin turadi. Yaqin atrofni qidirishda kerakli katak va uning 8 qo'shnisi so'raladi, chunki yaqin nuqta chegaraning narigi tomonida bo'lishi mumkin.",
+      ru: "Широта и долгота кодируются одной короткой строкой: точки с длинным общим префиксом обычно рядом. При поиске поблизости запрашивают нужную ячейку и 8 соседних, ведь близкая точка может оказаться за границей ячейки.",
+      en: "Latitude and longitude encoded as one short string: points sharing a long prefix are usually close. A nearby search asks for the cell and its 8 neighbours, because a close point can sit just across a cell border.",
+    },
+    lesson: "geo-search",
+  },
+  {
+    id: "quadtree",
+    term: { uz: "Quadtree", ru: "Квадродерево (quadtree)", en: "Quadtree" },
+    short: {
+      uz: "Xaritani to'rtta kvadratga, to'lib qolgan kvadratni yana to'rttaga bo'ladigan daraxt. Shahar markazida kataklar mayda, cho'lda yirik bo'ladi, shuning uchun har katakda nuqtalar soni taxminan teng qoladi.",
+      ru: "Дерево, которое делит карту на четыре квадрата, а переполненный квадрат снова на четыре. В центре города ячейки мелкие, в пустыне крупные, поэтому точек в каждой ячейке примерно поровну.",
+      en: "A tree that splits the map into four squares and splits any crowded square into four again. Cells are small in a city centre and large in a desert, so each cell holds roughly the same number of points.",
+    },
+    lesson: "geo-search",
+  },
+  // ---- communication: webhooks ----
+  {
+    id: "webhook",
+    term: { uz: "Webhook", ru: "Вебхук (webhook)", en: "Webhook" },
+    short: {
+      uz: "Hodisa sodir bo'lganda bir tizim boshqasining URL'iga o'zi HTTP POST yuboradi. Yetkazish kamida bir marta: yuboruvchi backoff bilan qayta urinadi, qabul qiluvchi esa takrorni hodisa id'si bo'yicha tashlaydi.",
+      ru: "Когда происходит событие, одна система сама шлёт HTTP POST на URL другой. Доставка как минимум один раз: отправитель повторяет с backoff, а получатель отбрасывает дубли по id события.",
+      en: "When an event happens, one system sends an HTTP POST to another system's URL on its own. Delivery is at least once: the sender retries with backoff and the receiver drops repeats by event id.",
+    },
+    lesson: "webhooks",
+  },
+  {
+    id: "hmac-signature",
+    term: { uz: "HMAC imzo", ru: "HMAC-подпись", en: "HMAC signature" },
+    short: {
+      uz: "Xabar tanasi va vaqt belgisi umumiy sir bilan hash qilinadi va sarlavhada yuboriladi. Qabul qiluvchi xuddi shunday hisoblab solishtiradi: mos kelmasa yoki vaqt eski bo'lsa, so'rov rad etiladi.",
+      ru: "Тело сообщения и метка времени хешируются общим секретом, результат идёт в заголовке. Получатель считает так же и сравнивает: не совпало или метка старая — запрос отклоняется.",
+      en: "The message body and a timestamp are hashed with a shared secret and sent in a header. The receiver computes the same and compares: a mismatch or an old timestamp means the request is rejected.",
+    },
+    lesson: "webhooks",
+  },
+  // ---- reliability: SLO ----
+  {
+    id: "sli",
+    term: { uz: "SLI (xizmat darajasi ko'rsatkichi)", ru: "SLI (индикатор уровня сервиса)", en: "SLI (service level indicator)" },
+    short: {
+      uz: "Foydalanuvchi sezadigan narsaning o'lchovi: yaxshi so'rovlar ulushi yoki ma'lum vaqtdan tez tugaganlar ulushi. Masalan, \"300 ms dan tez va xatosiz javoblar foizi\".",
+      ru: "Измерение того, что чувствует пользователь: доля хороших запросов или доля уложившихся в заданное время. Например, «процент ответов без ошибки и быстрее 300 мс».",
+      en: "A measure of what users feel: the share of good requests, or of requests faster than a threshold. For example, \"the percentage of answers without error and under 300 ms\".",
+    },
+    lesson: "slo-error-budget",
+  },
+  {
+    id: "slo",
+    term: { uz: "SLO (xizmat darajasi maqsadi)", ru: "SLO (цель уровня сервиса)", en: "SLO (service level objective)" },
+    short: {
+      uz: "SLI uchun ichki maqsad va davr: \"28 kunda so'rovlarning 99,9% i yaxshi\". 100% maqsad qilinmaydi: har bir qo'shimcha to'qqiz narxi keskin oshadi, foydalanuvchi esa farqni sezmaydi.",
+      ru: "Внутренняя цель для SLI и окно: «за 28 дней 99,9% запросов хорошие». 100% не ставят: каждая следующая девятка резко дороже, а пользователь разницы не заметит.",
+      en: "An internal target for an SLI over a window: \"99.9% of requests are good over 28 days\". Nobody targets 100%: each extra nine costs far more and users would not notice.",
+    },
+    lesson: "slo-error-budget",
+  },
+  {
+    id: "sla",
+    term: { uz: "SLA (xizmat darajasi shartnomasi)", ru: "SLA (соглашение об уровне сервиса)", en: "SLA (service level agreement)" },
+    short: {
+      uz: "Mijoz bilan shartnomadagi va'da: buzilsa pul qaytariladi yoki chegirma beriladi. Odatda ichki SLO'dan yumshoqroq qo'yiladi, toki jamoa shartnoma buzilishidan oldin xabar topsin.",
+      ru: "Обещание в договоре с клиентом: при нарушении возвращают деньги или дают скидку. Его ставят мягче внутреннего SLO, чтобы команда узнала о проблеме раньше, чем нарушится договор.",
+      en: "A promise in a contract with a customer: breaking it means a refund or credit. It is set looser than the internal SLO, so the team hears about trouble before the contract is broken.",
+    },
+    lesson: "slo-error-budget",
+  },
+  {
+    id: "error-budget",
+    term: { uz: "Xato byudjeti (error budget)", ru: "Бюджет ошибок (error budget)", en: "Error budget" },
+    short: {
+      uz: "SLO ruxsat bergan yomon so'rovlar ulushi: 99,9% da 0,1%, ya'ni 30 kunda taxminan 43 daqiqa to'liq uzilish. Byudjet qolsa reliz chiqariladi, tugasa relizlar to'xtatilib ishonchlilikka ishlanadi.",
+      ru: "Доля плохих запросов, которую разрешает SLO: при 99,9% это 0,1%, то есть около 43 минут полного простоя за 30 дней. Пока бюджет есть, выпускают релизы; кончился — релизы замораживают и чинят надёжность.",
+      en: "The share of bad requests an SLO allows: at 99.9% it is 0.1%, about 43 minutes of full outage in 30 days. While budget is left you ship; when it runs out, releases freeze and reliability work comes first.",
+    },
+    lesson: "slo-error-budget",
+  },
+  {
+    id: "burn-rate",
+    term: { uz: "Yonish tezligi (burn rate)", ru: "Скорость сжигания (burn rate)", en: "Burn rate" },
+    short: {
+      uz: "Xato byudjeti me'yordan necha barobar tez sarflanayotgani: 1 — davr oxirida aynan tugaydi, 14,4 — 30 kunlik byudjetning 2% i bir soatda ketadi. Alert ikki oynada (uzun va qisqa) birga tekshiriladi.",
+      ru: "Во сколько раз быстрее нормы тратится бюджет ошибок: 1 — ровно кончится к концу окна, 14,4 — за час уходит 2% бюджета на 30 дней. Алерт проверяет два окна сразу, длинное и короткое.",
+      en: "How many times faster than normal the error budget is being spent: 1 runs out exactly at the end of the window, 14.4 burns 2% of a 30-day budget in one hour. Alerts check a long and a short window together.",
+    },
+    lesson: "slo-error-budget",
+  },
+  // ---- architecture: CDC ----
+  {
+    id: "cdc",
+    term: { uz: "CDC (o'zgarishlarni ushlash)", ru: "CDC (захват изменений данных)", en: "CDC (change data capture)" },
+    short: {
+      uz: "Bazaning o'z jurnalini (WAL yoki binlog) o'qib, har bir yozuv o'zgarishini hodisa sifatida tashqariga uzatish. Ilova ikki joyga yozmaydi, shuning uchun baza va hodisalar bir-biridan ajralib ketmaydi.",
+      ru: "Чтение собственного журнала базы (WAL или binlog) и передача каждого изменения строки наружу как события. Приложение не пишет в два места, поэтому база и события не расходятся.",
+      en: "Reading the database's own log (WAL or binlog) and publishing every row change as an event. The application never writes to two places, so the database and the events cannot diverge.",
+    },
+    lesson: "cdc",
+  },
+  {
+    id: "dual-write",
+    term: { uz: "Ikki joyga yozish (dual write)", ru: "Двойная запись (dual write)", en: "Dual write" },
+    short: {
+      uz: "Ilova bir o'zgarishni ketma-ket bazaga va brokerga (yoki qidiruv indeksiga) yozadi. Ikkinchi yozuv yiqilsa yoki tartib aralashsa, ikki tizim jimgina ajralib ketadi.",
+      ru: "Приложение пишет одно изменение по очереди в базу и в брокер (или поисковый индекс). Если вторая запись упала или порядок перепутался, две системы молча расходятся.",
+      en: "The application writes one change to the database and then to a broker (or search index). If the second write fails or the order gets mixed up, the two systems silently diverge.",
+    },
+    lesson: "cdc",
+  },
+  // ---- systems: video ----
+  {
+    id: "transcoding",
+    term: { uz: "Transkodlash", ru: "Транскодирование", en: "Transcoding" },
+    short: {
+      uz: "Yuklangan videoni bir nechta sifat va formatga (masalan 1080p, 720p, 480p) qayta kodlash. Og'ir ish, shuning uchun video bo'laklarga bo'linib, ko'p worker'da parallel bajariladi.",
+      ru: "Перекодирование загруженного видео в несколько качеств и форматов (например 1080p, 720p, 480p). Это тяжёлая работа, поэтому видео режут на куски и кодируют параллельно на многих воркерах.",
+      en: "Re-encoding an uploaded video into several qualities and formats (for example 1080p, 720p, 480p). It is heavy work, so the video is cut into chunks and encoded in parallel on many workers.",
+    },
+    lesson: "design-video-streaming",
+  },
+  {
+    id: "hls",
+    term: { uz: "HLS (HTTP Live Streaming)", ru: "HLS (HTTP Live Streaming)", en: "HLS (HTTP Live Streaming)" },
+    short: {
+      uz: "Video bir necha soniyalik bo'laklarga bo'linadi, pleyer esa ro'yxat faylidan (.m3u8) keyingi bo'lakni oddiy HTTP GET bilan oladi. Bo'laklar oddiy fayl bo'lgani uchun CDN ularni yaxshi keshlaydi.",
+      ru: "Видео режут на куски по несколько секунд, а плеер по файлу-списку (.m3u8) берёт следующий кусок обычным HTTP GET. Куски — обычные файлы, поэтому CDN хорошо их кеширует.",
+      en: "Video is cut into segments a few seconds long, and the player fetches the next one with a plain HTTP GET, following a playlist file (.m3u8). Segments are ordinary files, so a CDN caches them well.",
+    },
+    lesson: "design-video-streaming",
+  },
+  {
+    id: "adaptive-bitrate",
+    term: { uz: "Moslashuvchan bitreyt (ABR)", ru: "Адаптивный битрейт (ABR)", en: "Adaptive bitrate (ABR)" },
+    short: {
+      uz: "Pleyer har bo'lakdan oldin tarmoq tezligi va buferga qarab sifatni tanlaydi: internet sekinlashsa 480p ga tushadi, tezlashsa 1080p ga qaytadi. Video to'xtab qolmaydi, faqat sifati o'zgaradi.",
+      ru: "Перед каждым куском плеер выбирает качество по скорости сети и запасу буфера: сеть просела — переходит на 480p, ускорилась — обратно на 1080p. Видео не замирает, меняется только качество.",
+      en: "Before each segment the player picks a quality from the network speed and the buffer: when the network slows it drops to 480p, when it recovers it goes back to 1080p. The video keeps playing, only the quality changes.",
+    },
+    lesson: "design-video-streaming",
+  },
 ];

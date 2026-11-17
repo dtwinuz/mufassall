@@ -28,6 +28,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+      - run: node --test "apps/api/*.test.mjs"
       - run: pnpm check:i18n
       - run: pnpm build
       - name: leak-guard

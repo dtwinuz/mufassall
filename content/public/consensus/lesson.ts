@@ -22,7 +22,7 @@ export default defineLesson({
       kind: "problem",
       nodes: {
         w1: { kind: "worker", at: [0, 1] },
-        w2: { kind: "worker", at: [0, 7] },
+        w2: { kind: "worker", at: [0, 8] },
         ledger: { kind: "db", at: [2, 3] },
       },
       edges: {

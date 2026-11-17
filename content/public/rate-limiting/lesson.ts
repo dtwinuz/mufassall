@@ -235,7 +235,7 @@ export default defineLesson({
       id: "redis",
       kind: "fix",
       nodes: {
-        redis: { kind: "cache", at: [9, 1], load: 20 },
+        redis: { kind: "cache", at: [10, 1], load: 20 },
         api: { load: 30 },
         api2: { load: 30 },
         api3: { load: 30 },

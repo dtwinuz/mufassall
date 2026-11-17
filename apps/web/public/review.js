@@ -3,6 +3,8 @@
 //   mufassall:v1:checks   first answer in a lesson, id -> right? (written by the lesson player)
 //   mufassall:v1:review   id -> { b: box 0..5, d: due time in ms }
 //   mufassall:v1:progress lesson -> furthest step reached (written by the lesson player)
+//   mufassall:v1:review:known  ids present in review.json, so the nav badge (search.js) skips removed cards
+//   mufassall:v1:keys     "off" = the reader switched single-key shortcuts off (WCAG 2.1.4)
 (function () {
   var root = document.querySelector("[data-review]");
   if (!root) return;
@@ -18,6 +20,13 @@
       return v && typeof v === "object" ? v : {};
     } catch (e) {
       return {};
+    }
+  };
+  var keysOn = function () {
+    try {
+      return localStorage.getItem("mufassall:v1:keys") !== "off";
+    } catch (e) {
+      return true;
     }
   };
   var state = read(KEY);
@@ -108,11 +117,13 @@
     });
   };
 
-  var summary = function () {
+  var summary = function (focus) {
     var s = stats();
     root.textContent = "";
     var box = el("div", "review__empty");
-    box.appendChild(el("h2", "", done > 0 ? t("done") : s.total ? t("none-due") : t("empty")));
+    var title = el("h2", "review__summary-title", done > 0 ? t("done") : s.total ? t("none-due") : t("empty"));
+    title.tabIndex = -1;
+    box.appendChild(title);
     if (s.total) box.appendChild(el("p", "review__meta", fill(t("stats"), { total: s.total, learned: s.learned })));
     if (s.next) box.appendChild(el("p", "review__meta", fill(t("next"), { date: day(s.next) })));
     var extra = fresh();
@@ -124,7 +135,7 @@
           state[id] = { b: 0, d: 0 };
         });
         save();
-        start();
+        start(true);
       });
       box.appendChild(b);
     } else if (!s.total) {
@@ -133,11 +144,14 @@
       box.appendChild(a);
     }
     root.appendChild(box);
+    if (focus) title.focus({ preventScroll: true });
     badge();
   };
 
-  var show = function () {
-    if (!queue.length) return summary();
+  // focus: true after an answer, so keyboard and screen reader users land on the new card
+  // instead of <body> (the button they pressed is gone); false on first render
+  var show = function (focus) {
+    if (!queue.length) return summary(focus);
     var id = queue[0];
     var c = cards[id];
     var answered = false;
@@ -150,7 +164,9 @@
     root.appendChild(head);
     var card = el("fieldset", "mf-check review__card");
     var keys = el("p", "mf-keys", t("keys"));
+    keys.hidden = !keysOn();
     var q = el("legend", "mf-check__q");
+    q.tabIndex = -1;
     rich(q, c[3]);
     card.appendChild(q);
     var list = el("ol", "mf-check__options");
@@ -159,7 +175,7 @@
 
     var advance = function () {
       document.removeEventListener("keydown", onKey);
-      show();
+      show(true);
     };
     var pick = function (i) {
       if (answered) return;
@@ -170,6 +186,7 @@
       s.d = Date.now() + GAP[s.b] * DAY;
       state[id] = s;
       save();
+      if (window.mufassallActivity) window.mufassallActivity.card(); // streak and daily goal (/activity.js)
       list.querySelectorAll("button").forEach(function (b, j) {
         b.disabled = true;
         b.classList.add(j === c[5] ? "mf-check__opt--right" : j === i ? "mf-check__opt--wrong" : "mf-check__opt--dim");
@@ -196,7 +213,7 @@
       else queue.push(id); // a miss comes back once more in this session
     };
     var onKey = function (e) {
-      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.altKey || e.ctrlKey || e.metaKey || !keysOn()) return;
       var tg = e.target;
       if (tg && /^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName)) return;
       var n = Number(e.key);
@@ -227,14 +244,15 @@
     card.appendChild(status);
     root.appendChild(card);
     root.appendChild(keys);
+    if (focus) q.focus({ preventScroll: true });
   };
 
-  var start = function () {
+  var start = function (focus) {
     queue = stats().due.sort(function (a, b) {
       return state[a].d - state[b].d;
     });
     done = 0;
-    show();
+    show(focus);
   };
 
   // due count next to the nav link
@@ -253,6 +271,9 @@
       rows.forEach(function (r) {
         cards[r[0]] = r;
       });
+      try {
+        localStorage.setItem("mufassall:v1:review:known", JSON.stringify(Object.keys(cards)));
+      } catch (e) {}
       start();
     })
     .catch(function () {

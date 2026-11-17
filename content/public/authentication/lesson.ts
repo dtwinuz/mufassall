@@ -230,7 +230,7 @@ export default defineLesson({
     {
       id: "oidc",
       kind: "fix",
-      nodes: { idp: { kind: "external", at: [0, 5] } },
+      nodes: { idp: { kind: "external", at: [0, 4] } },
       edges: {
         redirect: { from: "web", to: "idp", rate: 2 },
         swap: { from: "api", to: "idp", rate: 2 },

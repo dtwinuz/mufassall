@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type LabDoc, sanitize } from "./lab";
+import { type LabDoc, decodeDoc, sanitize } from "./lab";
 import { simulate, simView } from "./sim";
 
 const shop = (over: Partial<Record<string, { state?: string }>> = {}): LabDoc =>
@@ -61,5 +61,28 @@ describe("lab simulation", () => {
     expect(view.nodes.a!.load).toBe(45);
     expect(view.nodes.users!.load).toBeUndefined();
     expect(simView(doc, simulate(doc, 1100)).nodes.a!.state).toBe("slow");
+  });
+});
+
+describe("lab simulation edge cases", () => {
+  it("a rate-0 link carries no traffic", () => {
+    const d = sanitize({
+      nodes: { u: { kind: "client", at: [0, 0] }, a: { kind: "service", at: [3, 0] }, b: { kind: "service", at: [3, 3] } },
+      edges: { x: { from: "u", to: "a", rate: 0 }, y: { from: "u", to: "b", rate: 1 } },
+      labels: {},
+    });
+    const r = simulate(d, 500);
+    expect(r.nodes.a!.rps).toBe(0);
+    expect(r.nodes.b!.rps).toBeCloseTo(500);
+  });
+  it("no source means nothing is served", () => {
+    const r = simulate(sanitize({}), 1000);
+    expect(r.ok).toBe(0);
+    expect(r.errorRate).toBe(1);
+  });
+  it("a prototype key never resolves as a node", () => {
+    const d = decodeDoc(btoa(JSON.stringify({ n: [["a", "client", 1, 1, "ok", -1, "A"]], e: [["x", "a", "constructor", "request", 1, 0]] })));
+    expect(Object.keys(d.edges)).toEqual([]);
+    expect(() => simulate(d, 100)).not.toThrow();
   });
 });

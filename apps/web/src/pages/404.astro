@@ -1,11 +1,27 @@
 ---
+import { LANGS } from "@mufassall/content";
 import Base from "../layouts/Base.astro";
+import { site } from "../i18n/site";
+
+// One static file serves every missing URL (Caddy rewrites to /404.html), so the page
+// cannot know the reader's language at build time: it says it in all three.
 ---
 
-<Base lang="uz" title="404">
-  <section class="home-hero">
+<Base lang="uz" title="404" description={site.en.notFound.title} notFound>
+  <section class="home-hero not-found">
     <h1>404</h1>
-    <p>Sahifa topilmadi · Страница не найдена · Page not found</p>
-    <p><a href="/uz/">O'zbekcha</a> · <a href="/ru/">Русский</a> · <a href="/en/">English</a></p>
+    <ul class="not-found__list">
+      {
+        LANGS.map((l) => (
+          <li lang={l}>
+            <h2>{site[l].notFound.title}</h2>
+            <p>{site[l].notFound.text}</p>
+            <a class="mf-btn" href={`/${l}/`}>
+              {site[l].notFound.home} →
+            </a>
+          </li>
+        ))
+      }
+    </ul>
   </section>
 </Base>

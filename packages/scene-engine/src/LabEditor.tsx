@@ -1,7 +1,7 @@
 import { FLOWS, NODE_KINDS, NODE_STATES, type NodeKind } from "@mufassall/scene-schema";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { downloadPng, downloadSvg } from "./export";
-import { gridBounds } from "./iso";
+import { type Box, gridBounds, rectBounds } from "./iso";
 import { useReducedMotion } from "./motion";
 import {
   GRID_MAX,
@@ -20,6 +20,7 @@ import {
   toLessonCode,
   toScene,
 } from "./lab";
+import { KeyHint, useShortcuts } from "./keys";
 import { Scene, type SceneEdit } from "./Scene";
 import { simView, simulate } from "./sim";
 import { CHALLENGES, type Rule, checkRule } from "./challenges";
@@ -29,6 +30,8 @@ const STORE_KEY = "mufassall:v1:lab";
 const SOLVED_KEY = "mufassall:v1:lab:solved";
 /** the reader's own diagram, kept when a shared link replaces it */
 const PREV_KEY = "mufassall:v1:lab:prev";
+/** encoded copy of the last diagram that came from outside (link, example, challenge); anything else is the reader's own */
+const LINKED_KEY = "mufassall:v1:lab:linked";
 const MAX_IMPORT = 256_000;
 const BOX = gridBounds(GRID_MIN, GRID_MAX);
 const CENTER: [number, number] = [6, 6];
@@ -46,7 +49,95 @@ interface History {
   future: LabDoc[];
   tag?: string;
 }
-type Dialog = { kind: "code"; text: string } | { kind: "link"; text: string } | null;
+type Dialog = { kind: "code"; text: string } | { kind: "link"; text: string } | { kind: "gallery"; text: string } | null;
+const MAX_GALLERY_LINK = 8000;
+
+/** Send the diagram to the moderated public gallery (POST /api/gallery). */
+function GalleryForm({ lab, lang, link, onDone }: { lab: LabStrings; lang: string; link: string; onDone: () => void }) {
+  const [title, setTitle] = useState("");
+  const [author, setAuthor] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "fail" | "busy">("idle");
+  if (status === "sent")
+    return (
+      <>
+        <p role="status">{lab.gallerySent}</p>
+        <div className="mf-lab__seg">
+          <button type="button" className="mf-btn mf-btn--primary" onClick={onDone}>
+            {lab.close}
+          </button>
+        </div>
+      </>
+    );
+  return (
+    <form
+      className="mf-lab__form"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!title.trim()) return;
+        setStatus("sending");
+        try {
+          const r = await fetch("/api/gallery", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ title: title.trim().slice(0, 80), lang, link, ...(author.trim() ? { author: author.trim().slice(0, 40) } : {}) }),
+          });
+          setStatus(r.ok ? "sent" : r.status === 429 ? "busy" : "fail");
+        } catch {
+          setStatus("fail");
+        }
+      }}
+    >
+      <p className="mf-lab__muted">{lab.galleryNote}</p>
+      <label>
+        <span>{lab.galleryName}</span>
+        <input name="gallery-title" required maxLength={80} value={title} onInput={(e) => setTitle(e.currentTarget.value)} />
+      </label>
+      <label>
+        <span>{lab.galleryAuthor}</span>
+        <input name="gallery-author" maxLength={40} value={author} onInput={(e) => setAuthor(e.currentTarget.value)} />
+      </label>
+      {(status === "fail" || status === "busy") && <p className="mf-lab__simhot" role="status">{status === "busy" ? lab.galleryBusy : lab.galleryFail}</p>}
+      <div className="mf-lab__seg">
+        <button type="submit" className="mf-btn mf-btn--primary" disabled={status === "sending" || !title.trim()}>
+          {lab.gallerySend}
+        </button>
+        <button type="button" className="mf-btn" onClick={onDone}>
+          {lab.close}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** A phone shows the diagram, not the whole 13×13 area: nodes plus two free cells around them. */
+function fitBox(d: LabDoc): Box {
+  const ns = Object.values(d.nodes);
+  if (ns.length === 0) return rectBounds(3, 3, 9, 9);
+  const clamp = (v: number) => Math.max(GRID_MIN, Math.min(GRID_MAX, v));
+  let [x0, x1] = [Math.min(...ns.map((n) => n.at[0])) - 2, Math.max(...ns.map((n) => n.at[0])) + 2];
+  let [y0, y1] = [Math.min(...ns.map((n) => n.at[1])) - 2, Math.max(...ns.map((n) => n.at[1])) + 2];
+  // at least 7 cells across, so a lone node is not blown up to fill the phone
+  const grow = (a: number, b: number): [number, number] => {
+    const need = Math.max(0, 6 - (b - a));
+    return [a - Math.ceil(need / 2), b + Math.floor(need / 2)];
+  };
+  [x0, x1] = grow(x0, x1);
+  [y0, y1] = grow(y0, y1);
+  return rectBounds(clamp(x0), clamp(y0), clamp(x1), clamp(y1));
+}
+
+function useNarrow(query = "(max-width: 640px)") {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const m = window.matchMedia(query);
+    const sync = () => setOn(m.matches);
+    sync();
+    m.addEventListener("change", sync);
+    return () => m.removeEventListener("change", sync);
+  }, [query]);
+  return on;
+}
 
 const inArea = (c: Cell) => c[0] >= GRID_MIN && c[1] >= GRID_MIN && c[0] <= GRID_MAX && c[1] <= GRID_MAX;
 const nodeCount = (d: LabDoc) => Object.keys(d.nodes).length;
@@ -98,6 +189,33 @@ const store = {
  * (and stays one undo away), so opening any link can never cost them their work.
  * The Lab island is client-only, so this runs once in the browser before the first paint.
  */
+/** The reader's own work: not empty and not an untouched copy of something loaded from outside. */
+const isOwn = (d: LabDoc | undefined): d is LabDoc => !!d && nodeCount(d) > 0 && encodeDoc(d) !== store.get(LINKED_KEY);
+
+/**
+ * Put `next` (from a link, the example, a challenge, a file) in place of `current`. The reader's own
+ * diagram is backed up first, and only theirs: a second link must not overwrite the backup with the first link.
+ * Returns whether something was backed up.
+ */
+function backupFor(current: LabDoc | undefined, next: LabDoc): boolean {
+  const own = isOwn(current) && encodeDoc(current) !== encodeDoc(next);
+  if (own) store.set(PREV_KEY, JSON.stringify(current));
+  store.set(LINKED_KEY, nodeCount(next) > 0 ? encodeDoc(next) : "");
+  return own;
+}
+
+/** `#d=…` from the address bar, removed from it so a reload shows the newest edits. */
+function takeLink(): LabDoc | null {
+  const code = new URLSearchParams(window.location.hash.slice(1)).get("d");
+  if (!code) return null;
+  const url = new URL(window.location.href);
+  url.hash = "";
+  window.history.replaceState(window.history.state, "", url);
+  const linked = decodeDoc(code);
+  // a truncated or broken link decodes to nothing: keep what the reader had
+  return nodeCount(linked) > 0 ? linked : null;
+}
+
 function initial(lab: LabStrings): { doc: LabDoc; before?: LabDoc; fromLink: boolean } {
   const raw = store.get(STORE_KEY);
   let saved: LabDoc | undefined;
@@ -106,20 +224,15 @@ function initial(lab: LabStrings): { doc: LabDoc; before?: LabDoc; fromLink: boo
   } catch {
     /* corrupted entry: ignore */
   }
-  const hash = new URLSearchParams(window.location.hash.slice(1)).get("d");
-  if (hash) {
-    const url = new URL(window.location.href);
-    url.hash = "";
-    window.history.replaceState(window.history.state, "", url);
-    const linked = decodeDoc(hash);
-    // a truncated or broken link decodes to nothing: keep what the reader had
-    if (nodeCount(linked) > 0) {
-      const own = saved && nodeCount(saved) > 0 ? saved : undefined;
-      if (own && raw && encodeDoc(own) !== encodeDoc(linked)) store.set(PREV_KEY, raw);
-      return { doc: linked, before: own, fromLink: true };
-    }
+  const linked = takeLink();
+  if (linked) {
+    const backed = backupFor(saved, linked);
+    return { doc: linked, before: backed ? saved : undefined, fromLink: true };
   }
-  return { doc: saved ?? example(lab), fromLink: false };
+  if (saved) return { doc: saved, fromLink: false };
+  const ex = example(lab);
+  store.set(LINKED_KEY, encodeDoc(ex));
+  return { doc: ex, fromLink: false };
 }
 
 export interface LabEditorProps {
@@ -145,10 +258,15 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const toastTimer = useRef(0);
   const reduced = useReducedMotion();
+  const [keysOn, toggleKeys] = useShortcuts();
+  const narrow = useNarrow();
+  const [whole, setWhole] = useState(false);
+  const viewRef = useRef<Box>(BOX);
   const [sim, setSim] = useState(false);
   const [rps, setRps] = useState(800);
   const [spike, setSpike] = useState(false);
   const lang = (typeof document !== "undefined" && document.documentElement.lang) || "en";
+  const estimateHref = `/${lang}/tools/estimate/`;
   const [challengeId, setChallengeId] = useState("");
   const [solved, setSolved] = useState<string[]>(() => {
     try {
@@ -207,6 +325,28 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
       return { past: [...h.past, h.present], present: next, future: h.future.slice(0, -1) };
     });
   }, []);
+
+  /** Swap in a diagram from outside; the reader's own one is backed up with a "restore" toast. */
+  const replaceDoc = (next: LabDoc, note?: string) => {
+    const backed = backupFor(doc, next);
+    commit(next);
+    setSel(null);
+    window.clearTimeout(toastTimer.current);
+    if (backed) {
+      setToast({ text: note ?? lab.backedUp, restore: true });
+      toastTimer.current = window.setTimeout(() => setToast(null), 9000);
+    } else if (note) flash(note);
+  };
+
+  // a link pasted into an open Lab tab only changes the hash
+  useEffect(() => {
+    const onHash = () => {
+      const linked = takeLink();
+      if (linked) replaceDoc(linked, lab.linkLoaded);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  });
 
   const restoreOwn = () => {
     const raw = store.get(PREV_KEY);
@@ -294,7 +434,8 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
       else if (e.key === "Escape") {
         setTool({ mode: "select" });
         setSel(null);
-      } else if (!mod && !e.altKey && (e.key === "c" || e.key === "C")) setTool((t0) => (t0.mode === "connect" ? { mode: "select" } : { mode: "connect" }));
+      } else if (!keysOn) return;
+      else if (!mod && !e.altKey && (e.key === "c" || e.key === "C")) setTool((t0) => (t0.mode === "connect" ? { mode: "select" } : { mode: "connect" }));
       else if (e.key === " " && !onControl && !t?.closest?.(".mf-node")) setPaused((p) => !p);
       else if (!mod && !e.altKey && (e.key === "s" || e.key === "S")) setSim((v) => !v);
       else return;
@@ -302,7 +443,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, removeSelected]);
+  }, [undo, redo, removeSelected, keysOn]);
 
   useEffect(() => {
     const d = dialogRef.current;
@@ -429,8 +570,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
     try {
       const next = sanitize(JSON.parse(await file.text()));
       if (nodeCount(next) === 0) return flash(lab.importBad);
-      commit(next);
-      setSel(null);
+      replaceDoc(next);
     } catch {
       flash(lab.importBad);
     }
@@ -468,8 +608,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
     const d = c.start();
     // labels in the reader's language
     for (const n of Object.values(d.nodes)) d.labels[n.id] = lab.kinds[n.kind];
-    commit(d);
-    setSel(null);
+    replaceDoc(d);
     setSim(true);
     setSpike(false);
     // the traffic slider starts at the load the challenge asks for
@@ -482,7 +621,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
       case "load":
         return fill(r.ms === undefined ? lab.ruleLoad : lab.ruleLoadMs, { rps: num(r.rps), err: pct(r.errors), ms: r.ms ?? 0 });
       case "count":
-        return fill(lab.ruleCount, { n: r.min, kind: lab.kinds[r.node] });
+        return r.max === 0 ? fill(lab.ruleNone, { kind: lab.kinds[r.node] }) : fill(lab.ruleCount, { n: r.min, kind: lab.kinds[r.node] });
       case "via":
         return fill(lab.ruleVia, { from: lab.kinds[r.from], to: lab.kinds[r.to], via: lab.kinds[r.via] });
       case "survive":
@@ -496,6 +635,11 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
   const node = sel?.type === "node" ? doc.nodes[sel.id] : undefined;
   const edgeSel = sel?.type === "edge" ? doc.edges[sel.id] : undefined;
   const count = nodeCount(doc);
+  // the camera follows the diagram on a phone, but never while a node is being dragged
+  const fit = narrow && !whole;
+  if (!drag.current?.moved && tool.mode !== "place") viewRef.current = fit ? fitBox(doc) : BOX;
+  if (!fit) viewRef.current = BOX;
+  const view = viewRef.current;
 
   const hint =
     tool.mode === "place"
@@ -563,6 +707,11 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
             <button type="button" className="mf-btn" aria-pressed={paused} onClick={() => setPaused((p) => !p)}>
               {paused ? lab.play : lab.pause}
             </button>
+            {narrow && (
+              <button type="button" className="mf-btn" aria-pressed={whole} onClick={() => setWhole((v) => !v)}>
+                {lab.wholeGrid}
+              </button>
+            )}
           </div>
           <div className="mf-lab__group">
             <button type="button" className="mf-btn mf-btn--sim" aria-pressed={sim} aria-keyshortcuts="S" onClick={() => setSim((v) => !v)}>
@@ -601,27 +750,36 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
           {hint}
         </p>
         <div ref={canvasRef} className={`mf-lab__canvas mf-lab__canvas--${tool.mode}`}>
-          <Scene state={scene} box={BOX} labels={doc.labels} title={lab.stageLabel} paused={paused} reduced={reduced} runKey={0} edit={edit} />
+          <Scene state={scene} box={view} labels={doc.labels} title={lab.stageLabel} paused={paused} reduced={reduced} runKey={0} edit={edit} />
           {count === 0 && <p className="mf-lab__empty">{lab.empty}</p>}
         </div>
-        <p className="mf-keys">{lab.keys}</p>
+        <KeyHint text={lab.keys} on={keysOn} toggle={toggleKeys} labels={{ on: ui.keysOn, off: ui.keysOff }} />
       </section>
 
       <aside className="mf-lab__side">
-        <div className="mf-panel__card mf-lab__challenge">
+        <div className={`mf-panel__card mf-lab__challenge${challenge ? " mf-lab__challenge--on" : ""}`}>
           <h2 id="mf-lab-challenges">{lab.challenges}</h2>
           <select name="challenge" aria-labelledby="mf-lab-challenges" value={challengeId} onChange={(e) => (e.currentTarget.value ? startChallenge(e.currentTarget.value) : setChallengeId(""))}>
               <option value="">{lab.challengeFree}</option>
-              {CHALLENGES.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {solved.includes(c.id) ? "✓ " : ""}
-                  {lab.challengeText[c.id]?.title ?? c.id}
-                </option>
+              {[false, true].map((iv) => (
+                <optgroup key={String(iv)} label={iv ? lab.interviews : lab.challenges}>
+                  {CHALLENGES.filter((c) => !!c.interview === iv).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {solved.includes(c.id) ? "✓ " : ""}
+                      {lab.challengeText[c.id]?.title ?? c.id}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
           </select>
           {challenge && (
             <>
               <p className="mf-lab__muted">{lab.challengeText[challenge.id]?.brief}</p>
+              {challenge.interview && estimateHref && (
+                <p className="mf-lab__muted">
+                  <a href={estimateHref}>{lab.estimateLink}</a>
+                </p>
+              )}
               <ul className="mf-lab__rules">
                 {challenge.rules.map((r, i) => (
                   <li key={i} className={checks[i] ? "is-ok" : undefined}>
@@ -755,6 +913,18 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
           <button type="button" className="mf-btn mf-btn--primary" onClick={share}>
             {lab.share}
           </button>
+          <button
+            type="button"
+            className="mf-btn"
+            disabled={count === 0}
+            onClick={() => {
+              const link = `/${lang}/lab/#d=${encodeDoc(doc)}`;
+              if (link.length > MAX_GALLERY_LINK) return flash(lab.galleryLong);
+              setDialog({ kind: "gallery", text: link });
+            }}
+          >
+            {lab.galleryShare}
+          </button>
           <button type="button" className="mf-btn" onClick={() => setDialog({ kind: "code", text: toLessonCode(doc) })}>
             {lab.code}
           </button>
@@ -787,8 +957,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
             type="button"
             className="mf-btn"
             onClick={() => {
-              commit(example(lab));
-              setSel(null);
+              replaceDoc(example(lab));
             }}
           >
             {lab.example}
@@ -797,9 +966,8 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
             type="button"
             className="mf-btn mf-btn--danger"
             onClick={() => {
-              // undo brings it back, so no confirmation prompt
-              commit(emptyDoc());
-              setSel(null);
+              // undo and the backup bring it back, so no confirmation prompt
+              replaceDoc(emptyDoc());
             }}
           >
             {lab.clear}
@@ -807,25 +975,27 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
         </div>
       </aside>
 
-      <dialog ref={dialogRef} className="mf-lab__dialog" aria-label={dialog?.kind === "link" ? lab.shareTitle : lab.codeTitle} onClose={() => setDialog(null)}>
+      <dialog ref={dialogRef} className="mf-lab__dialog" aria-label={dialog?.kind === "link" ? lab.shareTitle : dialog?.kind === "gallery" ? lab.galleryShare : lab.codeTitle} onClose={() => setDialog(null)}>
         {dialog && (
           <div className="mf-panel__card">
-            <h2>{dialog.kind === "link" ? lab.shareTitle : lab.codeTitle}</h2>
-            {dialog.kind === "link" ? (
+            <h2>{dialog.kind === "link" ? lab.shareTitle : dialog.kind === "gallery" ? lab.galleryShare : lab.codeTitle}</h2>
+            {dialog.kind === "gallery" ? (
+              <GalleryForm lab={lab} lang={lang} link={dialog.text} onDone={() => setDialog(null)} />
+            ) : dialog.kind === "link" ? (
               <textarea name="share" className="mf-lab__link" readOnly value={dialog.text} rows={4} onFocus={(e) => e.currentTarget.select()} />
             ) : (
               <pre className="mf-wire__code">
                 <code>{dialog.text}</code>
               </pre>
             )}
-            <div className="mf-lab__seg">
+            {dialog.kind !== "gallery" && <div className="mf-lab__seg">
               <button type="button" className="mf-btn mf-btn--primary" onClick={() => copyText(dialog.text)}>
                 {lab.copy}
               </button>
               <button type="button" className="mf-btn" onClick={() => setDialog(null)}>
                 {lab.close}
               </button>
-            </div>
+            </div>}
           </div>
         )}
       </dialog>

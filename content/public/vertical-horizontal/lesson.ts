@@ -163,7 +163,7 @@ export default defineLesson({
     {
       id: "stateless",
       kind: "fix",
-      nodes: { sessions: { kind: "cache", at: [10, 8] } },
+      nodes: { sessions: { kind: "cache", at: [11, 7] } },
       edges: {
         to2: { flow: "request" },
         to3: { flow: "request" },

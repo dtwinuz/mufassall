@@ -22,7 +22,8 @@ const hashes = new Set();
 const pages = [];
 for (const file of html(DIST)) {
   const text = readFileSync(file, "utf8");
-  for (const m of text.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)) {
+  // application/ld+json is data, never executed, so it needs no hash (one per page would bloat the CSP header)
+  for (const m of text.matchAll(/<script(?![^>]*\bsrc=)(?![^>]*\btype=["']?application\/ld\+json)[^>]*>([\s\S]*?)<\/script>/g)) {
     const body = m[1] ?? "";
     if (body.trim()) hashes.add(`'sha256-${createHash("sha256").update(body, "utf8").digest("base64")}'`);
   }

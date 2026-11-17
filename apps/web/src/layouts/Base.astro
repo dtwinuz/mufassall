@@ -14,15 +14,25 @@ interface Props {
   lang: Lang;
   title?: string;
   description?: string;
-  active?: "learn" | "lab" | "glossary" | "review";
+  /** share card path, e.g. /og/uz/caching.png; defaults to the language card /og/<lang>.png */
+  image?: string;
+  /** JSON-LD object(s), rendered as application/ld+json (not executed, so outside the script CSP) */
+  jsonLd?: object | object[];
+  /** error page: no canonical/hreflang, noindex, language links go to each home page */
+  notFound?: boolean;
+  active?: "learn" | "lab" | "glossary" | "review" | "tools" | "paths";
 }
 
 const { lang, title, description, active = "learn" } = Astro.props;
 const s = site[lang];
 const pageTitle = title ? `${title} · mufassall` : `mufassall · ${s.tagline}`;
 const desc = description ?? s.description;
-const rest = Astro.url.pathname.replace(/^\/(uz|ru|en)(?=\/)/, "");
+const { image, jsonLd, notFound = false } = Astro.props;
+const rest = notFound ? "/" : Astro.url.pathname.replace(/^\/(uz|ru|en)(?=\/)/, "");
 const canonical = new URL(Astro.url.pathname, Astro.site);
+const OG_LOCALE: Record<Lang, string> = { uz: "uz_UZ", ru: "ru_RU", en: "en_US" };
+const ogImage = new URL(image ?? `/og/${lang}.png`, Astro.site).href;
+const ldJson = jsonLd ? JSON.stringify(jsonLd).replace(/</g, "\\u003c") : undefined;
 ---
 
 <!doctype html>
@@ -32,11 +42,27 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{pageTitle}</title>
     <meta name="description" content={desc} />
-    <link rel="canonical" href={canonical.href} />
-    {LANGS.map((l) => <link rel="alternate" hreflang={l} href={new URL(`/${l}${rest}`, Astro.site).href} />)}
+    {notFound && <meta name="robots" content="noindex" />}
+    {!notFound && <link rel="canonical" href={canonical.href} />}
+    {!notFound && LANGS.map((l) => <link rel="alternate" hreflang={l} href={new URL(`/${l}${rest}`, Astro.site).href} />)}
+    {!notFound && <link rel="alternate" hreflang="x-default" href={new URL(`/uz${rest}`, Astro.site).href} />}
+    <meta property="og:site_name" content="mufassall" />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={desc} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={image ? "article" : "website"} />
+    {!notFound && <meta property="og:url" content={canonical.href} />}
+    <meta property="og:locale" content={OG_LOCALE[lang]} />
+    {LANGS.filter((l) => l !== lang).map((l) => <meta property="og:locale:alternate" content={OG_LOCALE[l]} />)}
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={title ?? s.tagline} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={desc} />
+    <meta name="twitter:image" content={ogImage} />
+    {ldJson && <script is:inline type="application/ld+json" set:html={ldJson} />}
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -61,6 +87,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
           <a href={`/${lang}/lab/`} aria-current={active === "lab" ? "page" : undefined}>{s.nav.lab}</a>
           <a href={`/${lang}/glossary/`} aria-current={active === "glossary" ? "page" : undefined}>{s.nav.glossary}</a>
           <a href={`/${lang}/review/`} aria-current={active === "review" ? "page" : undefined}>{s.nav.review}<span class="nav-badge" data-review-badge></span></a>
+          <a href={`/${lang}/paths/`} aria-current={active === "paths" ? "page" : undefined}>{s.learner.nav.paths}</a>
+          <a href={`/${lang}/tools/`} aria-current={active === "tools" ? "page" : undefined}>{s.learner.nav.tools}</a>
         </nav>
         <div class="site-tools">
           <button type="button" class="search-btn" data-search-open aria-label={s.search.label} aria-keyshortcuts="Control+K Meta+K /">
@@ -95,5 +123,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     </dialog>
     <script is:inline src="/search.js" defer></script>
     <script is:inline src="/pwa.js" defer></script>
+    <script is:inline src="/activity.js" defer></script>
   </body>
 </html>

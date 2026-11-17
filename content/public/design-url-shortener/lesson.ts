@@ -157,7 +157,7 @@ export default defineLesson({
     {
       id: "replicas",
       kind: "fix",
-      nodes: { replica: { kind: "db", at: [10, 7], load: 20 }, db: { load: 15 } },
+      nodes: { replica: { kind: "db", at: [9, 8], load: 20 }, db: { load: 15 } },
       edges: {
         read: null,
         "replica-read": { from: "api", to: "replica", rate: 2 },

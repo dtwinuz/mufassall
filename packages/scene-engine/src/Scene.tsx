@@ -209,6 +209,21 @@ function cellOf(svg: SVGSVGElement, e: React.PointerEvent): [number, number] {
 
 export function Scene({ state, box, labels, title, paused, reduced, runKey, active, edit, defs = true }: SceneProps) {
   const layer = useRef<SVGGElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  // a scene shrunk to a phone keeps its names readable: labels grow as the drawing shrinks
+  const [labelScale, setLabelScale] = useState(1);
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      const k = Math.min(el.clientWidth / box.w, el.clientHeight / box.h);
+      if (!(k > 0)) return;
+      const v = Math.min(1.45, Math.max(1, 10.5 / (12 * k)));
+      setLabelScale(Math.round(v * 20) / 20);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [box.w, box.h]);
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
 
@@ -267,6 +282,8 @@ export function Scene({ state, box, labels, title, paused, reduced, runKey, acti
 
   return (
     <svg
+      ref={svgRef}
+      style={labelScale !== 1 ? ({ "--mf-ls": String(labelScale) } as Record<string, string>) : undefined}
       className={`mf-scene${edit ? " mf-scene--edit" : ""}`}
       viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
       role={edit ? "application" : "img"}
@@ -285,6 +302,7 @@ export function Scene({ state, box, labels, title, paused, reduced, runKey, acti
 
       <g key={`edges-${runKey}`}>
         {lanes.map((l) => {
+          const e0 = state.edges[l.id]!;
           const cx = l.x1 + (l.x2 - l.x1) * CUT_AT;
           const cy = l.y1 + (l.y2 - l.y1) * CUT_AT;
           return (
@@ -299,6 +317,21 @@ export function Scene({ state, box, labels, title, paused, reduced, runKey, acti
                     }
                   : undefined
               }
+              // the Lab: a link is reachable by Tab like a node, Enter or Space selects it
+              {...(edit?.onEdgeDown
+                ? {
+                    tabindex: 0,
+                    role: "button",
+                    "aria-label": `${labels[e0.from] ?? e0.from} → ${labels[e0.to] ?? e0.to}`,
+                    "aria-pressed": l.id === edit.selectedEdge,
+                    onKeyDown: (ev: { key: string; preventDefault(): void; stopPropagation(): void }) => {
+                      if (ev.key !== "Enter" && ev.key !== " ") return;
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      edit.onEdgeDown!(l.id);
+                    },
+                  }
+                : {})}
             >
               {edit && <path className="mf-edge__hit" d={`M${l.x1} ${l.y1} L${l.x2} ${l.y2}`} />}
               <path

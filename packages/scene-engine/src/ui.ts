@@ -46,6 +46,20 @@ export interface LabStrings {
   limit: string;
   /** a shared link replaced the reader's own diagram */
   linkLoaded: string;
+  /** toast after the example, a challenge, a file or Clear replaced the reader's own diagram */
+  backedUp: string;
+  /** phone Lab: show the whole placement area instead of zooming to the diagram */
+  wholeGrid: string;
+  /** send to the moderated public gallery */
+  galleryShare: string;
+  galleryNote: string;
+  galleryName: string;
+  galleryAuthor: string;
+  gallerySend: string;
+  gallerySent: string;
+  galleryFail: string;
+  galleryBusy: string;
+  galleryLong: string;
   restore: string;
   importBad: string;
   shareTitle: string;
@@ -67,6 +81,12 @@ export interface LabStrings {
   ruleLoad: string; // "At {rps} req/s, errors under {err}%"
   ruleLoadMs: string; // "... and latency under {ms} ms"
   ruleCount: string; // "At least {n}: {kind}"
+  /** a kind that must not be used, e.g. no CDN for a personal feed */
+  ruleNone: string;
+  /** heading of the interview scenarios in the challenge list */
+  interviews: string;
+  /** link from an interview brief to the napkin-math calculator */
+  estimateLink: string;
   ruleVia: string; // "Every {from} → {to} path goes through {via}"
   ruleSurvive: string; // "Any one {kind} down: errors under {err}% at {rps} req/s"
   challengeText: Record<string, { title: string; brief: string }>;
@@ -90,6 +110,9 @@ export interface UiStrings {
   pause: string;
   play: string;
   keys: string; // "← → qadam · R qayta · Space pauza"
+  /** switch for the single-key shortcuts (WCAG 2.1.4) */
+  keysOff: string;
+  keysOn: string;
   inLesson: string;
   youLearn: string;
   modelNote: string;
@@ -98,6 +121,32 @@ export interface UiStrings {
   /** download the current step as a PNG picture */
   savePicture: string;
   check: { title: string; right: string; wrong: string; keys: string };
+  /** "break it" mode on the lesson scene: live traffic model, nodes can be switched off */
+  tryIt: {
+    open: string;
+    close: string;
+    traffic: string; // "Trafik: {n}/s"
+    spike: string;
+    ok: string;
+    errors: string;
+    latency: string;
+    hot: string; // "Tiqilib qoldi: {list}"
+    kill: string; // "O'chirib ko'ring:"
+    note: string;
+  };
+  /** read the step aloud with the browser's own voice */
+  listen: { start: string; stop: string; noVoice: string };
+  /** "was this step clear?" (sent to /api/feedback, nothing personal) */
+  feedback: {
+    title: string;
+    unclear: string;
+    error: string;
+    good: string;
+    placeholder: string;
+    send: string;
+    thanks: string;
+    fail: string;
+  };
   /** localised metric units, keyed by the unit written in the lesson ("/s", "ms", "/min") */
   units?: Record<string, string>;
   /** the "real request" pane under the scene */
