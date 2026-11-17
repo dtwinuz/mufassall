@@ -1,10 +1,11 @@
 ---
-import { LANGS, type Lang, lessons, tracks } from "@mufassall/content";
+import { LANGS, type Lang, lessons, order, sections } from "@mufassall/content";
 import { Scene, lessonBounds } from "@mufassall/scene-engine";
 import { resolve } from "@mufassall/scene-schema";
 import "@mufassall/scene-engine/player.css";
 import Base from "../../layouts/Base.astro";
-import { player, site } from "../../i18n/ui";
+import { player } from "../../i18n/ui";
+import { site } from "../../i18n/site";
 
 export function getStaticPaths() {
   return LANGS.map((lang) => ({ params: { lang } }));
@@ -13,23 +14,52 @@ export function getStaticPaths() {
 const lang = Astro.params.lang as Lang;
 const s = site[lang];
 const ui = player[lang];
+const first = order[0];
+const minutesOf = (slugs: string[]) => slugs.reduce((sum, sl) => sum + lessons[sl]!.lesson.minutes, 0);
 ---
 
 <Base lang={lang}>
   <section class="home-hero">
     <h1>{s.home.title}</h1>
     <p>{s.home.lead}</p>
+    <div class="home-hero__actions">
+      {first && <a class="mf-btn mf-btn--primary" href={`/${lang}/l/${first}/`}>{s.home.startCourse} →</a>}
+      <a class="mf-btn" href={`/${lang}/lab/`}>{s.home.openLab}</a>
+    </div>
+  </section>
+
+  <section class="course-map" aria-labelledby="course-map">
+    <div class="track__head">
+      <h2 id="course-map">{s.home.map}</h2>
+      <p>{s.home.mapLead}</p>
+    </div>
+    <ol class="course-map__list">
+      {
+        sections.map((sec, i) => (
+          <li>
+            <a href={`#s-${sec.id}`}>
+              <span class="course-map__n">{String(i + 1).padStart(2, "0")}</span>
+              <span class="course-map__title">{s.sections[sec.id]?.title}</span>
+              <span class="course-map__meta">
+                {s.home.lessonsN.replace("{n}", String(sec.lessons.length))} · {s.home.minutesN.replace("{n}", String(minutesOf(sec.lessons)))}
+              </span>
+            </a>
+          </li>
+        ))
+      }
+    </ol>
   </section>
 
   {
-    tracks.map((track) => (
-      <section class="track" aria-labelledby={`track-${track.id}`}>
+    sections.map((sec, i) => (
+      <section class="track" id={`s-${sec.id}`} aria-labelledby={`track-${sec.id}`}>
         <div class="track__head">
-          <h2 id={`track-${track.id}`}>{s.home.tracks[track.id]?.title}</h2>
-          <p>{s.home.tracks[track.id]?.text}</p>
+          <p class="track__n">{String(i + 1).padStart(2, "0")}</p>
+          <h2 id={`track-${sec.id}`}>{s.sections[sec.id]?.title}</h2>
+          <p>{s.sections[sec.id]?.text}</p>
         </div>
         <ul class="lessons">
-          {track.lessons.map((slug) => {
+          {sec.lessons.map((slug) => {
             const entry = lessons[slug]!;
             const text = entry.text[lang];
             const states = resolve(entry.lesson);

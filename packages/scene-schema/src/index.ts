@@ -1,7 +1,19 @@
 // Runtime-free core: no zod here, so the browser bundle stays small.
 // Strict structural validation lives in ./validate (build time and tests).
 
-export const NODE_KINDS = ["actor", "service", "queue", "db", "external", "worker"] as const;
+export const NODE_KINDS = [
+  "actor",
+  "client",
+  "service",
+  "lb",
+  "cache",
+  "cdn",
+  "queue",
+  "db",
+  "storage",
+  "external",
+  "worker",
+] as const;
 export const NODE_STATES = ["ok", "slow", "down"] as const;
 export const FLOWS = ["request", "ack", "fail", "retry", "dup"] as const;
 export const STEP_KINDS = ["problem", "fix", "case", "recap"] as const;
@@ -19,6 +31,8 @@ export interface NodePatch {
   kind?: NodeKind;
   at?: readonly [number, number];
   state?: NodeStatus;
+  /** utilisation in percent, drawn as a gauge over the block */
+  load?: number;
 }
 
 export interface EdgePatch {
@@ -118,6 +132,7 @@ export interface NodeState {
   kind: NodeKind;
   at: [number, number];
   state: NodeStatus;
+  load?: number;
 }
 
 export interface EdgeState {
@@ -183,6 +198,8 @@ export function resolve(input: LessonInput): SceneState[] {
         at: patch.at ? [patch.at[0], patch.at[1]] : prev!.at,
         state: patch.state ?? prev?.state ?? "ok",
       };
+      const load = patch.load ?? prev?.load;
+      if (load !== undefined) next.nodes[key]!.load = load;
     }
 
     for (const [key, patch] of Object.entries(step.edges ?? {})) {

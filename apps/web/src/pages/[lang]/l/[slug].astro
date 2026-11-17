@@ -1,9 +1,9 @@
 ---
-import { LANGS, type Lang, lessons, tracks } from "@mufassall/content";
+import { LANGS, type Lang, lessons, order, sectionOf, sections } from "@mufassall/content";
 import "@mufassall/scene-engine/player.css";
 import Lesson from "../../../components/Lesson";
 import Base from "../../../layouts/Base.astro";
-import { site } from "../../../i18n/ui";
+import { site } from "../../../i18n/site";
 
 export function getStaticPaths() {
   return LANGS.flatMap((lang) => Object.keys(lessons).map((slug) => ({ params: { lang, slug } })));
@@ -11,13 +11,63 @@ export function getStaticPaths() {
 
 const lang = Astro.params.lang as Lang;
 const slug = Astro.params.slug!;
+const s = site[lang];
 const entry = lessons[slug]!;
 const text = entry.text[lang];
-const track = tracks.find((t) => t.lessons.includes(slug));
-const position = track ? track.lessons.indexOf(slug) + 1 : 1;
-const crumbs = track ? `${site[lang].home.tracks[track.id]?.title} / ${position} / ${track.lessons.length}` : "";
+const section = sectionOf(slug);
+const position = section ? section.lessons.indexOf(slug) + 1 : 1;
+const crumbs = section ? `${s.sections[section.id]?.title} / ${position} / ${section.lessons.length}` : "";
+const at = order.indexOf(slug);
+const prevSlug = at > 0 ? order[at - 1] : undefined;
+const nextSlug = at >= 0 && at < order.length - 1 ? order[at + 1] : undefined;
+const titleOf = (sl: string) => lessons[sl]!.text[lang].title;
+const next = nextSlug ? { title: titleOf(nextSlug), href: `/${lang}/l/${nextSlug}/` } : undefined;
 ---
 
 <Base lang={lang} title={text.title} description={text.summary}>
-  <Lesson client:load slug={slug} lang={lang} crumbs={crumbs} />
+  <Lesson client:load lesson={entry.lesson} text={text} lang={lang} crumbs={crumbs} next={next} />
+  <nav class="lesson-pager" aria-label={s.course.title}>
+    {
+      prevSlug ? (
+        <a href={`/${lang}/l/${prevSlug}/`} rel="prev">
+          <small>← {s.course.prev}</small>
+          <span>{titleOf(prevSlug)}</span>
+        </a>
+      ) : (
+        <span />
+      )
+    }
+    {
+      nextSlug && (
+        <a href={`/${lang}/l/${nextSlug}/`} rel="next" class="lesson-pager__next">
+          <small>{s.course.next} →</small>
+          <span>{titleOf(nextSlug)}</span>
+        </a>
+      )
+    }
+  </nav>
+  <details class="course-nav" data-course-nav>
+    <summary>{s.course.title}: {s.home.lessonsN.replace("{n}", String(order.length))}</summary>
+    <ol class="course-nav__sections">
+      {
+        sections.map((sec, i) => (
+          <li class={sec.id === section?.id ? "is-current" : undefined}>
+            <p class="course-nav__section">
+              <span>{String(i + 1).padStart(2, "0")}</span> {s.sections[sec.id]?.title}
+            </p>
+            <ol>
+              {sec.lessons.map((l) => (
+                <li>
+                  <a href={`/${lang}/l/${l}/`} data-progress-dot={l} data-steps={lessons[l]!.lesson.steps.length} aria-current={l === slug ? "page" : undefined}>
+                    {titleOf(l)}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </li>
+        ))
+      }
+    </ol>
+  </details>
+  <script is:inline src="/course.js" defer></script>
 </Base>

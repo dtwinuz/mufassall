@@ -1,0 +1,227 @@
+import { defineLesson } from "@mufassall/scene-schema";
+
+/**
+ * One balancer in front of three app servers: L4 vs L7, algorithms, health checks, stickiness.
+ * Numbers are a model scenario, not measurements; the player says so under the scene.
+ */
+export default defineLesson({
+  slug: "load-balancing",
+  level: "intermediate",
+  minutes: 13,
+  tier: "public",
+  metrics: [
+    { id: "rps", unit: "/s", better: "up" },
+    { id: "p99", unit: "ms", better: "down" },
+    { id: "errors", unit: "%", better: "down" },
+    { id: "hot", unit: "%", better: "down" },
+  ],
+  steps: [
+    {
+      id: "l4",
+      kind: "case",
+      nodes: {
+        clients: { kind: "client", at: [0, 4] },
+        lb: { kind: "lb", at: [3, 4] },
+        a: { kind: "service", at: [7, 1], load: 35 },
+        b: { kind: "service", at: [7, 4], load: 35 },
+        c: { kind: "service", at: [7, 7], load: 35 },
+        db: { kind: "db", at: [11, 4] },
+      },
+      edges: {
+        in: { from: "clients", to: "lb", rate: 6 },
+        "to-a": { from: "lb", to: "a", rate: 2 },
+        "to-b": { from: "lb", to: "b", rate: 2 },
+        "to-c": { from: "lb", to: "c", rate: 2 },
+        qa: { from: "a", to: "db", rate: 2 },
+        qb: { from: "b", to: "db", rate: 2 },
+        qc: { from: "c", to: "db", rate: 2 },
+      },
+      metrics: { rps: 900, p99: 140, errors: 0, hot: 35 },
+      focus: ["lb"],
+      exchange: {
+        edge: "to-b",
+        request: {
+          format: "text",
+          head: "TCP 198.51.100.7:52114 -> 192.0.2.12:8443",
+          body: "handshake: SYN, SYN-ACK, ACK\npayload: TLS records, unreadable here\nbackend chosen once per connection",
+        },
+        marks: ["TCP", "TLS", "per connection"],
+      },
+    },
+    {
+      id: "one-pipe",
+      kind: "problem",
+      nodes: { a: { load: 96, state: "slow" }, b: { load: 22 }, c: { load: 22 } },
+      edges: { "to-a": { rate: 9 }, "to-b": { rate: 1 }, "to-c": { rate: 1 }, qa: { rate: 6 } },
+      metrics: { rps: 1300, p99: 900, hot: 96 },
+      focus: ["a"],
+      exchange: {
+        edge: "to-a",
+        request: {
+          format: "text",
+          head: "balancer connection table",
+          body: "conn 7  -> a  412 req/s  (partner, keep-alive)\nconn 8  -> b    9 req/s\nconn 9  -> c    7 req/s",
+        },
+        marks: ["conn 7", "keep-alive"],
+      },
+    },
+    {
+      id: "l7",
+      kind: "fix",
+      nodes: { a: { load: 52, state: "ok" }, b: { load: 52 }, c: { load: 52 } },
+      edges: { "to-a": { rate: 4 }, "to-b": { rate: 4 }, "to-c": { rate: 4 }, qa: { rate: 3 } },
+      metrics: { p99: 150, hot: 52 },
+      focus: ["lb"],
+      exchange: {
+        edge: "to-a",
+        request: {
+          format: "http",
+          head: "GET /api/orders?page=2 HTTP/1.1",
+          headers: [
+            ["Host", "api.example.com"],
+            ["X-Forwarded-For", "198.51.100.7"],
+            ["X-Forwarded-Proto", "https"],
+            ["X-Request-Id", "req_5d20"],
+          ],
+        },
+        marks: ["X-Forwarded-For", "X-Forwarded-Proto", "X-Request-Id"],
+      },
+    },
+    {
+      id: "round-robin",
+      kind: "case",
+      edges: { in: { rate: 9 } },
+      focus: ["lb", "a", "b", "c"],
+      exchange: {
+        edge: "in",
+        request: {
+          format: "text",
+          head: "balancer access log",
+          body: "GET /api/orders   upstream=a  14ms\nGET /api/cart     upstream=b  11ms\nGET /api/orders   upstream=c  13ms\nGET /api/profile  upstream=a  12ms",
+        },
+        marks: ["upstream"],
+      },
+    },
+    {
+      id: "heavy",
+      kind: "problem",
+      nodes: { c: { load: 98, state: "slow" } },
+      edges: { qc: { rate: 6 } },
+      metrics: { p99: 2600, hot: 98 },
+      focus: ["c"],
+      exchange: {
+        edge: "to-c",
+        request: { format: "http", head: "GET /api/reports/export?year=2026 HTTP/1.1", headers: [["Host", "api.example.com"]] },
+        response: { format: "http", head: "HTTP/1.1 200 OK", headers: [["Server-Timing", "app;dur=4120"]] },
+        marks: ["export", "Server-Timing"],
+      },
+    },
+    {
+      id: "least-conn",
+      kind: "fix",
+      nodes: { a: { load: 68 }, b: { load: 67 }, c: { load: 72, state: "ok" } },
+      edges: { "to-c": { rate: 2 }, qc: { rate: 3 } },
+      metrics: { p99: 380, hot: 72 },
+      focus: ["lb", "c"],
+      exchange: {
+        edge: "to-b",
+        request: {
+          format: "text",
+          head: "pick upstream for req_5e11",
+          body: "a: active=14\nb: active=13\nc: active=31\n-> b (fewest active)",
+        },
+        marks: ["active", "fewest active"],
+      },
+    },
+    {
+      id: "weighted",
+      kind: "case",
+      nodes: { a: { load: 50 }, b: { load: 50 }, c: { load: 50 } },
+      edges: { "to-a": { rate: 3 }, "to-b": { rate: 3 }, "to-c": { rate: 6 } },
+      metrics: { p99: 160, hot: 50 },
+      focus: ["c"],
+    },
+    {
+      id: "dead",
+      kind: "problem",
+      nodes: { b: { state: "down", load: 0 } },
+      edges: { "to-b": { flow: "fail", cut: true }, qb: { rate: 0 } },
+      metrics: { errors: 25 },
+      focus: ["b"],
+      exchange: {
+        edge: "to-b",
+        request: { format: "http", head: "GET /api/orders HTTP/1.1", headers: [["Host", "api.example.com"]] },
+        response: {
+          format: "text",
+          head: "upstream b: connect() failed",
+          body: "Connection refused\nclient receives: 502 Bad Gateway",
+        },
+        marks: ["Connection refused", "502"],
+      },
+    },
+    {
+      id: "health",
+      kind: "fix",
+      nodes: { a: { load: 67 }, c: { load: 67 } },
+      edges: { "to-b": { rate: 1, cut: false }, "to-a": { rate: 4 }, "to-c": { rate: 8 } },
+      metrics: { errors: 0.3, hot: 67, p99: 210 },
+      focus: ["lb", "b"],
+      exchange: {
+        edge: "to-b",
+        request: { format: "http", head: "GET /healthz HTTP/1.1", headers: [["Host", "192.0.2.12"]] },
+        response: {
+          format: "text",
+          head: "timeout after 1000 ms",
+          body: "failed checks in a row: 3 of 3\nb: removed from the pool",
+        },
+        marks: ["healthz", "3 of 3", "removed"],
+      },
+    },
+    {
+      id: "sticky",
+      kind: "problem",
+      nodes: { a: { load: 85 }, b: { state: "ok", load: 15 }, c: { load: 60 } },
+      edges: { "to-b": { flow: "request", rate: 1 }, qb: { rate: 1 }, "to-a": { rate: 8 } },
+      metrics: { p99: 700, hot: 85 },
+      focus: ["a", "b"],
+      exchange: {
+        edge: "in",
+        request: { format: "http", head: "POST /api/cart/items HTTP/1.1", headers: [["Host", "api.example.com"]] },
+        response: {
+          format: "http",
+          head: "HTTP/1.1 200 OK",
+          headers: [["Set-Cookie", "lb_route=a; Path=/; HttpOnly"]],
+        },
+        marks: ["Set-Cookie"],
+      },
+    },
+    {
+      id: "shared-state",
+      kind: "fix",
+      nodes: {
+        a: { load: 55 },
+        b: { load: 55 },
+        c: { load: 55 },
+        sessions: { kind: "cache", at: [11, 8] },
+      },
+      edges: {
+        "to-a": { rate: 3 },
+        "to-b": { rate: 3 },
+        "to-c": { rate: 6 },
+        qb: { rate: 2 },
+        sa: { from: "a", to: "sessions", rate: 2 },
+        sb: { from: "b", to: "sessions", rate: 2 },
+        sc: { from: "c", to: "sessions", rate: 2 },
+      },
+      metrics: { p99: 160, hot: 55 },
+      focus: ["sessions"],
+      exchange: {
+        edge: "sb",
+        request: { format: "text", head: "HGETALL session:9c1e7a" },
+        response: { format: "text", head: "3 fields", body: "user_id: u_42\ncart_items: 3\nttl: 1800" },
+        marks: ["HGETALL", "user_id", "ttl"],
+      },
+    },
+    { id: "recap", kind: "recap" },
+  ],
+});

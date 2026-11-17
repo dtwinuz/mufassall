@@ -33,6 +33,11 @@
   --k-queue: #f2b33d;
   --k-db: #1c232d;
   --k-external: #e3e7ec;
+  --k-client: #5b6b80;
+  --k-lb: #0e8f8a;
+  --k-cache: #e0782e;
+  --k-cdn: #7d5bd0;
+  --k-storage: #8e6b3e;
   --k-down: #b9c0c9;
 }
 
@@ -64,6 +69,11 @@
     --k-queue: #e6a93a;
     --k-db: #3a4656;
     --k-external: #2a333f;
+    --k-client: #6d7d93;
+    --k-lb: #1fb3ad;
+    --k-cache: #f08c45;
+    --k-cdn: #9a7ce6;
+    --k-storage: #a9834f;
     --k-down: #3b434e;
   }
 }
@@ -95,6 +105,11 @@
   --k-queue: #e6a93a;
   --k-db: #3a4656;
   --k-external: #2a333f;
+  --k-client: #6d7d93;
+  --k-lb: #1fb3ad;
+  --k-cache: #f08c45;
+  --k-cdn: #9a7ce6;
+  --k-storage: #a9834f;
   --k-down: #3b434e;
 }
 

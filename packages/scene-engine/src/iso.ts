@@ -13,6 +13,23 @@ export function iso([x, y]: readonly [number, number]): [number, number] {
   return [((x - y) * TILE_W) / 2, ((x + y) * TILE_H) / 2];
 }
 
+/** Screen point back to the nearest grid cell (inverse of `iso`, rounded). */
+export function fromIso(sx: number, sy: number): [number, number] {
+  const a = sx / (TILE_W / 2);
+  const b = sy / (TILE_H / 2);
+  return [Math.round((a + b) / 2), Math.round((b - a) / 2)];
+}
+
+/** Fixed view over a grid rectangle, used by the editor so the camera never follows a drag. */
+export function gridBounds(min: number, max: number): Box {
+  const corners = [iso([min, min]), iso([max, max]), iso([min, max]), iso([max, min])];
+  const xs = corners.map((c) => c[0]);
+  const ys = corners.map((c) => c[1]);
+  const x = Math.min(...xs) - 40;
+  const y = Math.min(...ys) - 60;
+  return { x, y, w: Math.max(...xs) - x + 40, h: Math.max(...ys) - y + 40 };
+}
+
 export interface Box {
   x: number;
   y: number;

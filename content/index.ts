@@ -1,33 +1,23 @@
-import type { LessonInput, LessonText } from "@mufassall/scene-schema";
-import callbacks from "./public/callbacks/lesson";
-import callbacksEn from "./public/callbacks/en";
-import callbacksRu from "./public/callbacks/ru";
-import callbacksUz from "./public/callbacks/uz";
-import payments from "./public/payments/lesson";
-import paymentsEn from "./public/payments/en";
-import paymentsRu from "./public/payments/ru";
-import paymentsUz from "./public/payments/uz";
+import { registry } from "./registry";
+import { type Section, sections as allSections } from "./sections";
 
-export const LANGS = ["uz", "ru", "en"] as const;
-export type Lang = (typeof LANGS)[number];
-
-export interface Track {
-  id: string;
-  lessons: string[];
-}
-
-export interface LessonEntry<T extends LessonInput = LessonInput> {
-  lesson: T;
-  text: Record<Lang, LessonText<T>>;
-}
+export { LANGS, type Lang, type LessonEntry } from "./types";
+export type { Section } from "./sections";
 
 /** Public lessons only. Internal lessons are served by the API and never bundled here. */
-export const lessons: Record<string, LessonEntry> = {
-  callbacks: { lesson: callbacks, text: { uz: callbacksUz, ru: callbacksRu, en: callbacksEn } },
-  payments: { lesson: payments, text: { uz: paymentsUz, ru: paymentsRu, en: paymentsEn } },
-};
+export const lessons = registry;
 
-export const tracks: Track[] = [
-  { id: "reliability", lessons: ["callbacks"] },
-  { id: "payments", lessons: ["payments"] },
-];
+/** Sections with only the lessons that are written; empty sections are hidden. */
+export const sections: Section[] = allSections
+  .map((s) => ({ ...s, lessons: s.lessons.filter((l) => l in registry) }))
+  .filter((s) => s.lessons.length > 0);
+
+/** Reading order across the whole course. */
+export const order: string[] = sections.flatMap((s) => s.lessons);
+
+export function sectionOf(slug: string): Section | undefined {
+  return sections.find((s) => s.lessons.includes(slug));
+}
+
+/** @deprecated kept for the home page until it moves to `sections` */
+export const tracks = sections;

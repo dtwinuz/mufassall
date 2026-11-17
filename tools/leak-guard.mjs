@@ -9,7 +9,8 @@ const TEXT = new Set([".html", ".js", ".mjs", ".css", ".json", ".xml", ".txt", "
 const RULES = [
   ["secret reference", /\{\{\s*secret:/i],
   ["private IPv4", /\b(?:10\.\d{1,3}|192\.168|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b/],
-  ["IPv4 with port", /\b\d{1,3}(?:\.\d{1,3}){3}:\d{2,5}\b/],
+  // RFC 5737 documentation ranges (192.0.2/24, 198.51.100/24, 203.0.113/24) never route, so lessons may use them
+  ["IPv4 with port", /\b(?!(?:192\.0\.2|198\.51\.100|203\.0\.113)\.)\d{1,3}(?:\.\d{1,3}){3}:\d{2,5}\b/],
   ["connection string", /\b(?:Data Source|Initial Catalog|User ID|Password)\s*=/i],
   ["private key", /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
   ["token-like", /\b(?:ghp|gho|ghs|glpat|xox[bp])[-_][A-Za-z0-9_-]{16,}/],
