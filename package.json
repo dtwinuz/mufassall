@@ -17,7 +17,7 @@
     "check": "pnpm typecheck && pnpm test && pnpm check:i18n && pnpm build && pnpm check:leaks"
   },
   "devDependencies": {
-    "typescript": "~5.9.3",
+    "typescript": "~7.0.2",
     "vitest": "^5.0.0"
   }
 }
