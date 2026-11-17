@@ -24,6 +24,13 @@ export interface UiStrings {
   sceneLabel: string; // "Sahna: {title}"
   /** localised metric units, keyed by the unit written in the lesson ("/s", "ms", "/min") */
   units?: Record<string, string>;
+  /** the "real request" pane under the scene */
+  wire: {
+    title: string;
+    request: string;
+    response: string;
+    masked: string;
+  };
   states: Record<NodeStatus, string>;
   flows: Record<Flow, string>;
   legend: Record<Flow | "lost", string>;

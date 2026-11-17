@@ -1,5 +1,5 @@
 import { MotionConfig, animate, useReducedMotion } from "motion/react";
-import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type Change,
   type LessonInput,
@@ -11,24 +11,11 @@ import {
 } from "@mufassall/scene-schema";
 import { lessonBounds } from "./iso";
 import { Scene } from "./Scene";
+import { inline, paragraphs, plain } from "./text";
 import { type UiStrings, fill, formatNumber } from "./ui";
-
-const plain = (s: string) => s.replace(/\*\*|`/g, "");
+import { Wire } from "./Wire";
 
 const PROGRESS_KEY = "mufassall:v1:progress";
-
-/** `code` and **bold** only; lesson text is authored, never user input. */
-function inline(text: string): ReactNode {
-  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) return <strong key={i}>{part.slice(2, -2)}</strong>;
-    if (part.startsWith("`") && part.endsWith("`")) return <code key={i}>{part.slice(1, -1)}</code>;
-    return <Fragment key={i}>{part}</Fragment>;
-  });
-}
-
-function paragraphs(text: string) {
-  return text.split(/\n{2,}/).map((p, i) => <p key={i}>{inline(p)}</p>);
-}
 
 function Num({ value, format }: { value: number | undefined; format: (n: number) => string }) {
   const [shown, setShown] = useState(value);
@@ -122,6 +109,8 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
   const changes = index > 0 ? diff(prev, state) : [];
   const t = steps[step.id]!;
   const nextStep = index < total - 1 ? steps[lesson.steps[index + 1]!.id] : undefined;
+  const exchange = step.exchange;
+  const wireEdge = exchange ? state.edges[exchange.edge] : undefined;
 
   const metricOf = (id: string) => lesson.metrics.find((m) => m.id === id);
   /** `target` decides the decimals, so a tween towards an integer never shows fractions. */
@@ -171,6 +160,7 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
         </header>
 
         <div className="mf-body">
+          <div className="mf-main">
           <section className="mf-stage" aria-label={fill(ui.sceneLabel, { title: text.title })}>
             <div className="mf-stage__top">
               <dl className="mf-metrics">
@@ -199,7 +189,16 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
               </div>
             </div>
 
-            <Scene state={state} box={box} labels={labels} title={plain(t.title)} paused={paused} reduced={reduced} runKey={runKey} />
+            <Scene
+              state={state}
+              box={box}
+              labels={labels}
+              title={plain(t.title)}
+              paused={paused}
+              reduced={reduced}
+              runKey={runKey}
+              active={exchange?.edge}
+            />
 
             <div className="mf-stage__foot">
               <ul className="mf-legend">
@@ -213,6 +212,18 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
               <p className="mf-note">{ui.modelNote}</p>
             </div>
           </section>
+
+          {exchange && wireEdge && (
+            <Wire
+              key={step.id}
+              exchange={exchange}
+              notes={t.fields ?? {}}
+              from={labels[wireEdge.from] ?? wireEdge.from}
+              to={labels[wireEdge.to] ?? wireEdge.to}
+              ui={ui.wire}
+            />
+          )}
+          </div>
 
           <aside className="mf-panel" aria-live="polite">
             <div className="mf-panel__card">

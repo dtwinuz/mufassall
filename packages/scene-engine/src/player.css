@@ -53,6 +53,117 @@
   align-items: start;
 }
 
+.mf-main {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.mf-wire {
+  padding: 16px 18px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.mf-wire__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: 12px;
+}
+.mf-wire__head h3,
+.mf-wire__label {
+  margin: 0;
+  font: 600 11px/1.3 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.mf-wire__route {
+  font: 500 13px var(--font-mono);
+  color: var(--signal);
+}
+.mf-wire__panes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.mf-wire__panes--one {
+  grid-template-columns: minmax(0, 1fr);
+}
+.mf-wire__label {
+  margin-bottom: 6px;
+}
+.mf-wire__code {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--stage);
+  font: 13px/1.55 var(--font-mono);
+  tab-size: 2;
+}
+.mf-wire__line {
+  display: block;
+  white-space: pre;
+}
+.mf-mark {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  margin: 0 2px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: var(--signal);
+  color: var(--stage);
+  font: 700 10px/1 var(--font-mono);
+  vertical-align: 0.35em;
+}
+.mf-mask {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--line);
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+.mf-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.mf-wire__notes {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.mf-wire__notes li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+.mf-wire__notes .mf-mark {
+  vertical-align: 0;
+}
+.mf-wire__notes code {
+  font: 0.9em var(--font-mono);
+}
+.mf-wire__lock {
+  color: var(--muted);
+  font: 12px var(--font-mono);
+}
+
 .mf-stage {
   position: relative;
   display: grid;
@@ -223,6 +334,7 @@
 .mf-edge--retry path { stroke: var(--warn); }
 .mf-edge--dup path { stroke: var(--dup); }
 .mf-edge--cut path { stroke: var(--bad); stroke-dasharray: 2 4; }
+.mf-edge--active path { stroke: var(--signal); stroke-width: 2.6; }
 .mf-edge__cut circle { fill: var(--stage); stroke: var(--bad); stroke-width: 1.6; }
 .mf-edge__cut path { stroke: var(--bad); stroke-width: 1.8; stroke-dasharray: none; stroke-linecap: round; }
 .mf-arrow { fill: var(--edge); }
@@ -467,7 +579,17 @@
 
 @media (max-width: 1100px) {
   .mf-body {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* one column: scene, then the step text, then the wire message */
+  .mf-main {
+    display: contents;
+  }
+  .mf-panel {
+    order: 1;
+  }
+  .mf-wire {
+    order: 2;
   }
 }
 @media (max-width: 640px) {
@@ -477,6 +599,9 @@
   }
   .mf-stage {
     min-height: 0;
+  }
+  .mf-wire__panes {
+    grid-template-columns: minmax(0, 1fr);
   }
   .mf-stage__top {
     flex-direction: column;
