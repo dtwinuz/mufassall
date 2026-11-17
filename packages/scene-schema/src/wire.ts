@@ -58,35 +58,99 @@ function annotateLine(
   isMasked: (name: string) => boolean,
   marks: readonly string[],
 ): WireLine {
-  const re =
-    format === "json"
-      ? /"([A-Za-z0-9_.$-]+)"\s*:\s*/g
-      : format === "xml"
-        ? /<([A-Za-z0-9_:-]+)(?:\s[^>]*)?>(?=[^<]*<\/\1>)/g
-        : null;
-  if (!re) return [{ kind: "text", text: line }, ...markWords(line, marks, markNo)];
+  const keys = format === "json" ? jsonKeys(line) : format === "xml" ? xmlLeafTags(line) : null;
+  if (!keys) return [{ kind: "text", text: line }, ...markWords(line, marks, markNo)];
 
   const segs: Segment[] = [];
   let pos = 0;
-  for (const m of line.matchAll(re)) {
-    const name = m[1]!;
-    const end = m.index! + m[0].length;
+  for (const { name, end } of keys) {
+    if (end < pos) continue;
     segs.push({ kind: "text", text: line.slice(pos, end) });
     segs.push(...markNo(name));
     pos = end;
     if (isMasked(name)) {
-      const rest = line.slice(pos);
-      const stop = format === "json" ? rest.search(/,\s*("|$)|\s*[}\]]\s*,?\s*$|$/) : rest.indexOf("<");
-      const valueEnd = stop < 0 ? rest.length : stop;
-      const raw = rest.slice(0, valueEnd);
+      const valueEnd = format === "json" ? jsonValueEnd(line, pos) : xmlValueEnd(line, pos);
+      const raw = line.slice(pos, valueEnd);
       if (raw.trim()) {
         segs.push({ kind: "mask", name, raw: unquote(raw) });
-        pos += valueEnd;
+        pos = valueEnd;
       }
     }
   }
   segs.push({ kind: "text", text: line.slice(pos) });
   return segs.filter((s) => s.kind !== "text" || s.text !== "");
+}
+
+interface Key {
+  name: string;
+  /** index right after the key and its separator, where the value starts */
+  end: number;
+}
+
+const isNameChar = (c: string) => /[A-Za-z0-9_.$:-]/.test(c);
+const isSpace = (c: string | undefined) => c === " " || c === "\t";
+
+/** `"name":` keys in one JSON line. Hand-written scanners keep every pass linear in the line. */
+function jsonKeys(line: string): Key[] {
+  const out: Key[] = [];
+  let i = 0;
+  while (i < line.length) {
+    if (line[i] !== '"') {
+      i++;
+      continue;
+    }
+    let j = i + 1;
+    while (j < line.length && line[j] !== '"') j += line[j] === "\\" ? 2 : 1;
+    const name = line.slice(i + 1, j);
+    let k = j + 1;
+    while (isSpace(line[k])) k++;
+    if (line[k] === ":" && name !== "" && [...name].every(isNameChar)) {
+      k++;
+      while (isSpace(line[k])) k++;
+      out.push({ name, end: k });
+    }
+    i = j + 1;
+  }
+  return out;
+}
+
+/** End of a JSON scalar starting at `from`: the first `,`, `}` or `]` outside a string. */
+function jsonValueEnd(line: string, from: number): number {
+  let i = from;
+  let inString = false;
+  for (; i < line.length; i++) {
+    const c = line[i];
+    if (inString) {
+      if (c === "\\") i++;
+      else if (c === '"') inString = false;
+    } else if (c === '"') inString = true;
+    else if (c === "," || c === "}" || c === "]") break;
+  }
+  while (i > from && isSpace(line[i - 1])) i--;
+  return i;
+}
+
+/** Leaf elements `<name ...>text</name>` in one XML line. */
+function xmlLeafTags(line: string): Key[] {
+  const out: Key[] = [];
+  let i = line.indexOf("<");
+  while (i >= 0) {
+    let j = i + 1;
+    while (j < line.length && isNameChar(line[j]!)) j++;
+    const name = line.slice(i + 1, j);
+    const close = line.indexOf(">", j);
+    if (name && close >= 0 && (j === close || isSpace(line[j]))) {
+      const next = line.indexOf("<", close + 1);
+      if (next >= 0 && line.startsWith(`</${name}>`, next)) out.push({ name, end: close + 1 });
+    }
+    i = line.indexOf("<", i + 1);
+  }
+  return out;
+}
+
+function xmlValueEnd(line: string, from: number): number {
+  const stop = line.indexOf("<", from);
+  return stop < 0 ? line.length : stop;
 }
 
 /** Plain formats (http, sql, text): number a mark at the end of the first line that names it. */

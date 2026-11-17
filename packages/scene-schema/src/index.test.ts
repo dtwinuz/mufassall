@@ -107,6 +107,17 @@ describe("annotate", () => {
   });
 });
 
+describe("annotate on hostile input", () => {
+  it("stays linear on long repetitive lines", async () => {
+    const { annotate } = await import("./index");
+    const t0 = performance.now();
+    annotate({ format: "xml", head: "x", body: "<- ".repeat(20000) }, ["a"], ["a"]);
+    annotate({ format: "json", head: "x", body: `{"a": ${" ".repeat(20000)}]` }, ["a"], ["a"]);
+    annotate({ format: "json", head: "x", body: '"'.repeat(20001) }, ["a"], ["a"]);
+    expect(performance.now() - t0).toBeLessThan(500);
+  });
+});
+
 describe("diff", () => {
   it("reports node, edge and metric changes", () => {
     const [s1, s2, s3] = resolve(base);
