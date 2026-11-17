@@ -661,3 +661,58 @@ main.wrap {
   font-size: 14px;
   color: var(--signal-strong);
 }
+
+/* Review */
+.nav-badge:not(:empty) {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--signal);
+  color: #fff;
+  font: 700 11px/1 var(--font-mono);
+  vertical-align: 1px;
+}
+.review {
+  max-width: 720px;
+  margin: 0 0 64px;
+}
+.review__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  font: 500 13px var(--font-mono);
+  color: var(--muted);
+}
+.review__lesson {
+  color: inherit;
+}
+.review__card {
+  margin: 0;
+}
+.review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.review__empty {
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.review__empty h2 {
+  margin: 0 0 8px;
+}
+.review__meta {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+.review .lab-skeleton {
+  min-height: 240px;
+}

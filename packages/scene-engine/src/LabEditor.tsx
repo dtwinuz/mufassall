@@ -574,7 +574,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
           <div className="mf-lab__sim">
             <label className="mf-lab__traffic">
               <span>{fill(lab.traffic, { n: num(spike ? rps * 10 : rps) })}</span>
-              <input type="range" min={0} max={100} step={1} value={fromRps(rps)} onChange={(e) => setRps(toRps(Number(e.currentTarget.value)))} />
+              <input name="traffic" type="range" min={0} max={100} step={1} value={fromRps(rps)} onChange={(e) => setRps(toRps(Number(e.currentTarget.value)))} />
             </label>
             <button type="button" className="mf-btn" aria-pressed={spike} onClick={() => setSpike((v) => !v)}>
               {lab.spike}
@@ -610,7 +610,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
       <aside className="mf-lab__side">
         <div className="mf-panel__card mf-lab__challenge">
           <h2 id="mf-lab-challenges">{lab.challenges}</h2>
-          <select aria-labelledby="mf-lab-challenges" value={challengeId} onChange={(e) => (e.currentTarget.value ? startChallenge(e.currentTarget.value) : setChallengeId(""))}>
+          <select name="challenge" aria-labelledby="mf-lab-challenges" value={challengeId} onChange={(e) => (e.currentTarget.value ? startChallenge(e.currentTarget.value) : setChallengeId(""))}>
               <option value="">{lab.challengeFree}</option>
               {CHALLENGES.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -653,7 +653,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
               )}
               <label>
                 {lab.label}
-                <input
+                <input name="label"
                   value={doc.labels[node.id] ?? ""}
                   maxLength={MAX_LABEL}
                   onChange={(e) => setLabel(node.id, e.currentTarget.value)}
@@ -665,7 +665,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
               </label>
               <label>
                 {lab.kind}
-                <select value={node.kind} onChange={(e) => patchNode(node.id, { kind: e.currentTarget.value as NodeKind })}>
+                <select name="kind" value={node.kind} onChange={(e) => patchNode(node.id, { kind: e.currentTarget.value as NodeKind })}>
                   {NODE_KINDS.map((k) => (
                     <option key={k} value={k}>
                       {lab.kinds[k]}
@@ -685,7 +685,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
               </fieldset>
               <label>
                 {lab.load}: {node.load === undefined ? lab.noLoad : `${node.load}%`}
-                <input
+                <input name="load"
                   type="range"
                   min={-5}
                   max={100}
@@ -709,7 +709,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
               </p>
               <label>
                 {lab.flow}
-                <select value={edgeSel.flow} onChange={(e) => patchEdge(edgeSel.id, { flow: e.currentTarget.value as never })}>
+                <select name="flow" value={edgeSel.flow} onChange={(e) => patchEdge(edgeSel.id, { flow: e.currentTarget.value as never })}>
                   {FLOWS.map((f) => (
                     <option key={f} value={f}>
                       {ui.flows[f]}
@@ -719,7 +719,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
               </label>
               <label>
                 {lab.rate}: {edgeSel.rate}
-                <input
+                <input name="rate"
                   type="range"
                   min={0}
                   max={12}
@@ -729,7 +729,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
                 />
               </label>
               <label className="mf-lab__check">
-                <input type="checkbox" checked={edgeSel.cut} onChange={(e) => patchEdge(edgeSel.id, { cut: e.currentTarget.checked })} />
+                <input name="cut" type="checkbox" checked={edgeSel.cut} onChange={(e) => patchEdge(edgeSel.id, { cut: e.currentTarget.checked })} />
                 {lab.cut}
               </label>
               <div className="mf-lab__seg">
@@ -772,7 +772,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
           <button type="button" className="mf-btn" onClick={() => fileRef.current?.click()}>
             {lab.importJson}
           </button>
-          <input
+          <input name="import"
             ref={fileRef}
             type="file"
             accept="application/json,.json"
@@ -812,7 +812,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
           <div className="mf-panel__card">
             <h2>{dialog.kind === "link" ? lab.shareTitle : lab.codeTitle}</h2>
             {dialog.kind === "link" ? (
-              <textarea className="mf-lab__link" readOnly value={dialog.text} rows={4} onFocus={(e) => e.currentTarget.select()} />
+              <textarea name="share" className="mf-lab__link" readOnly value={dialog.text} rows={4} onFocus={(e) => e.currentTarget.select()} />
             ) : (
               <pre className="mf-wire__code">
                 <code>{dialog.text}</code>

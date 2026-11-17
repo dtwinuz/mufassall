@@ -76,7 +76,7 @@ const text: LessonText<typeof lesson> = {
         options: [
           "A schema change and a data migration first",
           "A second copy of the orders keyed by product",
-          "Just a new query, answered in about 2 ms",
+          "Just a new query, the query itself ~2 ms, page p95 ~30 ms",
         ],
         answer: 2,
         why: "Order lines already live in their own table with an index on `product_id`. The new question is a plain `GROUP BY` query that reads only product 17's lines; nothing in the schema changes.",

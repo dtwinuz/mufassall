@@ -76,7 +76,7 @@ const text: LessonText<typeof lesson> = {
         options: [
           "Avval sxemani o'zgartirish va ma'lumotni ko'chirish",
           "Buyurtmalarning mahsulot kalitli ikkinchi nusxasi",
-          "Shunchaki yangi so'rov, taxminan 2 ms da javob",
+          "Shunchaki yangi so'rov, so'rovning o'zi ~2 ms, sahifa p95 esa ~30 ms",
         ],
         answer: 2,
         why: "Buyurtma qatorlari allaqachon `product_id` indeksli alohida jadvalda. Yangi savol — faqat 17-mahsulot qatorlarini o'qiydigan oddiy `GROUP BY` so'rovi, sxemada hech narsa o'zgarmaydi.",
