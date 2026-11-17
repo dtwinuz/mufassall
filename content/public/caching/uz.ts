@@ -39,6 +39,16 @@ const text: LessonText<typeof lesson> = {
       short: "Cache-aside",
       title: "Avval keshga qara",
       body: "API yoniga kesh qo'yiladi. API endi avval keshdan kalit bo'yicha so'raydi. Kalit bo'lsa, bazaga tegilmaydi.\n\nKesh bo'sh boshlanadi, shuning uchun birinchi javob «bu yerda hech narsa yo'q». Bu **miss**: API avvalgidek bazaga boradi.",
+      check: {
+        q: "Miss'dan keyin API qatorni 300 soniyalik TTL bilan keshga yozadi. Bazadan o'qishlar nima bo'ladi?",
+        options: [
+          "2400/s da qoladi: har so'rov baribir bazani tekshiradi",
+          "Darhol nolga tushadi",
+          "Kalitlar to'lgach deyarli o'n baravar kamayadi",
+        ],
+        answer: 2,
+        why: "Kalitni faqat birinchi o'quvchi bazadan oladi, qolganlar 300 soniya xotiradan o'qiydi. O'qishlar 2400/s dan taxminan 290/s ga tushadi, nolga emas: kalitlar baribir eskiradi va miss bo'ladi.",
+      },
       fields: {
         "product:1042": "Har mahsulotga bitta kalit. Kalit nomi uni o'qiydigan va yozadigan hamma uchun kelishuv.",
         "(nil)": "Miss. Keshda bu kalit hali yo'q.",
@@ -57,6 +67,16 @@ const text: LessonText<typeof lesson> = {
       short: "Hit",
       title: "Hit: javob xotiradan",
       body: "Endi ko'p so'rovlar kalitni topadi. Hit o'nlab millisekund o'rniga bir millisekund atrofida.\n\n**Hit ratio** — o'qishlarning kesh javob bergan ulushi. 94% da 100 o'qishdan faqat 6 tasi bazaga yetadi.",
+      check: {
+        q: "Menejer bazada narxni tushiradi. Xaridor mahsulot sahifasida nimani ko'radi?",
+        options: [
+          "Eski narxni, 5 daqiqagacha",
+          "Yangi narxni: haqiqat manbai baza",
+          "Kesh va baza kelishguncha xatoni",
+        ],
+        answer: 0,
+        why: "Yozuv haqida keshga hech kim aytmadi. U 300 soniyalik TTL tugaguncha eski nusxani berishda davom etadi.",
+      },
       fields: {
         GET: "Kalit bo'yicha bitta qidiruv. So'rov ham, JOIN ham yo'q.",
         price: "Kalit yozilgan paytdagi narx. Buni eslab qoling.",
@@ -87,6 +107,16 @@ const text: LessonText<typeof lesson> = {
       title: "Aksiya paytida issiq kalit tugaydi",
       body: "Soat 08:00 da aksiya boshlanadi va minglab odam bitta mahsulotni ochadi. Aynan shu payt uning kaliti tugaydi.\n\nHammasi bir lahzada miss oladi va hammasi bir xil so'rov bilan bazaga boradi. Baza 2814 ta bir xil o'qishda bo'g'iladi.",
       watch: "Kalit qancha issiq bo'lsa, uning tugashi shuncha xavfli.",
+      check: {
+        q: "2814 so'rov bir vaqtda bitta issiq kalitda miss bo'ldi. Bazani yana bitta so'rovga nima qaytaradi?",
+        options: [
+          "O'sha kalitga ancha uzun TTL berish",
+          "Bitta so'rov qulf ostida tiklaydi, qolganlar kutadi",
+          "Har so'rov baza javob berguncha qayta urinadi",
+        ],
+        answer: 1,
+        why: "`NX` qulfi bilan bazani faqat bitta chaqiruvchi o'qiydi va kalitni to'ldiradi. Qolgan 2813 tasi 20 ms atrofida kutib keshdan o'qiydi, bazadan o'qish yana taxminan 150/s ga tushadi.",
+      },
       fields: {
         expired: "TTL tugadi: oddiy xatti-harakat, yomon vaqt.",
         MISS: "Bir necha millisekundda bitta kalitga 2814 ta miss.",

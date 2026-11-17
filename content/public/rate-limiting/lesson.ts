@@ -198,7 +198,7 @@ export default defineLesson({
       id: "scale-out",
       kind: "problem",
       nodes: {
-        lb: { kind: "lb", at: [2, 5], load: 20 },
+        lb: { kind: "lb", at: [3, 5], load: 20 },
         api2: { kind: "service", at: [5, 2], load: 45 },
         api3: { kind: "service", at: [5, 8], load: 45 },
         api: { load: 45 },
@@ -253,7 +253,7 @@ export default defineLesson({
       focus: ["redis"],
       exchange: {
         edge: "rl",
-        request: { format: "text", head: "EVALSHA token_bucket 1 rl:k_88 30 10" },
+        request: { format: "text", head: "EVALSHA 9f2c7a1e4b8d3f60a5c2e7b19d4f8a6c3e1b2d07 1 rl:k_88 30 10" },
         response: { format: "text", head: "1) (integer) 0", body: "2) (integer) 100" },
         marks: ["EVALSHA", "rl:k_88", "(integer) 0", "(integer) 100"],
       },

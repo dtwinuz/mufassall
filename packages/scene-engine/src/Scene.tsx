@@ -1,6 +1,6 @@
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { NodeKind, NodeState, SceneState } from "@mufassall/scene-schema";
+import { LOAD_Y, type LoadSpot, loadSpots } from "@mufassall/scene-schema/layout";
 import { BLOCK_A, BLOCK_B, BLOCK_H, type Box, edgeSegment, fromIso, iso } from "./iso";
 import { CUT_AT, type Lane, runPackets } from "./packets";
 
@@ -77,36 +77,48 @@ interface BlockProps {
   node: NodeState;
   label: string;
   dim: boolean;
-  animate: boolean;
+  /** drop in on mount (read once, so later prop changes never replay it) */
+  enter: boolean;
+  leaving?: boolean;
   selected?: boolean;
+  /** where the load bar sits, picked so it clears neighbours' names */
+  spot?: LoadSpot;
   onPointerDown?: (e: React.PointerEvent<SVGGElement>) => void;
+  /** set in the editor: the node becomes a focusable button */
+  onKeyDown?: (e: React.KeyboardEvent<SVGGElement>) => void;
 }
 
-function Load({ value }: { value: number }) {
-  const w = 40;
+/** load bar with its percent to the right: one short row above the block */
+const LOAD_ROW = { w: 34, gap: 4, text: 26 };
+function Load({ value, spot }: { value: number; spot: LoadSpot }) {
+  const { w, gap, text } = LOAD_ROW;
+  const y = LOAD_Y[spot];
   const tone = value >= 85 ? " mf-node__load--hot" : value >= 65 ? " mf-node__load--warm" : "";
   return (
-    <g className={`mf-node__load${tone}`} transform={`translate(${-w / 2} ${-H - B - 16})`}>
+    <g className={`mf-node__load${tone}`} transform={`translate(${-(w + gap + text) / 2} ${y})`}>
       <rect className="mf-node__load-track" width={w} height={5} />
       <rect className="mf-node__load-bar" width={(w * Math.min(100, value)) / 100} height={5} />
-      <text x={w / 2} y={-4} textAnchor="middle">
+      <text x={w + gap} y={6}>
         {value}%
       </text>
     </g>
   );
 }
 
-function Block({ node, label, dim, animate, selected, onPointerDown }: BlockProps) {
+function Block({ node, label, dim, enter, leaving, selected, spot, onPointerDown, onKeyDown }: BlockProps) {
   const [gx, gy] = iso(node.at);
+  const entering = useRef(enter).current;
+  const cls = `mf-node mf-node--${node.kind} mf-node--${node.state}${dim ? " mf-node--dim" : ""}${selected ? " mf-node--selected" : ""}${onPointerDown ? " mf-node--grab" : ""}${leaving ? " mf-node--leaving" : ""}`;
+  // position is a CSS transform so moves between steps glide with a plain transition
   return (
-    <motion.g
-      className={`mf-node mf-node--${node.kind} mf-node--${node.state}${selected ? " mf-node--selected" : ""}${onPointerDown ? " mf-node--grab" : ""}`}
+    <g
+      className={cls}
+      style={{ transform: `translate(${gx}px, ${gy}px)` }}
       onPointerDown={onPointerDown}
-      initial={animate ? { opacity: 0, x: gx, y: gy - 20 } : false}
-      animate={{ opacity: dim ? 0.38 : 1, x: gx, y: gy }}
-      exit={{ opacity: 0, y: gy - 20, transition: { duration: 0.25 } }}
-      transition={{ type: "spring", stiffness: 260, damping: 26 }}
+      // lowercase on purpose: Preact writes SVG props as attributes verbatim, and SVG attributes are case-sensitive
+      {...(onKeyDown ? ({ tabindex: 0, role: "button", "aria-label": label, "aria-pressed": !!selected, onKeyDown } as object) : {})}
     >
+      <g className={entering ? "mf-node__body mf-node__body--enter" : "mf-node__body"}>
       <polygon className="mf-node__shadow" points={GROUND} transform="translate(5 4)" />
       {node.state === "slow" && <polygon className="mf-node__ring" points={RING} />}
       <polygon className="mf-node__left" points={LEFT} />
@@ -115,17 +127,15 @@ function Block({ node, label, dim, animate, selected, onPointerDown }: BlockProp
       <g className="mf-node__glyph" transform={`matrix(1 0.5 -1 0.5 0 ${-H})`}>
         <Glyph kind={node.kind} />
       </g>
-      {node.load !== undefined && node.state !== "down" && <Load value={node.load} />}
+      {node.load !== undefined && node.state !== "down" && <Load value={node.load} spot={spot ?? "top"} />}
       {node.state === "down" && (
         <g className="mf-node__badge" transform={`translate(0 ${-H - B - 13})`}>
           <circle r={8.5} />
           <path d="M-3.2 -3.2 L3.2 3.2 M3.2 -3.2 L-3.2 3.2" />
         </g>
       )}
-      <text className="mf-node__label" y={B + 20} textAnchor="middle">
-        {label}
-      </text>
-    </motion.g>
+      </g>
+    </g>
   );
 }
 
@@ -142,6 +152,8 @@ export interface SceneProps {
   active?: string;
   /** editor hooks; when absent the scene is a passive picture */
   edit?: SceneEdit;
+  /** render the shared <defs> (default); false when the page renders <SceneDefs /> once */
+  defs?: boolean;
 }
 
 export interface SceneEdit {
@@ -152,11 +164,34 @@ export interface SceneEdit {
   onStageMove: (cell: [number, number], e: React.PointerEvent<SVGSVGElement>) => void;
   onStageUp: (e: React.PointerEvent<SVGSVGElement>) => void;
   onEdgeDown?: (id: string) => void;
+  /** keyboard on a focused node: select, connect, move */
+  onNodeKey?: (id: string, e: React.KeyboardEvent<SVGGElement>) => void;
+  /** pointer left the stage (clears the placement preview) */
+  onStageLeave?: () => void;
   selectedEdge?: string;
   /** grid range [min, max] where nodes may stand; drawn as an outline */
   area?: [number, number];
   /** cell under the pointer while placing a node */
   hover?: [number, number] | null;
+}
+
+/**
+ * Shared grid pattern and arrow markers. A page with many scenes renders them once
+ * (inside a hidden <svg>) and passes defs={false} to each scene: ids must be unique.
+ */
+export function SceneDefs() {
+  return (
+    <defs>
+      <pattern id="mf-grid" width={64} height={32} patternUnits="userSpaceOnUse">
+        <path d="M0 16 L32 0 L64 16 L32 32 Z" className="mf-grid__cell" />
+      </pattern>
+      {(["request", "ack", "fail", "retry", "dup"] as const).map((f) => (
+        <marker key={f} id={`mf-arrow-${f}`} viewBox="0 0 10 10" refX={8} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse">
+          <path d="M0 1 L9 5 L0 9 z" className={`mf-arrow mf-arrow--${f}`} />
+        </marker>
+      ))}
+    </defs>
+  );
 }
 
 /** Ground diamond spanning cells [x0..x1] × [y0..y1], as an SVG path. */
@@ -172,16 +207,19 @@ function cellOf(svg: SVGSVGElement, e: React.PointerEvent): [number, number] {
   return fromIso(p.x, p.y);
 }
 
-export function Scene({ state, box, labels, title, paused, reduced, runKey, active, edit }: SceneProps) {
+export function Scene({ state, box, labels, title, paused, reduced, runKey, active, edit, defs = true }: SceneProps) {
   const layer = useRef<SVGGElement>(null);
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
 
   const lanes = useMemo<Lane[]>(() => {
     const edges = Object.values(state.edges);
-    return edges.map((e) => {
-      const a = state.nodes[e.from]!;
-      const b = state.nodes[e.to]!;
+    // one decimal is plenty for a 64px cell and keeps the inline SVG small
+    const r1 = (v: number) => Math.round(v * 10) / 10;
+    return edges.flatMap((e) => {
+      const a = state.nodes[e.from];
+      const b = state.nodes[e.to];
+      if (!a || !b) return [];
       const seg = edgeSegment(a.at, b.at);
       // a reverse edge between the same nodes gets its own lane, offset to the right of travel
       const twin = edges.some((o) => o.from === e.to && o.to === e.from);
@@ -194,38 +232,53 @@ export function Scene({ state, box, labels, title, paused, reduced, runKey, acti
         seg.y1 += ny * 5;
         seg.y2 += ny * 5;
       }
-      return { id: e.id, ...seg, flow: e.flow, rate: e.rate, cut: e.cut };
+      return [{ id: e.id, x1: r1(seg.x1), y1: r1(seg.y1), x2: r1(seg.x2), y2: r1(seg.y2), len: seg.len, flow: e.flow, rate: e.rate, cut: e.cut }];
     });
   }, [state]);
 
+  // restart packets only when the wiring really changes, not on every new state object
+  // (a load or status change, e.g. the Lab simulation slider, keeps them flowing)
+  const lanesRef = useRef(lanes);
+  lanesRef.current = lanes;
+  const laneKey = lanes.map((l) => `${l.id}:${l.x1},${l.y1},${l.x2},${l.y2},${l.flow},${l.rate},${l.cut ? 1 : 0}`).join("|");
   useEffect(() => {
     if (reduced || !layer.current) return;
-    return runPackets(layer.current, lanes, () => pausedRef.current);
-  }, [lanes, reduced, runKey]);
+    return runPackets(layer.current, lanesRef.current, () => pausedRef.current);
+  }, [laneKey, reduced, runKey]);
+
+  // nodes that left in this step fade out briefly instead of vanishing
+  const prevNodes = useRef(state.nodes);
+  const [ghosts, setGhosts] = useState<NodeState[]>([]);
+  const ghostTimer = useRef(0);
+  useEffect(() => {
+    const gone = Object.values(prevNodes.current).filter((n) => !state.nodes[n.id]);
+    prevNodes.current = state.nodes;
+    if (gone.length === 0 || reduced) return;
+    setGhosts(gone);
+    // the timer lives outside the effect: a re-render that removes nothing must not cancel it
+    window.clearTimeout(ghostTimer.current);
+    ghostTimer.current = window.setTimeout(() => setGhosts([]), 280);
+  }, [state.nodes, reduced]);
+  useEffect(() => () => window.clearTimeout(ghostTimer.current), []);
 
   const nodes = Object.values(state.nodes).sort((a, b) => a.at[0] + a.at[1] - (b.at[0] + b.at[1]));
+  const { spots } = useMemo(() => loadSpots(nodes, (id) => [labels[id] ?? id]), [state.nodes, labels]);
   const focus = new Set(state.focus);
 
   return (
     <svg
       className={`mf-scene${edit ? " mf-scene--edit" : ""}`}
       viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
-      role="img"
+      role={edit ? "application" : "img"}
       aria-label={title}
       onPointerDown={edit ? (e) => edit.onStageDown(cellOf(e.currentTarget, e), e) : undefined}
       onPointerMove={edit ? (e) => edit.onStageMove(cellOf(e.currentTarget, e), e) : undefined}
       onPointerUp={edit ? (e) => edit.onStageUp(e) : undefined}
+      onPointerCancel={edit ? (e) => edit.onStageUp(e) : undefined}
+      onLostPointerCapture={edit ? (e) => edit.onStageUp(e) : undefined}
+      onPointerLeave={edit?.onStageLeave}
     >
-      <defs>
-        <pattern id="mf-grid" width={64} height={32} patternUnits="userSpaceOnUse">
-          <path d="M0 16 L32 0 L64 16 L32 32 Z" className="mf-grid__cell" />
-        </pattern>
-        {(["request", "ack", "fail", "retry", "dup"] as const).map((f) => (
-          <marker key={f} id={`mf-arrow-${f}`} viewBox="0 0 10 10" refX={8} refY={5} markerWidth={7} markerHeight={7} orient="auto-start-reverse">
-            <path d="M0 1 L9 5 L0 9 z" className={`mf-arrow mf-arrow--${f}`} />
-          </marker>
-        ))}
-      </defs>
+      {defs && <SceneDefs />}
       <rect x={box.x} y={box.y} width={box.w} height={box.h} fill="url(#mf-grid)" className="mf-grid" />
       {edit?.area && <path className="mf-area" d={groundPath(edit.area[0], edit.area[0], edit.area[1], edit.area[1])} />}
       {edit?.hover && <path className="mf-area__hover" d={groundPath(edit.hover[0], edit.hover[1], edit.hover[0], edit.hover[1])} />}
@@ -248,12 +301,10 @@ export function Scene({ state, box, labels, title, paused, reduced, runKey, acti
               }
             >
               {edit && <path className="mf-edge__hit" d={`M${l.x1} ${l.y1} L${l.x2} ${l.y2}`} />}
-              <motion.path
+              <path
+                className={runKey > 0 ? "mf-edge__line mf-edge__line--draw" : "mf-edge__line"}
                 d={`M${l.x1} ${l.y1} L${l.x2} ${l.y2}`}
                 markerEnd={l.cut ? undefined : `url(#mf-arrow-${l.flow})`}
-                initial={runKey > 0 ? { pathLength: 0 } : false}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
               />
               {l.cut && (
                 <g className="mf-edge__cut" transform={`translate(${cx} ${cy})`}>
@@ -268,15 +319,19 @@ export function Scene({ state, box, labels, title, paused, reduced, runKey, acti
 
       <g ref={layer} className="mf-packets" aria-hidden="true" />
 
-      <AnimatePresence initial={runKey > 0}>
-        {nodes.map((n) => (
+      {ghosts.map((n) => (
+        <Block key={`ghost-${n.id}`} node={n} label={labels[n.id] ?? n.id} dim={false} enter={false} leaving />
+      ))}
+      {nodes.map((n) => (
           <Block
             key={n.id}
             node={n}
             label={labels[n.id] ?? n.id}
             dim={focus.size > 0 && !focus.has(n.id)}
-            animate
+            enter={runKey > 0 || edit !== undefined}
             selected={edit?.selected === n.id}
+            spot={spots[n.id]}
+            onKeyDown={edit?.onNodeKey ? (e) => edit.onNodeKey!(n.id, e) : undefined}
             onPointerDown={
               edit
                 ? (e) => {
@@ -287,7 +342,23 @@ export function Scene({ state, box, labels, title, paused, reduced, runKey, acti
             }
           />
         ))}
-      </AnimatePresence>
+      {/* labels last, so a block drawn later never covers a neighbour's name */}
+      <g className="mf-labels" aria-hidden="true">
+        {nodes.map((n) => {
+          const [gx, gy] = iso(n.at);
+          const dim = focus.size > 0 && !focus.has(n.id);
+          return (
+            <text
+              key={n.id}
+              className={`mf-node__label${dim ? " mf-node__label--dim" : ""}${runKey > 0 || edit ? " mf-node__label--enter" : ""}`}
+              style={{ transform: `translate(${gx}px, ${gy + B + 20}px)` }}
+              textAnchor="middle"
+            >
+              {labels[n.id] ?? n.id}
+            </text>
+          );
+        })}
+      </g>
     </svg>
   );
 }

@@ -5,14 +5,14 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./lab-editor": "./src/LabEditor.tsx",
     "./player.css": "./src/player.css"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@mufassall/scene-schema": "workspace:*",
-    "motion": "^14.0.0"
+    "@mufassall/scene-schema": "workspace:*"
   },
   "peerDependencies": {
     "react": "^19.0.0",

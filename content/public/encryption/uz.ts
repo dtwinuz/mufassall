@@ -42,13 +42,23 @@ const text: LessonText<typeof lesson> = {
       short: "TLS",
       title: "TLS handshake: umumiy kalit va shaxsni isbotlash",
       body: "Ma'lumotdan oldin ilova va server yangi kalitga kelishadi: har biri `key_share`'ning ochiq yarmini yuboradi va ikkalasi bir xil sirni hisoblaydi. Kuzatib turgan odam uni hisoblay olmaydi.\n\nServer sertifikatini ham yuboradi: CA imzolagan guvohnoma, bu kalit `api.example.com`'ga tegishli. Ilova nomni, imzoni va sanalarni tekshiradi. Yangi ulanishdagi birinchi so'rov bitta qo'shimcha aylanishga to'laydi, shuning uchun p95 biroz o'sadi.",
+      check: {
+        q: "Sertifikat yiliga bir marta qo'lda yangilanadi, bu yil hech kim yangilamadi. Muddat tugaganda nima bo'ladi?",
+        options: [
+          "Ilovalar ishlayveradi, faqat ogohlantirish yoziladi",
+          "Faqat yangi ulanishlar yiqiladi, ochiqlari davom etadi",
+          "Hamma ilova serverni rad etadi; hamma so'rov yiqiladi",
+        ],
+        answer: 2,
+        why: "Tekshiruv har klientda, uning o'z soati bo'yicha bajariladi. `valid until` dan keyin har ilova ulanishni yopadi va yangi sertifikat qo'yilmaguncha hech narsa ishlamaydi.",
+      },
       fields: {
         SNI: "Ilova qaysi nomni xohlaydi. Bitta IP'da ko'p sayt bo'lishi mumkin, shu orqali to'g'ri sertifikat tanlanadi.",
         key_share: "Bir martalik kalitning ochiq yarmi. Ikki yarmidan ikkala tomon bir xil sirni oladi.",
         subject: "Sertifikat kim uchun. Ilova so'ragan nom bilan mos kelishi shart.",
         issuer: "Kim imzolagan. Ilova faqat o'zida bor qisqa ro'yxatdagi imzolovchilarga ishonadi.",
-        "valid until": "Amal qilish muddati. Undan keyin har bir mijoz sertifikatni rad etadi.",
-        Finished: "Shu yerdan trafik shifrlangan. Kuzatuvchi endi faqat shovqin ko'radi.",
+        "valid until": "Amal qilish muddati. Undan keyin har bir klient sertifikatni rad etadi.",
+        Finished: "Handshake tugadi. TLS 1.3 da ServerHello dan keyingi hamma narsa, shu sertifikat ham, allaqachon shifrlangan; kuzatuvchi faqat shovqin ko'radi.",
       },
     },
     expired: {
@@ -58,14 +68,24 @@ const text: LessonText<typeof lesson> = {
       watch: "Muddat — bu kimdir bekor qilishni unutgan rejalashtirilgan uzilish.",
       fields: {
         "valid until": "Sertifikatning oxirgi amal qiladigan payti, kecha.",
-        "client clock": "Telefonning o'z vaqti. Tekshiruv serverda emas, mijozda bo'ladi.",
-        expired: "Mijoz ulanishni yopadi. Foydalanuvchi tarmoq xatosini ko'radi.",
+        "client clock": "Telefonning o'z vaqti. Tekshiruv serverda emas, klientda bo'ladi.",
+        expired: "Klient ulanishni yopadi. Foydalanuvchi tarmoq xatosini ko'radi.",
       },
     },
     renew: {
       short: "Avto yangilash",
       title: "Sertifikat o'zi yangilanadi",
       body: "Server endi CA'dan yangi sertifikatni o'zi so'raydi, ACME protokoli orqali. Domen unga tegishli ekanini isbotlaydi va 90 kunlik sertifikat oladi.\n\nYangilash muddatning uchdan biri qolganda boshlanadi, 14 kundan kam qolsa alert keladi. Hech kim eslab yurishi shart bo'lmasa, qisqa muddat qo'rqinchli emas.",
+      check: {
+        q: "TLS hamma joyda bor. Bucket'dan tungi backup fayli chiqib ketdi. Hujumchi nimani o'qiy oladi?",
+        options: [
+          "Hech narsa: TLS ma'lumotni shifrlagan",
+          "Har bir eslatmani, oddiy vositalar bilan",
+          "Faqat TLS'gacha saqlangan eslatmalarni",
+        ],
+        answer: 1,
+        why: "TLS harakatdagi ma'lumotni himoya qiladi, diskda yotganini emas. Backup — bazaning o'zi, shuning uchun `strings` har bir foydalanuvchining eslatmalarini chiqaradi.",
+      },
       fields: {
         identifiers: "Sertifikat qamrab olishi kerak bo'lgan nomlar.",
         status: "CA server domenni haqiqatan boshqarishini tekshirguncha `pending`.",
@@ -76,7 +96,7 @@ const text: LessonText<typeof lesson> = {
       short: "Backup",
       title: "Backup tashqariga chiqdi, u esa ochiq matn",
       body: "Har kecha backup storage bucket'ga tushadi. Bitta bucket'da ruxsat noto'g'ri qo'yilgan edi va fayl nusxalab olindi.\n\nTLS harakatdagi ma'lumotni himoya qiladi, diskda yotganini emas. Backup — bu bazaning o'zi: oddiy vositalar bilan har bir eslatma o'qiladi.",
-      watch: "Ma'lumotning har bir nusxasi hisobga kiradi: replica, backup, eksport, log.",
+      watch: "Ma'lumotning har bir nusxasi hisobga kiradi: replika, backup, eksport, log.",
       fields: {
         strings: "Istalgan fayldan o'qiladigan matnni chiqaradigan oddiy vosita. Parol kerak emas.",
         u_42: "Eslatma egasi. Bitta fayl hamma foydalanuvchilarning eslatmalarini beradi.",
@@ -86,6 +106,16 @@ const text: LessonText<typeof lesson> = {
       short: "Diskda",
       title: "Eslatmani saqlashdan oldin shifrlash",
       body: "API endi `INSERT`'dan oldin eslatmani AES-256-GCM bilan shifrlaydi. Bazada, uning diskida va backup'larida faqat shifrlangan matn yotadi.\n\nKalit API'ning config faylida, ishga tushganda o'qiladi. Chiqib ketgan backup endi foydasiz, narxi esa har so'rovga bir necha millisekund.",
+      check: {
+        q: "Config fayli bor container image ochiq registry'ga chiqib ketdi. Eski chiqib ketgan backup nima bo'ladi?",
+        options: [
+          "Kalit bilan soniyalarda ochiladi",
+          "Xavfsiz qoladi: AES-256 ni buzib bo'lmaydi",
+          "Faqat chiqib ketishdan keyingi eslatmalar ochiladi",
+        ],
+        answer: 0,
+        why: "Kalit baza paroli bilan bitta config faylda turibdi. U bilan backup soniyalarda ochiladi, hamma qator ikki yillik bitta kalit bilan shifrlangani uchun har bir eslatma ochiq qoladi.",
+      },
       fields: {
         text_enc: "Shifrlangan eslatma. Kalitsiz bu tasodifiy baytlar.",
         nonce: "Har shifrlashga noyob qiymat. Bir kalit bilan qayta ishlatilsa GCM sinadi, shuning uchun qator yonida saqlanadi.",

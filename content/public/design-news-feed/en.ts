@@ -42,6 +42,16 @@ const text: LessonText<typeof lesson> = {
       short: "Pull",
       title: "Fan-out on read: build the feed when it is opened",
       body: "The simplest feed: when a reader opens the app, find everyone they follow, take their recent posts, sort by time and return the top 50. This is **fan-out on read**: the work happens at read time.\n\nFor one user following 200 people it takes 38 ms. Posting stays free: nothing happens until someone reads.",
+      check: {
+        q: "20 million readers open the feed about 10 times a day. How does pull hold up?",
+        options: [
+          "The database saturates; p99 reaches 1.8 s",
+          "Fine: each feed still takes about 38 ms",
+          "Writes slow down, reads stay fast",
+        ],
+        answer: 0,
+        why: "That is 2 300 feed builds a second, about 10 000 at peak, and each reads tens of thousands of rows to keep 50. The database sits at 97% and feed p99 climbs to 1.8 s.",
+      },
       fields: {
         JOIN: "Joins every followed author with their posts: the more you follow, the more rows it touches.",
         "ORDER BY": "Everything must be sorted before the top 50 is known.",
@@ -73,6 +83,16 @@ const text: LessonText<typeof lesson> = {
       short: "Fast read",
       title: "Reading the feed is now one range read",
       body: "The API reads the first 50 ids of `feed:u_42`, then fetches those posts by id from a post cache (most are hot) and returns them. No join, no sort.\n\nFeed p99 drops from 1.8 s to 25 ms, and the database only sees writes and cache misses.",
+      check: {
+        q: "An account with 30 million followers posts. What happens to fan-out on write?",
+        options: [
+          "Nothing special: one post is one queue job",
+          "Its readers' feeds load slowly, others are fine",
+          "The queue stalls; posts take up to 10 minutes",
+        ],
+        answer: 2,
+        why: "The worker must write 30 million list entries, minutes of work at 200 000 inserts/s. Ordinary posts queued behind it wait too, so post delay grows from 2 s to up to 10 minutes.",
+      },
       fields: {
         LRANGE: "Reads a slice of the list by position: O(50), whatever the follower count.",
         "49": "Positions 0 to 49: the first page.",
@@ -122,6 +142,16 @@ const text: LessonText<typeof lesson> = {
       short: "Cache dies",
       title: "A feed cache node dies",
       body: "One node of the feed cache goes down. One in eight users suddenly have no feed list, and new posts cannot be pushed to them.\n\nThe cache was treated as the source of truth for feeds, but it is only a copy: every list can be rebuilt from the database.",
+      check: {
+        q: "Users whose feed list was lost open the app. What should the API do?",
+        options: [
+          "Show an empty feed until the node is back",
+          "Pull recent posts from the database for them",
+          "Rebuild every lost list at once, then serve",
+        ],
+        answer: 1,
+        why: "For missing lists the API falls back to pull, only the last two days of posts: about 40 ms instead of 25. Lists are rebuilt on next open for active users, not all at once, so the database is not flooded.",
+      },
       fields: {
         "connection refused": "The node holding `feed:u_42` is gone. Its lists are lost with it.",
       },

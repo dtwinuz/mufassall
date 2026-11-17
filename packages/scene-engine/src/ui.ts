@@ -44,6 +44,32 @@ export interface LabStrings {
   keys: string;
   stageLabel: string;
   limit: string;
+  /** a shared link replaced the reader's own diagram */
+  linkLoaded: string;
+  restore: string;
+  importBad: string;
+  shareTitle: string;
+  exportPng: string;
+  exportSvg: string;
+  simulate: string;
+  traffic: string; // "Traffic: {n} req/s"
+  spike: string;
+  simOk: string;
+  simErrors: string;
+  simLatency: string;
+  simHot: string; // "Overloaded: {list}"
+  simNode: string; // "{rps} req/s · load {rho}% · ~{ms} ms"
+  simNote: string;
+  challenges: string;
+  challengeFree: string;
+  challengeDone: string;
+  challengeRestart: string;
+  ruleLoad: string; // "At {rps} req/s, errors under {err}%"
+  ruleLoadMs: string; // "... and latency under {ms} ms"
+  ruleCount: string; // "At least {n}: {kind}"
+  ruleVia: string; // "Every {from} → {to} path goes through {via}"
+  ruleSurvive: string; // "Any one {kind} down: errors under {err}% at {rps} req/s"
+  challengeText: Record<string, { title: string; brief: string }>;
 }
 
 /** Interface strings the host app supplies per language. `{x}` placeholders are filled by the player. */
@@ -69,6 +95,9 @@ export interface UiStrings {
   modelNote: string;
   sceneLabel: string; // "Sahna: {title}"
   openInLab: string;
+  /** download the current step as a PNG picture */
+  savePicture: string;
+  check: { title: string; right: string; wrong: string; keys: string };
   /** localised metric units, keyed by the unit written in the lesson ("/s", "ms", "/min") */
   units?: Record<string, string>;
   /** the "real request" pane under the scene */

@@ -75,6 +75,16 @@ const text: LessonText<typeof lesson> = {
       short: "Payments out",
       title: "Payments get their own service and database",
       body: "The payments team wants to deploy daily and keep card data away from everything else. Payments becomes a service with its own database. The app calls it over HTTP.\n\nDeploys go up to six per day. But the single transaction from step one is gone: the order is in one database, the payment in another.",
+      check: {
+        q: "Payments goes down while the app and the shop DB stay up. What happens to new orders?",
+        options: [
+          "The whole order rolls back, as in the monolith",
+          "The order is saved, but nobody knows if it was paid",
+          "The gateway pauses checkout until payments returns",
+        ],
+        answer: 1,
+        why: "There is no shared transaction any more. The call times out after 2 s, the order sits in the shop DB with payment unknown, p95 rises to 2.1 s and 8% of requests fail.",
+      },
       fields: {
         order_id: "The order lives in the shop DB. Payments only knows its number.",
         payment_id: "Created in the payments DB. Two databases, two separate commits.",
@@ -95,6 +105,16 @@ const text: LessonText<typeof lesson> = {
       title: "Reading another service's tables",
       body: "To show the order total, the payments team reads the shop DB directly. It works until the shop team renames a column in a normal release.\n\nPayments breaks with no change on its side. A shared database couples two teams as tightly as one codebase did.",
       watch: "Each service owns its data. Others ask through its API or listen to its events; nobody reads its tables.",
+      check: {
+        q: "How should payments get the order total without breaking on the shop team's next rename?",
+        options: [
+          "Read a database view the shop team promises to keep",
+          "Copy the shop DB into payments every night",
+          "Take the amount from an `OrderPlaced` event",
+        ],
+        answer: 2,
+        why: "The app publishes `OrderPlaced` with the amount to an event log, and payments keeps its own copy, so it never reads the shop DB. If payments is down, events wait in the log; failed requests fall to 0.4%.",
+      },
       fields: {
         ERROR: "The column the payments code depends on no longer exists.",
         HINT: "A routine rename by another team. Their tests passed; yours broke.",

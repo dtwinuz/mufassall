@@ -72,6 +72,16 @@ const text: LessonText<typeof lesson> = {
       title: "2-tanlov: ochiq qol, ikkala tomonda yozuv qabul qil",
       body: "Boshqa yo'l: g'arb uzilish paytida ham band qilishni davom ettiradi. Har bir foydalanuvchi band qila oladi, servis sog'lom ko'rinadi.\n\nLekin sharq ham xuddi shunday qilyapti. Sharqda `u_42` 14B o'rinni oladi; ikki soniyadan keyin g'arbda `u_77` o'sha 14B ni oladi. Har tomon o'z nusxasini tekshirdi va o'rinni bo'sh ko'rdi. Bu ochiq tanlov (AP).",
       watch: "Har tomonning tekshiruvi o'z nusxasi uchun to'g'ri. Nusxalar esa bir-biriga mos emas.",
+      check: {
+        q: "Kabel tuzatildi va replikatsiya qayta boshlandi. 14B o'rin bilan nima bo'ladi?",
+        options: [
+          "Ikkala nusxa 5-versiya, egasi har xil: ziddiyat",
+          "Yangiroq versiya yutadi, nusxalar o'zi kelishadi",
+          "Keyingi yozuv, `u_77`, avvalgisini shunchaki almashtiradi",
+        ],
+        answer: 0,
+        why: "Ikkala tomon ham 4-versiyani o'zgartirgan, ikkalasi 5-versiyani har xil ega bilan yuboradi. Hech biri yangiroq emas, kimdir qaror qilishi kerak; bir soatlik uzilishda 18 ta yozuv shu holga tushdi.",
+      },
       fields: {
         "holder IS NULL": "\"Faqat o'rin bo'sh bo'lsa.\" G'arb nusxasida rost, sharq esa uni allaqachon sotgan.",
         "UPDATE 1": "Muvaffaqiyat. G'arb hozirgina ikki marta band qilganini bilmaydi.",
@@ -103,6 +113,16 @@ const text: LessonText<typeof lesson> = {
       short: "Quorum",
       title: "Uchta replika, ikkitasiga yoz, ikkitasidan o'qi",
       body: "Kichik uchinchi joy qo'shildi. Endi har bir o'rin N = 3 replikada yashaydi. Yozuv W = 2 replika tasdiqlagandagina hisoblanadi; o'qish R = 2 replikadan so'raydi va eng katta versiyani oladi.\n\nR + W = 4 > 3 bo'lgani uchun har bir o'qish har bir tugagan yozuv bilan kamida bitta replikada kesishadi: eskirgan o'qish yo'q. Narxi — sekinroq yozuv, 4 ms o'rniga 38 ms, chunki bitta tasdiq boshqa joydan keladi.",
+      check: {
+        q: "Sharq ikkala boshqa joydan uzildi. Sharq API yangi band qilish so'rovini nima qiladi?",
+        options: [
+          "O'zida qabul qiladi, aloqa tiklangach kelishtiradi",
+          "Rad etadi: 1 tasdiq oladi, W = 2 esa kerak",
+          "So'rovni aloqa qaytguncha ushlab, keyin yozadi",
+        ],
+        answer: 1,
+        why: "Sharq faqat o'z replikasiga yetadi, 3 dan 1, W = 2 ni yig'a olmaydi va `no_quorum` qaytaradi. G'arb va uchinchi joy ko'pchilik, ular band qilishni qabul qilishda davom etadi.",
+      },
       fields: {
         N: "Har bir yozuvni nechta replika saqlaydi.",
         W: "Yozuv qabul qilinishidan oldin nechtasi tasdiqlashi kerak.",

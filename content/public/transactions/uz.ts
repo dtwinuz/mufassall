@@ -29,6 +29,16 @@ const text: LessonText<typeof lesson> = {
       short: "O'tkazma",
       title: "O'tkazma — bu ikki yozuv",
       body: "Foydalanuvchi `acc_42` hisobidan `acc_77` ga 50 000 yuboradi. API ikki so'rov bajaradi: biridan ayiradi, ikkinchisiga qo'shadi.\n\nHar so'rov o'zicha saqlanadi (autocommit). Ko'pincha ikkalasi ham o'tadi va ular orasidagi bo'shliqni hech kim sezmaydi.",
+      check: {
+        q: "Birinchi `UPDATE` qaytgan zahoti API jarayoni o'ldiriladi. Bazada nima qoladi?",
+        options: [
+          "Hech narsa o'zgarmaydi: baza yarim o'tkazmani bekor qiladi",
+          "Ikkala o'zgarish: ikkinchi `UPDATE` keyin qayta bajariladi",
+          "acc_42 dan 50 000 olingan, acc_77 ga esa kelmagan",
+        ],
+        answer: 2,
+        why: "Autocommit'da birinchi `UPDATE` qaytgan zahoti butunlay saqlangan. Qo'shish so'rovi yuborilmadi, bazada esa o'tkazma boshlangani haqida iz yo'q, shuning uchun 50 000 shunchaki yo'qoladi.",
+      },
       fields: {
         acc_42: "Yuboruvchi. Birinchi so'rov pulni shu yerdan oladi.",
         acc_77: "Qabul qiluvchi. Ikkinchi so'rov pulni shu yerga qo'shadi.",
@@ -67,9 +77,19 @@ const text: LessonText<typeof lesson> = {
     "dirty-read": {
       short: "Dirty read",
       title: "Birovning qoralamasini o'qish",
-      body: "Tungi hisobot barcha balanslarni qo'shadi. Aynan shu payt o'tkazma `acc_42` dan olib bo'lgan, lekin `acc_77` ga hali qo'shmagan. Eng past izolyatsiya darajasida hisobot shu qoralamani ko'radi.\n\nJami 50 000 kam chiqadi, o'tkazma bekor bo'lsa esa hisobot hech qachon bo'lmagan pulni hisoblagan bo'ladi. Ko'p bazalarda standart daraja `READ COMMITTED` saqlanmagan qatorlarni hech qachon ko'rsatmaydi.",
+      body: "Tungi hisobot barcha balanslarni qo'shadi. Aynan shu payt o'tkazma `acc_42` dan olib bo'lgan, lekin `acc_77` ga hali qo'shmagan. Eng past izolyatsiya darajasida hisobot shu qoralamani ko'radi.\n\nJami 50 000 kam chiqadi, o'tkazma bekor bo'lsa esa hisobot hech qachon bo'lmagan pulni hisoblagan bo'ladi. `READ COMMITTED` (PostgreSQL, Oracle va SQL Server'da standart daraja) commit qilinmagan qatorlarni hech qachon ko'rsatmaydi. PostgreSQL dirty read'ga umuman yo'l qo'ymaydi: `READ UNCOMMITTED` ni `READ COMMITTED` kabi bajaradi.",
+      check: {
+        q: "Ikki server acc_42 (200 000) dan 50 000 va 30 000 to'laydi: har biri o'qiydi, kodda ayiradi, qayta yozadi. Balans?",
+        options: [
+          "120 000: `READ COMMITTED` ikkinchisini kuttiradi",
+          "170 000: ikkinchi yozuv birinchisining ustidan yozadi",
+          "Xato: baza ikkinchi yozuvni rad etadi",
+        ],
+        answer: 1,
+        why: "Ikkalasi ham hech biri commit qilmasdan oldin 200 000 ni o'qidi. 30 000 lik to'lov 150 000 ustidan 170 000 ni yozadi: foydalanuvchidan 50 000 olindi, balansda esa yo'q. `READ COMMITTED` buni to'xtatmaydi.",
+      },
       fields: {
-        "READ UNCOMMITTED": "Eng kuchsiz daraja: o'qish boshqa tranzaksiyalarning saqlanmagan o'zgarishlarini ko'radi. Ko'p bazalar unga ruxsat ham bermaydi.",
+        "READ UNCOMMITTED": "Eng kuchsiz daraja: o'qish boshqa tranzaksiyalarning commit qilinmagan o'zgarishlarini ko'radi. Ko'p bazalar unga ruxsat ham bermaydi.",
         SUM: "Hisobot har qatorni o'qiydi, o'tkazma o'rtasidagi qatorni ham.",
         expected: "Haqiqiy jami. Farq — yarim yo'lda ushlangan o'tkazma.",
       },
@@ -91,6 +111,16 @@ const text: LessonText<typeof lesson> = {
       title: "O'qiyotganda qatorni qulfla",
       body: "Endi o'qish qator qulfini oladi: `SELECT ... FOR UPDATE`. Shu qatorni xohlagan ikkinchi tranzaksiya birinchisi `COMMIT` qilguncha kutadi, keyin yangi qiymatni o'qiydi.\n\nBu **pessimistik** qulflash: to'qnashuv bo'ladi deb hisoblab, hammani oldindan navbatga qo'yish. Tranzaksiyalar qisqa bo'lsa, arzon.",
       watch: "Oddiy yechish uchun undan ham soddasi bor: bitta so'rovda `SET balance = balance - 50000 WHERE balance >= 50000`, o'qish kerak emas.",
+      check: {
+        q: "`FOR UPDATE` bilan yozuv orasida firibgarlik tekshiruvi chaqiriladi (300 ms dan 2 s gacha). Yuk ostida nima bo'ladi?",
+        options: [
+          "Mashhur hisobga to'lovlar navbatga turadi, p95 sakraydi",
+          "Hech narsa: qulf bir necha millisekund turadi",
+          "Baza uni deadlock xatosi bilan bekor qiladi",
+        ],
+        answer: 0,
+        why: "Tashqi chaqiruv davomida qator qulflangan qoladi. Shu hisobga boshqa to'lovlar uning ortida kutadi, ulanishlar to'planadi va o'tkazma p95 1,4 s ga sakraydi.",
+      },
       fields: {
         "FOR UPDATE": "Tanlangan qatorlarni tranzaksiya tugaguncha qulflaydi. Boshqalar o'qiy oladi, lekin qulflay yoki o'zgartira olmaydi.",
         waits: "Ikkinchi to'lov shu yerda to'xtab turadi. U eski balansni hech qachon ko'rmaydi.",

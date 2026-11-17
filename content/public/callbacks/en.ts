@@ -41,6 +41,16 @@ const text: LessonText<typeof lesson> = {
       title: "`200 OK` even on failure",
       body: "The database write failed half way. The code caught the exception and returned success anyway.\n\nThe sender believes the message arrived and never sends it again. The data is lost silently: nothing in the log, nothing on screen.",
       watch: "A success reply is a promise: “I have saved this”. If you have not, return an error so the sender retries.",
+      check: {
+        q: "`200` must mean \"saved\", but the full work takes about 4 s. What gives both an honest and a fast reply?",
+        options: [
+          "Ask the sender to raise its timeout to 10 s",
+          "Reply `200` at once and save in the background",
+          "Write the raw message to an inbox table, then reply",
+        ],
+        answer: 2,
+        why: "The API only inserts the message as received into an `inbox` table and then replies `200`. Replies drop from seconds to about 45 ms, and nothing is lost: the message is saved before the reply.",
+      },
       fields: {
         ERROR: "The database refused the write. This should have become a `5xx` reply.",
         ROLLBACK: "Nothing was saved. Yet the sender received `200 OK`.",
@@ -71,6 +81,16 @@ const text: LessonText<typeof lesson> = {
       title: "Acknowledged too early",
       body: "The worker tells the queue “got it” (`ack`) the moment a message arrives, then starts working. Mid-way the worker crashes.\n\nThe queue has already dropped the message and the work never finished. The message is gone.",
       watch: "`autoAck` is convenient, but it means “delivered”, not “done”.",
+      check: {
+        q: "The worker now acks only after the result is written. What changes?",
+        options: [
+          "Nothing is lost and nothing is handled twice",
+          "Nothing is lost, but some messages arrive twice",
+          "The queue stalls while it waits for slow acks",
+        ],
+        answer: 1,
+        why: "If the worker crashes, the queue redelivers the message, so losses drop to zero. But a message that was partly handled comes again: about 4 duplicates a minute.",
+      },
       fields: {
         auto_ack: "The queue counts the message as handled the moment it is sent, before the worker has done anything.",
       },

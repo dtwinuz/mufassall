@@ -62,6 +62,16 @@ const text: LessonText<typeof lesson> = {
       short: "Storage",
       title: "Store by conversation, not by user",
       body: "Every message is written before it is delivered. The partition key is the **conversation**: all messages of `c_a1b2` live on one shard, sorted inside it. Opening a chat is one range read: the last 50 rows of one partition.\n\nPartitioning by user would mean writing each message twice in a 1:1 chat and 300 times in a group. By conversation it is written once, and 64 shards spread the load.",
+      check: {
+        q: "Alice sends two quick messages, handled by two instances whose clocks differ by 50 ms. What does Bob see?",
+        options: [
+          "Both in the order Alice sent them",
+          "Only the first; the second is rejected as late",
+          "Sometimes the second message first",
+        ],
+        answer: 2,
+        why: "Messages are sorted by `sent_at`, and each instance stamps its own clock. The second message can get the earlier timestamp, so Bob sees it first. That happens about 140 times a day.",
+      },
       fields: {
         conv_id: "Partition key. It decides the shard, so one chat never spans machines.",
         sent_at: "For now messages are sorted by the server's clock. The next step shows why that is a problem.",
@@ -91,6 +101,16 @@ const text: LessonText<typeof lesson> = {
       short: "Receipts",
       title: "Delivered and read",
       body: "When Bob's device gets the message it acknowledges it: one tick for Alice. When Bob opens the chat, the app sends a read receipt.\n\nIt is not a receipt per message but one number per member per conversation: \"read up to 1043\". Everything up to it is read. One small write instead of one per message.",
+      check: {
+        q: "Bob's phone puts the app in the background and the OS closes its socket. What happens to a new message?",
+        options: [
+          "It waits in the store; Bob is not told",
+          "The gateway holds it and resends on reconnect",
+          "It is lost: no socket means no delivery",
+        ],
+        answer: 0,
+        why: "The registry has no connection for Bob, so the chat service has nowhere to send it. The message is safe in the store, but 900 messages a day sit unnoticed for over an hour.",
+      },
       fields: {
         type: "`delivered` from the device, `read` when the chat is on screen.",
         up_to_seq: "Everything up to this number is read. Alice's ticks turn blue for all of them.",
@@ -100,6 +120,16 @@ const text: LessonText<typeof lesson> = {
       short: "Offline",
       title: "Bob's phone is asleep",
       body: "The phone puts the app in the background and the operating system closes its socket. The registry has no connection for Bob, so the chat service has nowhere to send the message.\n\nThe message is safe in the store, but Bob does not know it exists. 900 messages a day sit unnoticed for over an hour.",
+      check: {
+        q: "How should Bob learn about messages that arrive while his socket is closed?",
+        options: [
+          "Full messages travel inside push notifications",
+          "A push wakes the app; it catches up by `seq`",
+          "The app polls every 2 seconds in the background",
+        ],
+        answer: 1,
+        why: "The chat service queues an event, a push worker wakes the phone, and the app reconnects with its last `seq`. Push only wakes; the store returns what was missed, and unnoticed messages drop from 900 to 15 a day.",
+      },
       fields: {
         "empty array": "No open connection. Without another channel the message just waits.",
       },

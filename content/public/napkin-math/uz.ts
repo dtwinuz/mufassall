@@ -51,6 +51,16 @@ const text: LessonText<typeof lesson> = {
       short: "Qator hajmi",
       title: "Bitta ping qancha joy oladi?",
       body: "Qator hajmini taxmin qilmang, bazadan so'rang. Namuna jadvalda bitta ping 61 bayt ma'lumot va 38 bayt indeks: taxminan 100 bayt.\n\nSoniyasiga 2 000 × 86 400 soniya ≈ kuniga 173 million qator. × 100 bayt ≈ **kuniga 17 GB**.",
+      check: {
+        q: "Kuniga 17 GB bo'lsa, har pingni bir yil saqlash baza uchun nimani anglatadi?",
+        options: [
+          "Taxminan 600 GB: bitta oddiy server ko'taradi",
+          "Taxminan 6,3 TB: indekslar xotiraga sig'may qoladi",
+          "Taxminan 60 TB: birinchi kundan klaster kerak",
+        ],
+        answer: 1,
+        why: "17 GB × 365 ≈ 6,3 TB va 63 milliard qator. Indekslar endi xotiraga sig'maydi, har so'rov diskka tegadi, zaxira nusxa olish deyarli bir kun davom etadi.",
+      },
       fields: {
         row_bytes: "Bitta qatorning o'rtacha saqlangan hajmi, baza qo'shadigan qator sarlavhasi bilan.",
         TABLESAMPLE: "Butun jadval o'rniga 1% namunani o'qiydi. Taxmin uchun yetarli.",
@@ -81,6 +91,16 @@ const text: LessonText<typeof lesson> = {
       title: "Og'ir qism — xarita",
       body: "Kuzatuv ekrani xarita ko'rsatadi, xarita tile'larini esa API o'zi beradi. Bitta tile taxminan 200 KB. Soniyasiga 300 ko'rish × 200 KB = **60 MB/s**, taxminan 480 Mbit/s.\n\nTaqqoslash uchun ping'lar 2 000 × ~400 bayt ≈ 0,8 MB/s. Hech kim o'ylamagan funksiya mahsulot yadrosidan 75 baravar ko'p tarmoq ishlatadi.",
       watch: "Javobdagi baytlar × soniyasiga javoblar. Buni har bir endpoint uchun qiling, ayniqsa rasm qaytaradiganlari uchun.",
+      check: {
+        q: "Xarita tile'lari API'ga 60 MB/s turadi va hamma uchun bir xil. API chiquvchi trafigini eng ko'p nima kamaytiradi?",
+        options: [
+          "Ularni foydalanuvchiga yaqin keshlaydigan CDN'dan berish",
+          "Kichik JSON tracking javoblarini siqish",
+          "Kattaroq tarmoq kanalli API serverlar qo'shish",
+        ],
+        answer: 0,
+        why: "Tile'lar bir xil va kam o'zgaradi, shuning uchun CDN ularni keshlaydi, API esa faqat kichik JSON beradi. API chiquvchi trafigi 60 MB/s dan 0,3 MB/s ga tushadi.",
+      },
       fields: {
         tiles: "Xarita rasmlari, bir ko'chaga qaragan hamma uchun bir xil.",
         "Content-Length": "Har bir tile 204 800 bayt, API ning o'z tarmoq kanalidan beriladi.",
@@ -99,7 +119,7 @@ const text: LessonText<typeof lesson> = {
     numbers: {
       short: "Sonlar",
       title: "Eslab qolishga arziydigan kechikishlar",
-      body: "Xotira: ~100 ns. SSD'dan o'qish: ~100 µs. Bitta data markaz ichida borib-kelish: ~0,5 ms. Diskda qidirish: ~10 ms. Qit'alar orasida borib-kelish: 70–150 ms.\n\nHar bir pog'ona oldingisidan taxminan yuz-ming baravar sekin. Demak bitta tarmoq chaqiruvi minglab xotira o'qishiga teng, boshqa mintaqaga bitta chaqiruv esa yonidagi yuzta chaqiruvga teng.",
+      body: "Xotira: ~100 ns. SSD'dan o'qish: ~100 µs. Bitta data markaz ichida borib-kelish: ~0,5 ms. Diskda qidirish: ~10 ms. Qit'alar orasida borib-kelish: 70–150 ms.\n\nPog'onalar orasidagi farq bir xil emas: SSD xotiradan ming baravar sekin, data markaz ichidagi borib-kelish SSD'dan bir necha baravar sekin, qit'alar orasidagisi esa data markaz ichidagidan bir necha yuz baravar sekin. Demak bitta tarmoq chaqiruvi minglab xotira o'qishiga teng, boshqa mintaqaga bitta chaqiruv esa yonidagi yuzlab chaqiruvga teng.",
       watch: "Aniq qiymatlar uskuna bilan o'zgaradi, ular orasidagi nisbat deyarli o'zgarmaydi. Nisbatlarni eslab qoling.",
     },
     servers: {

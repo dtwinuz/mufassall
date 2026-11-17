@@ -54,6 +54,16 @@ const text: LessonText<typeof lesson> = {
       title: "Qutilardan oldin taxminiy raqamlar",
       body: "800 avtobus, har 10 soniyada bitta pozitsiya: soniyasiga 80 yozish. Ertalabki cho'qqida taxminan 60 000 yo'lovchi har 20 soniyada yangilaydi: soniyasiga 3 000 o'qish. Pozitsiya taxminan 120 bayt, demak kuniga 0.8 GB, 90 kunga taxminan 75 GB.\n\nNatija: o'qish yozishdan taxminan 40 baravar ko'p va har o'qishga hisoblangan kelish vaqti kerak. Agar bitta server uni har o'qishda bazadan hisoblasa, cho'qqida u bo'g'iladi.",
       watch: "Taxmin bir necha baravar aniqlikda to'g'ri bo'lsa yetadi. Uning vazifasi — qaysi qism og'irligini ko'rsatish.",
+      check: {
+        q: "O'qish yozishdan 40 baravar ko'p, har o'qishga hisoblangan kelish vaqti kerak. Yukni nima oladi?",
+        options: [
+          "Har o'qish uchun kattaroq baza",
+          "Kelish vaqtini pozitsiya bo'yicha hisoblab, keshdan o'qish",
+          "Avtobuslar pozitsiyani kamroq yuborishi",
+        ],
+        answer: 1,
+        why: "Worker'lar kelish vaqtini har pozitsiyaga bir marta hisoblab keshga yozadi, API faqat tayyor javobni o'qiydi. Javob p95 900 ms dan 45 ms ga tushadi.",
+      },
     },
     hld: {
       short: "High-level",
@@ -68,7 +78,17 @@ const text: LessonText<typeof lesson> = {
     lag: {
       short: "Orqada qolish",
       title: "Worker ortda qolmoqda",
-      body: "Tig'iz soatda bitta worker har pozitsiya uchun kelish vaqtini hisoblaydi. Har biri taxminan 290 ms oladi, demak u qabul qilganidan kamini ishlaydi.\n\nNavbat 40 soniyaga o'sadi. Yo'lovchilar javobni tez oladi, lekin javob 40 soniyalik: 30 soniyalik talab buzilgan, hamma server esa sog'lom ko'rinadi.",
+      body: "Tig'iz soatda bitta worker har pozitsiya uchun kelish vaqtini hisoblaydi. Har biri taxminan 15 ms oladi: bitta worker soniyasiga ~66 tasini ulguradi, kelayotgani esa 80 ta.\n\nNavbat 40 soniyaga o'sadi. Yo'lovchilar javobni tez oladi, lekin javob 40 soniyalik: 30 soniyalik talab buzilgan, hamma server esa sog'lom ko'rinadi.",
+      check: {
+        q: "Bitta worker soniyasiga 66 pozitsiya ulguradi, kelayotgani esa 80. Kelish vaqti yoshini 30 soniyadan pastga nima qaytaradi?",
+        options: [
+          "API oldida kattaroq kesh",
+          "Oqimni bitta partitsiyaga birlashtirish",
+          "12 partitsiyani bo'lishib olgan to'rtta worker",
+        ],
+        answer: 2,
+        why: "To'rtta instans 12 partitsiyani bo'lishib oladi, har avtobus baribir bitta worker'ga boradi, tartib saqlanadi. Navbat yo'qoladi, kelish vaqti yoshi 40 soniyadan taxminan 11 soniyaga tushadi.",
+      },
       fields: {
         consumers: "12 partition'ga bitta worker: o'n bittasi kutib turibdi.",
         lag: "Qabul qilingan, lekin hali ishlanmagan pozitsiyalar. Yo'lovchi ko'radigan yangilik aynan shu.",
@@ -83,7 +103,7 @@ const text: LessonText<typeof lesson> = {
     "lld-api": {
       short: "API",
       title: "Low-level dizayn: kelish API'si",
-      body: "Endi bitta komponent batafsil. Endpoint yo'lda versiya oladi, vaqt daqiqa emas soniyada keladi va ma'lumot qachon hisoblangani qo'shiladi.\n\nJavobni 10 soniya keshlash mumkin. Shu `ETag` bilan qayta so'rov bo'sh `304` oladi. Yo'lovchilarning ko'p yangilashi endi deyarli tekin.",
+      body: "Endi bitta komponent batafsil. Endpoint yo'lda versiya oladi, vaqt daqiqa emas soniyada keladi va ma'lumot qachon hisoblangani qo'shiladi.\n\nJavobni 10 soniya keshlash mumkin. Shu `ETag` bilan qayta so'rov bo'sh `304` oladi. Yo'lovchilarning ko'p yangilashi endi deyarli tekin. Bu yerda ma'lumot o'zgargan, shuning uchun yangi ETag va to'liq 200 qaytadi.",
       fields: {
         v1: "Yo'ldagi versiya. Javobdagi keyingi o'zgarish eski ilovalarni buzmasdan `v2` bo'lib chiqishi mumkin.",
         "If-None-Match": "Ilovada allaqachon bor javobning tegi. Hech narsa o'zgarmagan bo'lsa, server tanani yubormaydi.",
@@ -106,6 +126,16 @@ const text: LessonText<typeof lesson> = {
       short: "Sxema",
       title: "Low-level dizayn: tarix jadvali",
       body: "Tarix faqat qo'shiladi: har pozitsiyaga bitta qator, hech qachon yangilanmaydi. Kalit — avtobus va vaqt, shuning uchun takroriy xabar ikkinchi qator yarata olmaydi.\n\nJadval kuniga bitta partition'ga bo'lingan. 90 kunlik ma'lumotni o'chirish — katta `DELETE` emas, bitta partition'ni tashlab yuborish.",
+      check: {
+        q: "Kesh yiqildi. Taxta javob berishda davom etishi kerak. API nima qilishi kerak?",
+        options: [
+          "Bazadan javob berib, uni eskirgan deb belgilash",
+          "Kesh qaytguncha xato qaytarish",
+          "Har so'rovni kesh qaytguncha ushlab turish",
+        ],
+        answer: 0,
+        why: "Talab mavjudlik, shuning uchun API bazadagi oxirgi pozitsiyalarga tushadi va javobni `stale` deb belgilaydi. Narxi: p95 180 ms ga chiqadi, kelish vaqti bir daqiqalik.",
+      },
       fields: {
         "PRIMARY KEY": "Avtobus va vaqt: ikki marta yuborilgan pozitsiya bir marta saqlanadi.",
         "PARTITION BY": "Tashqaridan bitta jadval, ichida har kunga alohida bo'lak.",

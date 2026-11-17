@@ -42,6 +42,16 @@ const text: LessonText<typeof lesson> = {
       short: "Unit",
       title: "Unit tests: one function, milliseconds",
       body: "The price math now has unit tests: plain inputs in, expected numbers out. No network, no database. Fourteen of them run in under a second on every push.\n\nThe discount bug would have failed here before anyone deployed it. Unit tests are the wide base of the pyramid: cheap, fast, many.",
+      check: {
+        q: "Unit tests use a fake in-memory database. The real save uses `ON CONFLICT`. What happens in production?",
+        options: [
+          "Fine: the unit tests already covered the save",
+          "Every order fails, while all tests stay green",
+          "Only repeated orders fail; new ones save fine",
+        ],
+        answer: 1,
+        why: "`ON CONFLICT` needs a unique index on `order_no`, and the real database has none, so it rejects the whole query. The fake accepted anything, so every order fails and the tests stay green.",
+      },
       fields: {
         FAIL: "The file has a failing test. The push is marked red.",
         expected: "What the test says the answer must be, next to what the code returned.",
@@ -63,6 +73,16 @@ const text: LessonText<typeof lesson> = {
       short: "Integration",
       title: "Integration tests with a real database in a container",
       body: "CI now starts a real database in a throwaway container, applies the same migrations as production and runs the repository code against it.\n\nThe missing index shows up on the first run, and the fix ships as a migration. The cost: CI goes from 20 seconds to over a minute and a half. That is why there are fewer of these tests.",
+      check: {
+        q: "The pricing team renames `price` to `unit_amount`. Both teams' tests pass. What happens after deploy?",
+        options: [
+          "The integration tests catch it before deploy",
+          "Nothing: JSON clients ignore unknown fields",
+          "Every checkout fails: orders reads a missing field",
+        ],
+        answer: 2,
+        why: "Pricing tests check only pricing's own code, and the orders tests use a stub of the old answer. In production orders reads `price`, which is gone, and every checkout fails.",
+      },
       fields: {
         container: "Same database engine and version as production, created fresh for this run.",
         migrations: "The real schema, built the same way production builds it.",
@@ -94,6 +114,16 @@ const text: LessonText<typeof lesson> = {
       short: "End-to-end",
       title: "A few end-to-end tests drive a real browser",
       body: "CI starts a browser and goes through checkout like a person: open the cart, press Pay, wait for the confirmation. It goes through every service at once.\n\nThis is the top of the pyramid. One test checks a lot, but it is slow and has many moving parts, so only the main user paths get one. CI now takes almost four minutes.",
+      check: {
+        q: "Two e2e tests share one test user and wait a fixed 5 seconds for the page. What starts to happen?",
+        options: [
+          "Random failures that pass on retry",
+          "Steady failures until the code is fixed",
+          "Nothing: each run starts in a clean browser",
+        ],
+        answer: 0,
+        why: "One test finds the cart the other left behind, and sometimes the page is slower than the fixed wait. Checkout fails about one run in twelve and passes on retry, so people learn to press retry.",
+      },
       fields: {
         open: "The browser loads a real page from a test copy of the shop.",
         click: "The same button a customer presses.",

@@ -29,7 +29,7 @@ export default defineLesson({
       kind: "problem",
       nodes: {
         shop: { kind: "client", at: [0, 5] },
-        orders: { kind: "service", at: [2, 5], state: "slow" },
+        orders: { kind: "service", at: [3, 5], state: "slow" },
         email: { kind: "service", at: [8, 1] },
         stock: { kind: "service", at: [8, 4] },
         analytics: { kind: "service", at: [8, 10] },

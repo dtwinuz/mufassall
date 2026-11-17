@@ -55,6 +55,16 @@ const text: LessonText<typeof lesson> = {
       short: "Rolling",
       title: "Rolling deploy: one server at a time",
       body: "CI replaces servers one by one. Each new server must answer its health check before the load balancer sends it traffic and before the next old server is stopped.\n\nNo downtime, and no extra servers needed. During the rollout the old and the new version serve users at the same time, so both must work with the same database and APIs.",
+      check: {
+        q: "The next build breaks one checkout path, but `/healthz` still says ok. How does the rollout go?",
+        options: [
+          "It stops at the first server: the health check blocks it",
+          "Checkout requests go only to old servers until it is fixed",
+          "It reaches all six servers; rollback takes 25 minutes",
+        ],
+        answer: 2,
+        why: "The health check only proves the process is up, so every server passes and gets traffic. 12% of requests fail, and rolling the old version back through six servers takes 25 minutes.",
+      },
       fields: {
         healthz: "The endpoint the load balancer calls every few seconds.",
         status: "`ok` means the process is up. It does not mean checkout works.",
@@ -86,6 +96,16 @@ const text: LessonText<typeof lesson> = {
       short: "Canary",
       title: "Canary: 5% of users first",
       body: "The next release goes to green, but the load balancer sends it only 5% of requests. CI compares the two sets' error rates over the last three minutes.\n\nGreen fails at 4.1% against 0.3% on blue. A new bug, but only one user in twenty sees it, and only for a few minutes.",
+      check: {
+        q: "At 3 a.m. green fails at 4.1% against 0.3% on blue. What happens next?",
+        options: [
+          "A rule in the pipeline sets green's weight to zero",
+          "Green keeps its 5% until the on-call engineer wakes up",
+          "CI rolls the old version through all six servers again",
+        ],
+        answer: 0,
+        why: "The rule is written in the pipeline: canary errors above twice the stable rate for three minutes set its weight to zero and mark the release bad. Nobody has to be awake, and all traffic goes back to blue.",
+      },
       fields: {
         weight: "Share of traffic in percent. Blue keeps 95.",
         error_rate: "Errors in percent over the window. The two sets are compared side by side.",

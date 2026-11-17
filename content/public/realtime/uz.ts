@@ -64,6 +64,16 @@ const text: LessonText<typeof lesson> = {
       title: "WebSocket: bitta ulanish, ikki tomonga",
       body: "Klient HTTP so'rov bilan boshlaydi va uni **upgrade** qilishni so'raydi. `101` javobidan keyin o'sha TCP ulanish ikki tomonga kichik frame'larni tashiydi.\n\nXabarlar, «yozmoqda» belgisi, «o'qildi» belgisi hammasi shu orqali. HTTP so'rovlar deyarli yo'qoladi, yetkazish o'nlab millisekund oladi.",
       watch: "WebSocket holatli (stateful): server endi o'ziga kim ulanganini eslab turadi. Bu kengaytirish usulini o'zgartiradi.",
+      check: {
+        q: "Endi har foydalanuvchi bitta chat serverda socket'ni kun bo'yi ochiq ushlaydi. Birinchi nima tugaydi?",
+        options: [
+          "So'rov sig'imi: HTTP chaqiruvlar to'planib qoladi",
+          "Ochiq socket'lar uchun file descriptor va xotira",
+          "Baza ulanishlari, har xabarga bittadan",
+        ],
+        answer: 1,
+        why: "Har socket bitta file descriptor, shuning uchun server 65 535 ta ochiq socket'da to'xtaydi, xotira esa GC pauzalari hammani to'xtatguncha o'sadi. Endi chegara so'rovlar emas, ulanishlar.",
+      },
       fields: {
         Upgrade: "Bu ulanishni HTTP'dan WebSocket protokoliga o'tkazishni so'raydi.",
         "101": "Switching Protocols: bundan keyin bu endi HTTP emas.",
@@ -86,6 +96,16 @@ const text: LessonText<typeof lesson> = {
       title: "Ulanishlarni gateway qatlami ushlaydi",
       body: "Ulanishlar **gateway**'lar qatlamiga ko'chadi. Gateway faqat socket'larni ushlaydi va frame'larni uzatadi; chat mantig'i va baza uning ortidagi oddiy stateless servisda.\n\nLoad balancer yangi ulanishlarni gateway'larga tarqatadi: foydalanuvchi ko'paysa, gateway qo'shiladi.",
       watch: "So'rovlar soni emas, ulanishlar soni bo'yicha taqsimlang: bitta socket soatlab yashaydi.",
+      check: {
+        q: "Alisa 1-gateway'da, Bobur 2-gateway'da. Alisa xonaga xabar yozadi. Bobur nimani ko'radi?",
+        options: [
+          "Sahifani yangilamaguncha hech narsa",
+          "Xabarni: load balancer uni Boburga yo'naltiradi",
+          "Xabarni: chat servisi uni hamma foydalanuvchiga jo'natadi",
+        ],
+        answer: 0,
+        why: "1-gateway faqat o'ziga ulangan socket'larga yetkazadi. 2-gateway'ga hech kim aytmaydi, Bobur tashlab ketiladi, yetib bormagan xabarlar daqiqasiga 450 taga chiqadi.",
+      },
       fields: {
         room: "Klient kuzatmoqchi bo'lgan chat xonasi.",
         "X-Gateway": "Bobur 2-gateway'ga tushdi. Alisa 1-gateway'da.",
@@ -117,6 +137,16 @@ const text: LessonText<typeof lesson> = {
       title: "Telefon tunnelga kirdi",
       body: "Boburning ulanishi xayrlashmasdan uziladi. U yo'qligida uchta xabar publish qilinadi.\n\n2-gateway'da Bobur uchun socket yo'q, xabarlarni beradigan odam yo'q. Bobur qaytganda chatda bo'shliq qoladi.",
       watch: "Mobil ulanish doim uzilib turadi. Faqat yaxshi holatni emas, qayta ulanishni rejalashtiring.",
+      check: {
+        q: "Bobur tunneldan chiqib yana ulandi. U o'tkazib yuborgan uchta xabarni qanday oladi?",
+        options: [
+          "Jonli kanal qayta ulanganda ularni qayta yuboradi",
+          "2-gateway ularni Bobur yo'qligida saqlab turgan",
+          "Ilova oxirgi ko'rgan ID'ni aytadi va undan yangilarini oladi",
+        ],
+        answer: 2,
+        why: "Jonli pub/sub u uchun hech narsa saqlamagan. Ilova `m_740` dan keyingisini so'raydi, gateway uchta yangi xabarni chat servisidan oladi va shundan keyingina jonli yetkazishga o'tadi.",
+      },
       fields: {
         "1006": "Noodatiy yopilish: socket close frame'siz o'ldi, tarmoq yo'qolganda shunday bo'ladi.",
         dropped: "Jonli pub/sub yo'q obunachi uchun hech narsa saqlamaydi.",

@@ -51,6 +51,16 @@ const text: LessonText<typeof lesson> = {
       short: "2PC",
       title: "Two-phase commit: everyone votes first",
       body: "A coordinator (here Orders) asks every participant to **prepare**: do the work, lock the rows, and vote. Only when all vote yes does it send **commit**; otherwise **abort**.\n\nThe orphan charges are gone. But every participant holds its locks for the whole round trip, so p95 triples.",
+      check: {
+        q: "Orders crashes after Payments and Inventory voted yes. What do the two participants do?",
+        options: [
+          "Wait with their locks held: they may not decide alone",
+          "Abort on their own after a timeout and free the locks",
+          "Commit on their own, since everyone already voted yes",
+        ],
+        answer: 0,
+        why: "A prepared participant cannot commit or abort alone, because only the coordinator knows the outcome. Locks stay held, other orders queue behind them, and p95 climbs to about 9 seconds.",
+      },
       fields: {
         PREPARE: "Phase 1: do the work but do not commit it yet.",
         VOTE: "The participant promises it can commit. From now on it must wait for the decision.",
@@ -94,6 +104,16 @@ const text: LessonText<typeof lesson> = {
       title: "Choreography: services react to events",
       body: "Another way to run the same saga: no orchestrator. Orders publishes `OrderCreated`; Payments reacts and publishes `PaymentCaptured`; Inventory reacts to that.\n\nServices are less coupled and the client gets its answer sooner. The price: the flow lives in many places, and \"where is order 1042 stuck?\" needs tracing across all of them.",
       watch: "Orchestration is easier to follow with many steps. Choreography fits short flows with few participants.",
+      check: {
+        q: "Orders commits the order, then publishes the event. The broker times out and the code gives up. What happens?",
+        options: [
+          "The broker delivers the event later on its own",
+          "The DB commit rolls back, so no order is saved",
+          "The order stays pending forever, and nothing alerts",
+        ],
+        answer: 2,
+        why: "The DB commit already happened, and the event existed only in memory. Order 1042 stays `pending`: nobody charges it or reserves stock, and lost events reach 9 a day.",
+      },
       fields: {
         key: "The order id. All events of one order land in one partition, in order.",
         type: "What happened. Every subscriber decides itself what to do about it.",
@@ -116,6 +136,16 @@ const text: LessonText<typeof lesson> = {
       short: "Outbox",
       title: "Outbox: the event is written with the order",
       body: "Orders writes the order **and** the event into an `outbox` table in one local transaction. Either both rows exist or neither does.\n\nA separate relay reads new outbox rows and publishes them, retrying until the broker accepts. The event can be late, but it can no longer be lost.",
+      check: {
+        q: "The relay publishes `ev_5c1`, then crashes before marking the row sent. What happens after it restarts?",
+        options: [
+          "The event is lost: the relay forgot it",
+          "It publishes the same event again",
+          "The broker refuses it as already stored",
+        ],
+        answer: 1,
+        why: "The row is still unmarked, so the relay sends it again and the broker stores it under a new offset. The outbox gives at least once, so Payments skips the copy by `event_id`.",
+      },
       fields: {
         BEGIN: "One local transaction in the orders DB. No broker involved.",
         outbox: "A plain table of events still to publish.",

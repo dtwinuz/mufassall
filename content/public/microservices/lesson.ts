@@ -39,7 +39,7 @@ export default defineLesson({
         call: { from: "client", to: "app", rate: 4 },
         sql: { from: "app", to: "db", rate: 4 },
       },
-      metrics: { deploys: 0.2, p95: 140, hops: 1, failed: 0.3 },
+      metrics: { deploys: 0.14, p95: 140, hops: 1, failed: 0.3 },
       focus: ["app", "db"],
       exchange: {
         edge: "sql",

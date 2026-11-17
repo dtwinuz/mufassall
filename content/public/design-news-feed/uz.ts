@@ -42,6 +42,16 @@ const text: LessonText<typeof lesson> = {
       short: "Pull",
       title: "Fan-out on read: lenta ochilganda yig'iladi",
       body: "Eng oddiy lenta: o'quvchi ilovani ochganda u obuna bo'lgan hammani topamiz, ularning yangi postlarini olamiz, vaqt bo'yicha saralab 50 tasini qaytaramiz. Bu **fan-out on read**: ish o'qish paytida bajariladi.\n\n200 kishiga obuna foydalanuvchi uchun bu 38 ms. Post yozish tekin: kimdir o'qimaguncha hech narsa bo'lmaydi.",
+      check: {
+        q: "20 million o'quvchi lentani kuniga ~10 marta ochadi. Pull bunga qanday dosh beradi?",
+        options: [
+          "Baza to'lib qoladi; p99 1,8 s ga yetadi",
+          "Yaxshi: har lenta baribir ~38 ms",
+          "Yozish sekinlashadi, o'qish tez qoladi",
+        ],
+        answer: 0,
+        why: "Bu soniyasiga 2 300 lenta, cho'qqida ~10 000, har biri 50 tasini qoldirish uchun o'n minglab qator o'qiydi. Baza 97% da, lenta p99 1,8 s ga chiqadi.",
+      },
       fields: {
         JOIN: "Har obuna bo'lingan muallifni postlari bilan bog'laydi: obuna qancha ko'p bo'lsa, shuncha ko'p qator.",
         "ORDER BY": "Eng yaxshi 50 ta ma'lum bo'lishidan oldin hammasi saralanishi kerak.",
@@ -73,6 +83,16 @@ const text: LessonText<typeof lesson> = {
       short: "Tez o'qish",
       title: "Lentani o'qish endi bitta oraliq o'qishi",
       body: "API `feed:u_42` ning birinchi 50 id'sini o'qiydi, keyin shu postlarni id bo'yicha post keshidan oladi (ko'pi issiq) va qaytaradi. JOIN yo'q, saralash yo'q.\n\nLenta p99 1,8 s dan 25 ms ga tushdi, baza esa faqat yozish va kesh miss'larini ko'radi.",
+      check: {
+        q: "30 million obunachisi bor akkaunt post yozdi. Fan-out on write nima bo'ladi?",
+        options: [
+          "Alohida hech narsa: bitta post bitta navbat ishi",
+          "Uning o'quvchilari lentasi sekin, boshqalar joyida",
+          "Navbat tiqiladi; postlar 10 daqiqagacha kechikadi",
+        ],
+        answer: 2,
+        why: "Worker 30 million ro'yxatga yozishi kerak, 200 000 yozish/s da bu daqiqalab ish. Orqasidagi oddiy postlar ham kutadi, post kechikishi 2 s dan 10 daqiqagacha o'sadi.",
+      },
       fields: {
         LRANGE: "Ro'yxat bo'lagini o'rni bo'yicha o'qiydi: obunachi soni qancha bo'lmasin, O(50).",
         "49": "0 dan 49 gacha o'rinlar: birinchi sahifa.",
@@ -115,13 +135,23 @@ const text: LessonText<typeof lesson> = {
       fields: {
         "720": "Telefon ekrani uchun kichraytirilgan nusxa. Ilova kerakli o'lchamni tanlaydi.",
         "Cache-Control": "Bir yil keshlash: `immutable`, chunki yangi rasm yangi nom oladi.",
-        "X-Cache": "Chekkadan berildi; omborga tegilmadi.",
+        "X-Cache": "Edge (chekka server) orqali berildi; storage'ga tegilmadi.",
       },
     },
     "cache-loss": {
       short: "Kesh o'ldi",
       title: "Lenta keshining bitta node'i o'ldi",
       body: "Lenta keshining bitta node'i ishdan chiqdi. Har sakkiz foydalanuvchidan birining lenta ro'yxati birdan yo'q, yangi postlarni ularga push qilib bo'lmaydi.\n\nKesh lentalar uchun haqiqat manbai deb qaralgan edi, lekin u faqat nusxa: har ro'yxatni bazadan qayta qurish mumkin.",
+      check: {
+        q: "Lenta ro'yxati yo'qolgan foydalanuvchilar ilovani ochdi. API nima qilishi kerak?",
+        options: [
+          "Node qaytguncha bo'sh lenta ko'rsatish",
+          "Ular uchun bazadan yangi postlarni pull qilish",
+          "Hamma yo'qolgan ro'yxatni birdan qurib, keyin berish",
+        ],
+        answer: 1,
+        why: "Ro'yxati yo'qlar uchun API pull'ga qaytadi, faqat oxirgi ikki kunlik postlar: 25 emas, ~40 ms. Ro'yxatlar faol foydalanuvchilarga keyingi ochishda quriladi, hammasi birdan emas, shuning uchun baza to'lib qolmaydi.",
+      },
       fields: {
         "connection refused": "`feed:u_42` turgan node yo'q. Uning ro'yxatlari ham u bilan yo'qoldi.",
       },
@@ -129,7 +159,7 @@ const text: LessonText<typeof lesson> = {
     rebuild: {
       short: "Qayta qurish",
       title: "Pull'ga qaytish, fonda qayta qurish",
-      body: "Ro'yxati yo'q foydalanuvchilar uchun API pull'ga qaytadi: obuna bo'lingan mualliflarning faqat oxirgi ikki kunlik postlari. Bunday lenta 25 emas, ~40 ms; foydalanuvchilarning kichik qismi uchun baza buni ko'taradi.\n\nShu orada ro'yxatlar tiklangan node'da qayta quriladi: faol foydalanuvchilarga keyingi ochishda, nofaollarga hech qachon. Har kesh node'ining replica'si ham bor, keyingi safar almashish soniyalarda bo'ladi.",
+      body: "Ro'yxati yo'q foydalanuvchilar uchun API pull'ga qaytadi: obuna bo'lingan mualliflarning faqat oxirgi ikki kunlik postlari. Bunday lenta 25 emas, ~40 ms; foydalanuvchilarning kichik qismi uchun baza buni ko'taradi.\n\nShu orada ro'yxatlar tiklangan node'da qayta quriladi: faol foydalanuvchilarga keyingi ochishda, nofaollarga hech qachon. Har kesh node'ining replikasi ham bor, keyingi safar almashish soniyalarda bo'ladi.",
       watch: "Chegaralangan zaxira yo'li bo'lmasa, butun o'qish yuki birdan bazaga tushadi.",
     },
     recap: {

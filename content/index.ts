@@ -3,6 +3,7 @@ import { type Section, sections as allSections } from "./sections";
 
 export { LANGS, type Lang, type LessonEntry } from "./types";
 export type { Section } from "./sections";
+export { glossary, type Term } from "./glossary";
 
 /** Public lessons only. Internal lessons are served by the API and never bundled here. */
 export const lessons = registry;
@@ -19,5 +20,3 @@ export function sectionOf(slug: string): Section | undefined {
   return sections.find((s) => s.lessons.includes(slug));
 }
 
-/** @deprecated kept for the home page until it moves to `sections` */
-export const tracks = sections;

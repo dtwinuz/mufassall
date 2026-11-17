@@ -1,4 +1,3 @@
-import { MotionConfig, animate, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type Change,
@@ -10,7 +9,10 @@ import {
   resolve,
 } from "@mufassall/scene-schema";
 import { lessonBounds } from "./iso";
+import { tween, useReducedMotion } from "./motion";
 import { Scene } from "./Scene";
+import { Check } from "./Check";
+import { downloadPng } from "./export";
 import { encodeDoc, fromScene } from "./lab";
 import { inline, paragraphs, plain } from "./text";
 import { type UiStrings, fill, formatNumber } from "./ui";
@@ -27,13 +29,9 @@ function Num({ value, format }: { value: number | undefined; format: (n: number)
       setShown(value);
       return;
     }
-    const controls = animate(from.current, value, {
-      duration: 0.6,
-      ease: "easeOut",
-      onUpdate: (v) => setShown(v),
-    });
+    const stop = tween(from.current, value, 600, setShown);
     from.current = value;
-    return () => controls.stop();
+    return stop;
   }, [value]);
   return <>{shown === undefined ? "—" : format(shown)}</>;
 }
@@ -60,7 +58,8 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [runKey, setRunKey] = useState(0);
-  const reduced = useReducedMotion() ?? false;
+  const reduced = useReducedMotion();
+  const stageRef = useRef<HTMLElement>(null);
 
   const go = (i: number) => {
     const clamped = Math.max(0, Math.min(total - 1, i));
@@ -147,8 +146,7 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
   };
 
   return (
-    <MotionConfig reducedMotion="user">
-      <div className="mf-player">
+    <div className="mf-player">
         <header className="mf-head">
           <div>
             {crumbs && <p className="mf-crumbs">{crumbs}</p>}
@@ -164,7 +162,7 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
 
         <div className="mf-body">
           <div className="mf-main">
-          <section className="mf-stage" aria-label={fill(ui.sceneLabel, { title: text.title })}>
+          <section ref={stageRef} className="mf-stage" aria-label={fill(ui.sceneLabel, { title: text.title })}>
             <div className="mf-stage__top">
               <dl className="mf-metrics">
                 {lesson.metrics.map((m) => {
@@ -194,6 +192,16 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
                     {ui.openInLab}
                   </a>
                 )}
+                <button
+                  type="button"
+                  className="mf-btn"
+                  onClick={() => {
+                    const svg = stageRef.current?.querySelector<SVGSVGElement>("svg.mf-scene");
+                    if (svg) void downloadPng(svg, `${lesson.slug}-${index + 1}`).catch(() => undefined);
+                  }}
+                >
+                  {ui.savePicture}
+                </button>
               </div>
             </div>
 
@@ -241,6 +249,7 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
               </div>
               <h2 className="mf-panel__title">{inline(t.title)}</h2>
               <div className="mf-panel__body">{paragraphs(t.body)}</div>
+              {t.check && <Check key={`${lesson.slug}/${step.id}`} id={`${lesson.slug}/${step.id}`} check={t.check} ui={ui.check} />}
               {t.watch && (
                 <div className="mf-watch">
                   <h3>{ui.watch}</h3>
@@ -307,6 +316,5 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
           </ol>
         </nav>
       </div>
-    </MotionConfig>
   );
 }

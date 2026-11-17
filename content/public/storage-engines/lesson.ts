@@ -185,7 +185,7 @@ export default defineLesson({
         l0: { state: "slow", load: 95 },
       },
       edges: { send: { flow: "fail", rate: 12 }, put: { rate: 3 }, append: { rate: 3 } },
-      metrics: { writes: 16000, "read-files": 38, "read-p99": 120 },
+      metrics: { writes: 16000, "read-files": 37, "read-p99": 120 },
       focus: ["ingest", "l0", "compact"],
       exchange: {
         edge: "put",

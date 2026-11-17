@@ -59,10 +59,10 @@ const text: LessonText<typeof lesson> = {
     http: {
       short: "HTTP",
       title: "So'rov app serverga yetadi",
-      body: "Endi brauzer `GET /orders` yuboradi. Load balancer uni deshifrlaydi, sog'lom app serverni tanlaydi va so'rovni tez ichki tarmoq orqali uzatadi.\n\nYo'lda u bir nechta header qo'shadi: app haqiqiy mijoz kimligini bilsin va so'rovni log'lar bo'ylab kuzatish mumkin bo'lsin.",
+      body: "Endi brauzer `GET /orders` yuboradi. Load balancer uni deshifrlaydi, sog'lom app serverni tanlaydi va so'rovni tez ichki tarmoq orqali uzatadi.\n\nYo'lda u bir nechta header qo'shadi: app haqiqiy klient kimligini bilsin va so'rovni log'lar bo'ylab kuzatish mumkin bo'lsin.",
       fields: {
         Cookie: "Foydalanuvchi sessiyasi. Bu sir, shuning uchun bu yerda yashirilgan.",
-        "X-Forwarded-For": "Mijozning haqiqiy manzili. Busiz app faqat load balancer IP'sini ko'radi.",
+        "X-Forwarded-For": "Klientning haqiqiy manzili. Busiz app faqat load balancer IP'sini ko'radi.",
         "X-Request-Id": "Shu so'rovning har bir log'dagi yagona ID'si: load balancer, app va bazada.",
       },
     },
@@ -71,6 +71,16 @@ const text: LessonText<typeof lesson> = {
       title: "Baza har bir qatorni o'qiydi",
       body: "Foydalanuvchi buyurtmalarini chiqarish uchun app bazadan oxirgi 20 tasini so'raydi. `user_id` bo'yicha indeks yo'q, shuning uchun baza ularni topish uchun 1,8 million qatorning hammasini o'qiydi.\n\nShu bitta so'rov 281 ms oladi: DNS, TCP va TLS birgalikda olganidan ko'p.",
       watch: "Ko'pchilik sekin sahifalar tarmoq sababli sekin emas. Taxmin qilishdan oldin vaqt qayerga ketayotganini o'lchang.",
+      check: {
+        q: "`(user_id, created_at)` bo'yicha indeks qo'shamiz. Bu sahifa bilan nima bo'ladi?",
+        options: [
+          "So'rov bir necha ms ga tushadi, sahifani yana tarmoq cheklaydi",
+          "So'rov biroz tezlashadi, lekin sahifada baribir eng ko'p vaqt oladi",
+          "Sahifa sekinlashadi: har yozuv endi indeksni yangilaydi",
+        ],
+        answer: 0,
+        why: "Baza foydalanuvchi buyurtmalariga sakraydi va aniq 20 qator o'qiydi. So'rov 281 ms dan 4 ms ga tushadi, asosiy xarajat yana tarmoqdagi borib-kelishlar bo'ladi.",
+      },
       fields: {
         user_id: "Filtr. Unda indeks bo'lmasa, baza har bir qatorni tekshirishga majbur.",
         "Seq Scan": "Ketma-ket skan: jadval boshidan oxirigacha o'qiladi.",
@@ -91,10 +101,20 @@ const text: LessonText<typeof lesson> = {
       short: "Javob",
       title: "Javob orqaga qaytadi",
       body: "Qatorlar app'ga qaytadi, app JSON yasaydi, load balancer uni siqadi, shifrlaydi va brauzerga yuboradi.\n\nJami: 176 ms. Shundan 158 ms tarmoqdagi borib-kelishlar, serverlarning ishi esa atigi 18 ms.",
+      check: {
+        q: "Yangi foydalanuvchi o'sha sahifani chet eldan ochadi: borib-kelish 40 emas, 150 ms. Jami vaqt nima bo'ladi?",
+        options: [
+          "Deyarli o'zgarmaydi: serverlar avvalgidek tez",
+          "Taxminan uch baravar oshadi: har handshake to'liq borib-kelish oladi",
+          "176 ms atrofida qoladi, chunki ulanish qayta ishlatiladi",
+        ],
+        answer: 1,
+        why: "Server ishi baribir 18 ms, lekin DNS, TCP, TLS va so'rovning har biri uzun borib-kelish to'laydi. Sahifa endi 176 emas, 558 ms da ochiladi.",
+      },
       fields: {
         "server-timing": "Serverlar o'z vaqtini aytadi: load balancer 2 ms, app 11 ms, baza 4 ms. Brauzer buni dev tools'da ko'rsatadi.",
         "content-encoding": "JSON gzip bilan siqilgan: sekin oxirgi bo'g'indan kamroq bayt o'tadi.",
-        next_page: "Mijoz 2-sahifani yangi so'rov bilan, o'sha ulanish orqali so'raydi.",
+        next_page: "Klient 2-sahifani yangi so'rov bilan, o'sha ulanish orqali so'raydi.",
       },
     },
     far: {

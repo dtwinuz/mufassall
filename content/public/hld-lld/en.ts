@@ -54,6 +54,16 @@ const text: LessonText<typeof lesson> = {
       title: "Rough numbers before any boxes",
       body: "800 buses, one position every 10 s: 80 writes per second. At the morning peak about 60 000 riders refresh every 20 s: 3 000 reads per second. A position is about 120 bytes, so 0.8 GB a day and about 75 GB for 90 days.\n\nThe result: reads outnumber writes about 40 to 1, and each read needs a computed arrival time. If one server computes it on every read from the database, it is overloaded at the peak.",
       watch: "Estimates only need to be right within a factor of a few. Their job is to show which part is heavy.",
+      check: {
+        q: "Reads outnumber writes 40 to 1, and each read needs a computed ETA. What takes the load off?",
+        options: [
+          "A bigger database for every rider read",
+          "Compute ETAs per position, read them from a cache",
+          "Buses reporting their position less often",
+        ],
+        answer: 1,
+        why: "Workers compute arrival times once per position and write them to a cache; the API only reads the ready answer. Answer p95 falls from 900 ms to 45 ms.",
+      },
     },
     hld: {
       short: "High level",
@@ -68,7 +78,17 @@ const text: LessonText<typeof lesson> = {
     lag: {
       short: "Lag",
       title: "The worker falls behind",
-      body: "At rush hour one worker computes arrival times for every position. Each takes about 290 ms, so it handles fewer than it receives.\n\nThe backlog grows to 40 seconds. Riders get answers fast, but the answers are 40 seconds old: the 30-second requirement is broken while every server looks healthy.",
+      body: "At rush hour one worker computes arrival times for every position. Each takes about 15 ms, so one worker finishes about 66 a second while 80 arrive.\n\nThe backlog grows to 40 seconds. Riders get answers fast, but the answers are 40 seconds old: the 30-second requirement is broken while every server looks healthy.",
+      check: {
+        q: "One worker does 66 positions a second while 80 arrive. What brings the ETA age back under 30 s?",
+        options: [
+          "A bigger cache in front of the API",
+          "Merging the stream into one partition",
+          "Four workers splitting the 12 partitions",
+        ],
+        answer: 2,
+        why: "Four instances share the 12 partitions, and each bus still goes to one worker, so order is kept. The backlog disappears and ETA age falls from 40 s to about 11 s.",
+      },
       fields: {
         consumers: "One worker for 12 partitions: eleven of them wait.",
         lag: "Positions received but not yet processed. This is the freshness the rider sees.",
@@ -83,7 +103,7 @@ const text: LessonText<typeof lesson> = {
     "lld-api": {
       short: "API",
       title: "Low-level design: the arrivals API",
-      body: "Now one component in detail. The endpoint gets a version in the path, times in seconds instead of minutes, and the time the data was computed.\n\nThe answer can be cached for 10 seconds. A repeated request with the same `ETag` gets an empty `304`. Most rider refreshes now cost almost nothing.",
+      body: "Now one component in detail. The endpoint gets a version in the path, times in seconds instead of minutes, and the time the data was computed.\n\nThe answer can be cached for 10 seconds. A repeated request with the same `ETag` gets an empty `304`. Most rider refreshes now cost almost nothing. Here the data changed, so a new ETag and a full 200 come back.",
       fields: {
         v1: "A version in the path. A later change in the answer can ship as `v2` without breaking old apps.",
         "If-None-Match": "The tag of the answer the app already has. If nothing changed, the server sends no body.",
@@ -106,6 +126,16 @@ const text: LessonText<typeof lesson> = {
       short: "Schema",
       title: "Low-level design: the history table",
       body: "History is append-only: one row per position, never updated. The key is the bus plus the time, so a repeated message cannot create a second row.\n\nThe table is split into one partition per day. Deleting 90-day-old data is dropping a partition, not running a huge `DELETE`.",
+      check: {
+        q: "The cache goes down. The board must keep answering. What should the API do?",
+        options: [
+          "Answer from the database and mark it stale",
+          "Return an error until the cache is back",
+          "Hold each request until the cache returns",
+        ],
+        answer: 0,
+        why: "Availability is the requirement, so the API falls back to the last positions in the database and marks the answer `stale`. The cost: p95 rises to 180 ms and the ETA is a minute old.",
+      },
       fields: {
         "PRIMARY KEY": "Bus plus time: the same position sent twice is stored once.",
         "PARTITION BY": "One table on the outside, a separate piece per day on the inside.",

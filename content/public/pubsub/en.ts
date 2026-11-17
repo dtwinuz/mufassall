@@ -52,6 +52,16 @@ const text: LessonText<typeof lesson> = {
       title: "Publish one event to a topic",
       body: "Orders now writes one event, `order.placed`, to a topic and answers the shop. Email, stock and analytics each **subscribe** and read the same event on their own.\n\nThe topic is an append-only log on disk. Orders does not know who reads it, and a new team just subscribes.",
       watch: "Publishing is now the only call in checkout. It must be durable, or the event is lost for everyone.",
+      check: {
+        q: "With the topic in place, analytics goes down again. What happens to checkout?",
+        options: [
+          "It fails again, after the same 5 s timeout",
+          "Nothing: analytics just falls behind in the log",
+          "Orders stops publishing until analytics returns",
+        ],
+        answer: 1,
+        why: "Orders keeps writing and email and stock keep reading. The analytics group only stops moving its offset, and its lag grows to 12 300 events, none of them lost.",
+      },
       fields: {
         acks: "`all` means the record is copied to every in-sync broker replica before the producer gets OK.",
         event_type: "A fact in past tense: something that already happened, not a command to do something.",
@@ -85,6 +95,16 @@ const text: LessonText<typeof lesson> = {
       title: "One subscriber cannot keep up",
       body: "A sale triples the number of orders. Email and analytics keep up, but stock does a database update per event and runs at 100%.\n\nIts lag grows by thousands a minute. Customers see items in stock that are already sold.",
       watch: "Each subscriber has its own speed. The topic does not wait for the slowest one, and that is the point.",
+      check: {
+        q: "Stock runs at 100% and its lag grows. What drains the lag without slowing the other subscribers?",
+        options: [
+          "Make the topic wait for stock to catch up",
+          "Give stock its own copy of the topic",
+          "Add a second stock instance to the same consumer group",
+        ],
+        answer: 2,
+        why: "The group splits the 6 partitions between the two stock instances, three each. The work halves and the lag drains to 0, while email and analytics, as separate groups, still get every event.",
+      },
     },
     group: {
       short: "Group",
@@ -102,6 +122,16 @@ const text: LessonText<typeof lesson> = {
       title: "Cancel arrives before the order",
       body: "A customer orders and cancels a second later. The two events have no key, so they land in different partitions, read by different stock instances.\n\nThe cancel is handled first: there is nothing to cancel yet. Then the order reserves stock that will never be paid for.",
       watch: "A topic keeps order only inside one partition. Across partitions there is no order at all.",
+      check: {
+        q: "Order and cancel land in different partitions. What makes stock see them in the order written?",
+        options: [
+          "Use the order ID as the record key",
+          "Read all partitions with one stock instance",
+          "Sort events by `occurred_at` in the consumer",
+        ],
+        answer: 0,
+        why: "The partition is a hash of the key, so every event of `ord_9051` goes to partition 2 and is read in order. Different orders still spread over all partitions, and out-of-order events drop to 0.",
+      },
       fields: {
         event_type: "The cancel for the order placed earlier.",
         partition: "Partition 5, while `order.placed` went to partition 2. Different readers, no order.",

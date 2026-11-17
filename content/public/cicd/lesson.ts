@@ -31,7 +31,7 @@ export default defineLesson({
         traffic: { from: "users", to: "lb", rate: 6 },
         "to-blue": { from: "lb", to: "blue", rate: 6 },
       },
-      metrics: { deploys: 0.2, failed: 30, mttr: 5400, errors: 40 },
+      metrics: { deploys: 0.14, failed: 30, mttr: 5400, errors: 40 },
       focus: ["dev", "blue"],
       exchange: {
         edge: "ssh",

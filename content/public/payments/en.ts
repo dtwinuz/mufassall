@@ -51,6 +51,16 @@ const text: LessonText<typeof lesson> = {
       title: "The same create arrives twice",
       body: "The API was slow, the gateway hit its timeout and sent `CreateTransaction` again with the same `id`.\n\nThe code did not look for it and opened a second transaction. One payment, two transactions: a double charge or a mess in the books.",
       watch: "A gateway never waits forever. Every call can arrive more than once.",
+      check: {
+        q: "The gateway repeats `CreateTransaction` with the same `id`. What should the shop answer?",
+        options: [
+          "An error, so the gateway stops retrying",
+          "A new transaction, since this is a new call",
+          "The existing `tx_77`, unchanged",
+        ],
+        answer: 2,
+        why: "The API looks up the gateway ID first and returns the existing transaction word for word. A unique index on the gateway ID stops two parallel calls from both creating, and double charges drop to 0.",
+      },
       fields: {
         id: "The same gateway ID as before. This is a repeat, not a new payment.",
         transaction: "A new ID, `tx_78`. The shop now has two transactions for one payment.",
@@ -69,6 +79,16 @@ const text: LessonText<typeof lesson> = {
       short: "Perform",
       title: "Perform: the money is yours",
       body: "The gateway charges the card and tells your shop to perform the transaction.\n\nThe API moves it from state `1` to `2` and marks the order paid. A repeated `Perform` returns the same `perform_time`.",
+      check: {
+        q: "What if the shop sends the order to the warehouse as soon as the transaction is created?",
+        options: [
+          "Some goods leave for payments that are later cancelled",
+          "Nothing: a created transaction is always performed",
+          "The gateway refuses to perform the transaction",
+        ],
+        answer: 0,
+        why: "State `1` is only a promise: cards get declined and payers leave. The gateway cancels after a timeout with state `-1`, and 4 unpaid orders a day are already on their way.",
+      },
       fields: {
         perform_time: "When the payment completed. A repeat must return this same value.",
         state: "`2` — performed. Only now is the order paid.",

@@ -40,13 +40,23 @@ const text: LessonText<typeof lesson> = {
       body: "Trafik uch barobar oshdi. Yagona server CPU'ni deyarli 100% band qiladi va ba'zi so'rovlarga `503` bilan javob bera boshlaydi.\n\nTabiiy yechim: ilovaning ikkinchi nusxasini ishga tushirib, trafikni bo'lish.",
       fields: {
         Cookie: "Brauzer sessiya cookie'sini har so'rovda yuboradi.",
-        "Retry-After": "Server mijozdan 5 soniyadan keyin qaytishni so'raydi. Foydalanuvchi xato sahifasini ko'radi.",
+        "Retry-After": "Server klientdan 5 soniyadan keyin qaytishni so'raydi. Foydalanuvchi xato sahifasini ko'radi.",
       },
     },
     "add-lb": {
       short: "Ikki server",
       title: "Load balancer va ikkinchi server",
       body: "Endi har so'rovni load balancer qabul qiladi va navbat bilan tarqatadi: biri 1-serverga, keyingisi 2-serverga.\n\nHar server yarim yuklangan, javoblar yana tez. Kod umuman o'zgarmadi.",
+      check: {
+        q: "Foydalanuvchi 1-serverda kirgan. Round-robin uning keyingi bosishini 2-serverga yuboradi. Nima bo'ladi?",
+        options: [
+          "Tizimdan chiqib ketadi: 2-serverda bunday sessiya yo'q",
+          "2-server sessiyani 1-serverdan so'rab oladi",
+          "Hech narsa: kirganini cookie'ning o'zi isbotlaydi",
+        ],
+        answer: 0,
+        why: "Sessiya faqat 1-server xotirasida turadi. 2-server hech narsa topmaydi va `401` qaytaradi, foydalanuvchi har ikkinchi bosishda kirish sahifasiga qaytariladi.",
+      },
       fields: {
         upstream: "Load balancer so'rov yubora oladigan serverlar guruhi.",
         "round-robin": "Standart usul: so'rovlar serverlarga navbat bilan ketadi, foydalanuvchi kimligiga qaralmaydi.",
@@ -67,6 +77,16 @@ const text: LessonText<typeof lesson> = {
       title: "Sticky sessiya: doim o'sha server",
       body: "Load balancer endi sessiya cookie'sidan hash oladi va foydalanuvchini doim bitta serverga yuboradi. Chiqib ketishlar to'xtaydi.\n\nLekin yuk endi teng emas: bir nechta og'ir foydalanuvchi 1-serverga tushdi, balancer esa ularni ko'chira olmaydi.",
       watch: "Sticky sessiya holatni baribir bitta mashinada qoldiradi. U muammoni yashiradi, yo'qotmaydi.",
+      check: {
+        q: "Deploy 1-serverni qayta ishga tushiradi, sticky sessiya foydalanuvchilarning yarmini shu yerda ushlab turibdi. Ular bilan nima bo'ladi?",
+        options: [
+          "Balancer ularni sessiyasi bilan 2-serverga ko'chiradi",
+          "Bir necha soniya kutib, avvalgidek davom etadi",
+          "Hammasi tizimdan chiqadi, savatlari ham yo'qoladi",
+        ],
+        answer: 2,
+        why: "Barcha sessiyalar faqat 1-server RAM'ida edi va jarayon bilan birga yo'qoldi. Minglab foydalanuvchi bir vaqtda tizimdan chiqib ketadi, yarim to'ldirilgan savatlari ham yo'q bo'ladi.",
+      },
       fields: {
         hash: "Server navbat bilan emas, sessiya cookie'si bo'yicha tanlanadi.",
         consistent: "Server qo'shilsa yoki olib tashlansa, ko'p foydalanuvchilar eski serverida qoladi.",
@@ -77,7 +97,7 @@ const text: LessonText<typeof lesson> = {
       title: "Deploy 1-serverni qayta ishga tushiradi",
       body: "Yangi versiya chiqariladi va 1-server qayta ishga tushadi. Uning xotirasidagi barcha sessiyalar jarayon bilan birga yo'qoladi.\n\nMinglab foydalanuvchi bir vaqtda tizimdan chiqib ketadi, yarim to'ldirilgan savatlari ham yo'q bo'ladi.",
       fields: {
-        SIGTERM: "Yangi versiya ishga tushishidan oldingi to'xtash signali. Oddiy, rejali voqea.",
+        SIGTERM: "Yangi versiya ishga tushishidan oldingi to'xtash signali. Oddiy, rejali hodisa.",
         sessions: "Hammasi faqat RAM'da edi. Boshqa hech kimda nusxasi yo'q.",
       },
     },
@@ -106,9 +126,19 @@ const text: LessonText<typeof lesson> = {
       title: "Boshqa yo'l: holat so'rov bilan birga yuradi",
       body: "Sessiya ID'si o'rniga login imzolangan token (JWT) qaytaradi, uning ichida foydalanuvchi ID'si va amal qilish muddati bor. Server imzoni o'z kaliti bilan tekshiradi, omborga murojaat kerak emas.\n\nRedis deyarli bo'sh, har server tokenni o'zi tekshira oladi.",
       watch: "Token imzolangan, shifrlanmagan. Kimda bo'lsa, ichini o'qiy oladi, shuning uchun unga sir narsa qo'ymang.",
+      check: {
+        q: "Foydalanuvchi o'g'irlangan noutbukda «chiqish»ni bosadi. Imzoli token 15 daqiqa amal qiladi. U bilan nima bo'ladi?",
+        options: [
+          "Server uni o'chiradi, token darhol ishlamay qoladi",
+          "Yana 15 daqiqagacha ishlashda davom etadi",
+          "Imzosi buziladi va serverlar uni rad etadi",
+        ],
+        answer: 1,
+        why: "Serverlar faqat imzo va muddatni tekshiradi, token haqida hech kimdan so'ramaydi. ID'si Redis'dagi kichik taqiq ro'yxatiga yozilmasa, token muddati tugaguncha amal qiladi.",
+      },
       fields: {
         access_token: "Imzolangan token. Brauzer uni har so'rovda `Authorization` sarlavhasida yuboradi.",
-        expires_in: "900 soniya (15 daqiqa) amal qiladi. Keyin mijoz yangisini olishi kerak.",
+        expires_in: "900 soniya (15 daqiqa) amal qiladi. Keyin klient yangisini olishi kerak.",
       },
     },
     revoke: {

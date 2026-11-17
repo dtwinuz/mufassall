@@ -52,8 +52,18 @@ const text: LessonText<typeof lesson> = {
     queue: {
       short: "Navbat",
       title: "Buyurtma va xat orasida navbat",
-      body: "API endi navbatga kichik vazifa qo'yadi va xaridorga darhol javob beradi. Worker vazifalarni navbatdan oladi va provayder qabul qiladigan tezlikda yuboradi.\n\nTo'lqin yo'qolmaydi, vaqtga yoyiladi: navbatda 42 000 vazifa kutadi, oxirgi xat 8 daqiqa kechikib ketadi. Lekin hech bir buyurtma yiqilmaydi va hech bir xat yo'qolmaydi.",
+      body: "API endi navbatga kichik vazifa qo'yadi va xaridorga darhol javob beradi. Worker vazifalarni navbatdan oladi va ularni birma-bir, soniyasiga 50 tachadan yuboradi.\n\nTo'lqin yo'qolmaydi, vaqtga yoyiladi: navbatda 42 000 vazifa kutadi, oxirgi xat 14 daqiqa kechikib ketadi. Lekin hech bir buyurtma yiqilmaydi va hech bir xat yo'qolmaydi.",
       watch: "Navbat xatoni kechikishga almashtiradi. Faqat xatolarga emas, backlog va eng eski xabar yoshiga qarang.",
+      check: {
+        q: "Navbatda 42 000 vazifa, bitta worker soniyasiga 50 tachasini yuboradi. Worker qo'shish qayergacha yordam beradi?",
+        options: [
+          "Cheksiz: har yangi worker soniyasiga 50 ta qo'shadi",
+          "Taxminan ikkitagacha: provayder soniyasiga atigi 100 ta oladi",
+          "Umuman yo'q: ikki worker bir xil vazifalarni oladi",
+        ],
+        answer: 1,
+        why: "Ikkinchi worker backlog'ni ikki barobar tez kamaytiradi, kechikish bir yarim daqiqaga tushadi. Uchinchisi yordam bermaydi: ikkitasi allaqachon provayderning soniyasiga 100 tasiga yaqin, ortig'i `429` ga uriladi.",
+      },
       fields: {
         persistent: "Navbat vazifani diskka yozadi. U broker qayta ishga tushsa ham saqlanadi.",
         order_id: "Faqat kalit. Qolganini worker xatni yig'ayotganda o'qiydi.",
@@ -75,6 +85,16 @@ const text: LessonText<typeof lesson> = {
       short: "Yiqilish",
       title: "Worker xabarni ushlab o'ldi",
       body: "Worker 2 `m_8812` xabarini oladi va yuborishga ulgurmay o'ladi. Navbat xabarni yetkazganda o'chirmagan: faqat 30 soniyaga yashirgan, bu **visibility timeout**.\n\nHech kim uni vaqtida o'chirmadi, shuning uchun u yana ko'rinadi va uni worker 1 oladi. Worker xabarni o'chiradi (bu uning ack'i) faqat xat ketgandan keyin.",
+      check: {
+        q: "Lease 30 soniya, lekin 212 sahifalik chek PDF'i 45 soniya yasaladi. O'sha xabarga nima bo'ladi?",
+        options: [
+          "Navbat kutadi: worker 1 hali tirik",
+          "Zaharlangan deb dead-letter navbatga ketadi",
+          "Uni worker 2 ham oladi va xaridor ikkita xat oladi",
+        ],
+        answer: 2,
+        why: "30-soniyada lease tugaydi, navbat worker 1 o'ldi deb o'ylaydi va xabarni worker 2 ga beradi. Ikkalasi ham tugatadi va bitta xat ikki marta ketadi. Hech narsa yiqilmagan.",
+      },
       fields: {
         receive_count: "Bu xabarning ikkinchi yetkazilishi. Navbat ularni sanaydi.",
         visibility_timeout: "Lease: xabar boshqa worker'lardan qancha vaqt yashirin turadi.",
@@ -103,7 +123,7 @@ const text: LessonText<typeof lesson> = {
       },
     },
     "retry-storm": {
-      short: "Retry bo'roni",
+      short: "Qayta urinish bo'roni",
       title: "Provayder tushdi, worker'lar unga yopiriladi",
       body: "Pochta provayderi yigirma daqiqaga ishdan chiqadi. Worker'lar xatoni ushlaydi va xabarni darhol qaytaradi, bir lahzadan keyin uni yana oladi.\n\nHar xabar daqiqasiga o'nlab marta sinab ko'riladi. Worker'lar CPU'ni behuda yoqadi, provayder qayta ko'tarilmoqchi bo'lganda esa unga bir vaqtda minglab qayta urinish uriladi.",
       fields: {
@@ -117,6 +137,16 @@ const text: LessonText<typeof lesson> = {
       title: "Jitter bilan eksponensial backoff",
       body: "Xatodan keyin worker xabarni har safar ikki barobar oshadigan kechikish bilan qaytaradi: 10 s, 20 s, 40 s, 80 s, shifti 15 daqiqa. Minglab xabar bir soniyada qaytmasligi uchun tasodifiy jitter qo'shiladi.\n\nProvayder tiklanishga vaqt oladi, tiklanganda esa navbat bir zarbada emas, asta-sekin bo'shaydi.",
       watch: "Jitter bo'lmasa, birga yiqilgan barcha xabarlar birga qayta urinadi va bo'ron jadval bo'yicha qaytib keladi.",
+      check: {
+        q: "Bitta xabar o'chirib yuborilgan xat shabloniga ishora qiladi. Faqat backoff u bilan nima qiladi?",
+        options: [
+          "Foydasi yo'q: u abadiy yiqiladi, faqat sekinroq",
+          "Tuzatadi: keyingi qayta urinishlardan biri o'tadi",
+          "15 daqiqalik shiftdan keyin xabarni tashlab yuboradi",
+        ],
+        answer: 0,
+        why: "Shablon yo'q, shuning uchun har urinish yiqiladi va hech qanday kechikish buni o'zgartirmaydi. Olish limiti bo'lmasa u abadiy aylanadi; 5 marta olingandan keyin navbat uni dead-letter navbatga ko'chiradi.",
+      },
       fields: {
         NACK: "«Bo'lmadi, qaytar.» Xabar yo'qolmaydi, navbatga qaytadi.",
         delay: "U faqat 86 s dan keyin yana ko'rinadi.",

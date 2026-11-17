@@ -41,6 +41,16 @@ const text: LessonText<typeof lesson> = {
       short: "Lock server",
       title: "Uchinchi tomondan so'ra: bitta lock server",
       body: "Endi qarorni alohida lock server qabul qiladi. Ishga tushishdan oldin worker `payouts` lock'ini so'raydi. Uni faqat bittasi oladi; ikkinchisiga kim egallab turgani aytiladi.\n\nLock'ning umri bor: egasi o'lsa, lock muddati tugaydi va ikkinchi worker uni olishi mumkin. Ikki marta to'lash to'xtaydi.",
+      check: {
+        q: "Lock serverning diski ishdan chiqdi. Tungi to'lovlar nima bo'ladi?",
+        options: [
+          "Hech bir worker ishga tushirmaydi, hech kim pul olmaydi",
+          "Worker 1 davom etadi: lock allaqachon unda",
+          "Ikkala worker ham bajaradi, lock serverdan oldingidek",
+        ],
+        answer: 0,
+        why: "Lock servisisiz hech bir worker lock ololmaydi, shuning uchun ikkalasi ham job'ni o'tkazib yuboradi. Bu xavfsiz, lekin serverni tiklash uchun ketadigan 30 daqiqa davomida to'lovlar to'xtaydi.",
+      },
       fields: {
         ttl_s: "Lock oxirgi yangilanishdan 15 s keyin tugaydi. Egasi ishlayotganda uni yangilab turadi.",
         granted: "Yo'q: lock boshqada.",
@@ -62,7 +72,7 @@ const text: LessonText<typeof lesson> = {
       body: "Endi lock servisi besh node'da ishlaydi. Ulardan biri lider: u har bir o'zgarishni qabul qiladi, o'z log'iga qo'shadi va yangi yozuvlarni boshqalarga yuboradi.\n\nFollower'lar yozuvlarni diskka yozadi va javob qaytaradi. Log har bir node'da bir xil, bir xil tartibda, shuning uchun har bir node bir xil holat bilan javob bera oladi.",
       fields: {
         term: "Saylov davri. Har yangi lider kattaroq term boshlaydi; eski term — eski lider degani.",
-        leader: "Kim yuboryapti. Follower'lar mijozlarni unga yo'naltiradi.",
+        leader: "Kim yuboryapti. Follower'lar klientlarni unga yo'naltiradi.",
         prev_index: "Yangilaridan oldingi yozuv. Follower faqat shu yozuv o'zida ham bo'lsa qabul qiladi: log'lar bir xil qoladi.",
         entries: "Yangi o'zgarish: 42-yozuv `payouts` lock'i w1 niki deydi.",
         commit: "Xavfsiz ekani ma'lum bo'lgan oxirgi yozuv. Follower'lar shu yergacha qo'llaydi.",
@@ -73,6 +83,16 @@ const text: LessonText<typeof lesson> = {
       short: "Ko'pchilik",
       title: "Yozuv ko'pchilikda bo'lsa, xavfsiz",
       body: "Worker 1 lock so'raydi. Lider \"berildi\" deb faqat 5 node'dan 3 tasi 42-yozuvni saqlagandan keyin javob beradi: o'zi va ikki follower.\n\nKelajakdagi har qanday 3 node'li ko'pchilik shu node'lardan kamida bittasini o'z ichiga oladi. Demak bu yozuvsiz keyingi lider bo'lishi mumkin emas. Ikki node o'lsa ham commit qilingan hech narsa yo'qolmaydi.",
+      check: {
+        q: "Switch lider node 1 ni faqat node 5 bilan uzib qo'ydi. Worker 1 node 1 dan lock so'raydi. U nima oladi?",
+        options: [
+          "Lock'ni: node 1 hali ham lider",
+          "Xatoni: 5 dan 2 tasi ko'pchilik emas",
+          "Darhol o'rnini olgan node 2 dan lock'ni",
+        ],
+        answer: 1,
+        why: "Node 1 43-yozuvni yozadi, lekin uni faqat node 1 va node 5 saqlaydi. 5 dan 3 tasi bo'lmasa u hech qachon commit bo'lmaydi, shuning uchun worker 1 lock o'rniga `not_committed` oladi.",
+      },
       fields: {
         index: "Bu lock'ning log'dagi o'rni.",
         acks: "5 dan 3 tasi saqladi: ko'pchilik, demak commit qilindi.",
@@ -82,7 +102,7 @@ const text: LessonText<typeof lesson> = {
     partition: {
       short: "Bo'linish",
       title: "Lider bitta follower bilan uzilib qoldi",
-      body: "Switch ishdan chiqdi. Node 1 (hali lider) va node 5 bir tomonda, node 2, 3 va 4 boshqa tomonda.\n\nNode 1 worker 1 so'rovini qabul qiladi va 43-yozuvni yozadi, lekin uni 5 tadan faqat 2 node saqlaydi. U hech qachon ko'pchilikka yetmaydi, demak hech qachon commit bo'lmaydi va mijoz lock o'rniga xato oladi.",
+      body: "Switch ishdan chiqdi. Node 1 (hali lider) va node 5 bir tomonda, node 2, 3 va 4 boshqa tomonda.\n\nNode 1 worker 1 so'rovini qabul qiladi va 43-yozuvni yozadi, lekin uni 5 tadan faqat 2 node saqlaydi. U hech qachon ko'pchilikka yetmaydi, demak hech qachon commit bo'lmaydi va klient lock o'rniga xato oladi.",
       watch: "Ozchilik tomondagi lider hali ham so'rov qabul qila oladi. Faqat ularni commit qila olmaydi.",
       fields: {
         error: "`not_committed`: yozuv ikki node'ning log'ida bor, lekin bu yetarli emas.",
@@ -108,14 +128,14 @@ const text: LessonText<typeof lesson> = {
       fields: {
         "stepping down": "Kattaroq term'ni ko'rgan node darhol liderlikni to'xtatadi.",
         truncating: "43-yozuv hech qachon ko'pchilikka yetmagan, shuning uchun o'chiriladi. Hech kimga u muvaffaqiyatli deyilmagan.",
-        "not committed": "Shuning uchun uni o'chirish xavfsiz: mijoz u uchun xato olgan.",
+        "not committed": "Shuning uchun uni o'chirish xavfsiz: klient u uchun xato olgan.",
       },
     },
     fencing: {
       short: "Fencing",
       title: "To'xtab qolgan worker eski lock bilan uyg'onadi",
       body: "Worker 1 uzoq garbage collection pauzasida 20 s qotib qoladi. Uning lock'i tugaydi va worker 2 lock'ni 51-index bilan oladi. Keyin worker 1 uyg'onadi va hali ham 42-lock unda deb o'ylaydi.\n\nTo'lovlar bazasi ko'rgan eng katta fence'ni saqlaydi va undan eskisini rad etadi. Worker 1 yozuvi hech narsani o'zgartirmaydi va u lock'ni yo'qotganini bilib oladi.",
-      watch: "Klaster haq bo'lishi mumkin, mijoz esa baribir tugagan lock bilan ish qilishi mumkin. Resursning o'zi fence'ni tekshirishi shart.",
+      watch: "Klaster haq bo'lishi mumkin, klient esa baribir tugagan lock bilan ish qilishi mumkin. Resursning o'zi fence'ni tekshirishi shart.",
       fields: {
         "fence < 42": "Ishni faqat yangiroq fence'li ishga tushish egallay oladi. Jadvalda allaqachon fence 51 turibdi.",
         "UPDATE 0": "Hech narsa yozilmadi. Worker 1 ning kechikkan to'lovi to'sildi.",

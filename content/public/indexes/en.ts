@@ -51,6 +51,16 @@ const text: LessonText<typeof lesson> = {
       short: "B-tree",
       title: "A B-tree index on customer_id",
       body: "An index is a separate sorted structure: a B-tree of `customer_id` values, each pointing to its rows in the table. To find customer 42 the database walks 3–4 levels of the tree instead of 40 million rows.\n\n`CONCURRENTLY` builds it without locking writes. The page drops to 35 ms: it now reads only this customer's 1 800 rows.",
+      check: {
+        q: "Customer 7 has 250 000 orders. How fast is their page with the `customer_id` index?",
+        options: [
+          "Fast: the tree walk is the same for any customer",
+          "Slow: the database skips the index for big customers",
+          "Slow again: all 250 000 rows are fetched and sorted",
+        ],
+        answer: 2,
+        why: "The index finds the customer's rows, but not in date order. The database reads all 250 000 and sorts them to keep 20, so page p95 is back at 900 ms.",
+      },
       fields: {
         CONCURRENTLY: "Builds the index while the table keeps taking writes. Slower to build, but no lock on a live table.",
         customer_id: "The indexed column. Lookups by it become a tree walk.",
@@ -71,6 +81,16 @@ const text: LessonText<typeof lesson> = {
       short: "Composite",
       title: "One index on two columns",
       body: "A composite index `(customer_id, created_at DESC)` is sorted by customer first, then by date inside each customer. The database jumps to customer 7 and reads the first 20 entries: they are already the newest.\n\nNo sort, 20 rows read, under 1 ms. The old single-column index is now a prefix of this one and does nothing useful.",
+      check: {
+        q: "A daily report filters only on `created_at`. Does the `(customer_id, created_at)` index help it?",
+        options: [
+          "No: without `customer_id` the plan is a full scan",
+          "Yes: `created_at` is in the index, so it is used",
+          "Partly: only the date part of the index is scanned",
+        ],
+        answer: 0,
+        why: "A composite index serves its leading columns, from left to right. A filter on the second column alone gets a `Seq Scan` over 40 million rows, and it loads the database so much that page p95 rises to 420 ms.",
+      },
       fields: {
         idx_orders_cust_created: "Sorted by `customer_id`, then by `created_at` from newest to oldest.",
         "Index Cond": "Same filter, but the rows come out in the right order.",
@@ -111,6 +131,16 @@ const text: LessonText<typeof lesson> = {
       title: "Seven indexes, and imports crawl",
       body: "Over a year, three more indexes were added \"just in case\": on `status`, `total` and the order note. A nightly import loads orders in batches of 500.\n\nEvery new row is written to the table and to all seven indexes. Each index is another tree to update and more WAL to write: insert time grew from 0.3 to 2.4 ms per row.",
       watch: "An index speeds up reads that use it and slows down every write, used or not.",
+      check: {
+        q: "Imports crawl with seven indexes on `orders`. What speeds up inserts without hurting reads?",
+        options: [
+          "Rebuild all seven indexes `CONCURRENTLY`",
+          "Drop the indexes that show zero scans",
+          "Load larger batches of 5 000 rows",
+        ],
+        answer: 1,
+        why: "The index stats show four indexes with zero scans, including `idx_orders_customer` that the composite replaced. Dropping them leaves three, and inserts fall from 2.4 to 0.5 ms per row.",
+      },
       fields: {
         "INSERT 0 500": "500 rows inserted. Each one also went into seven B-trees.",
         Time: "1.2 seconds for 500 rows. The same batch took 150 ms with one index.",

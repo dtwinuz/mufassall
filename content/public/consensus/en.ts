@@ -41,6 +41,16 @@ const text: LessonText<typeof lesson> = {
       short: "Lock server",
       title: "Ask a third party: one lock server",
       body: "Now a separate lock server decides. Before running, a worker asks for the `payouts` lock. Only one gets it; the other is told who holds it.\n\nA lock has a lifetime: if the holder dies, the lock expires and the other worker can take it. Double payouts stop.",
+      check: {
+        q: "The lock server's disk fails. What happens to the nightly payouts?",
+        options: [
+          "Neither worker runs them, so nobody is paid",
+          "Worker 1 keeps running: it already holds the lock",
+          "Both workers run them, as before the lock server",
+        ],
+        answer: 0,
+        why: "Without the lock service no worker can get the lock, so both skip the job. That is safe, but payouts stop for the 30 minutes it takes to rebuild the server.",
+      },
       fields: {
         ttl_s: "The lock expires 15 s after the last renewal. The holder renews it while it works.",
         granted: "No: someone else holds the lock.",
@@ -73,6 +83,16 @@ const text: LessonText<typeof lesson> = {
       short: "Majority",
       title: "A write is safe once a majority has it",
       body: "Worker 1 asks for the lock. The leader answers \"granted\" only after 3 of 5 nodes have stored entry 42: itself and two followers.\n\nAny future majority of 3 must include at least one of those nodes. So no later leader can exist without this entry. Two nodes can die and nothing committed is lost.",
+      check: {
+        q: "A switch cuts off leader node 1 with only node 5. Worker 1 asks node 1 for the lock. What does it get?",
+        options: [
+          "The lock: node 1 is still the leader",
+          "An error: 2 of 5 is not a majority",
+          "The lock from node 2, which takes over at once",
+        ],
+        answer: 1,
+        why: "Node 1 writes entry 43, but only node 1 and node 5 store it. Without 3 of 5 it is never committed, so worker 1 gets `not_committed` instead of a lock.",
+      },
       fields: {
         index: "The position of this lock in the log.",
         acks: "3 of 5 stored it: a majority, so it is committed.",

@@ -1,7 +1,8 @@
 import { PUBLIC_MASK, annotate, maskedRaw, resolve } from "@mufassall/scene-schema";
+import { loadSpots } from "@mufassall/scene-schema/layout";
 import { validateLesson } from "@mufassall/scene-schema/validate";
 import { describe, expect, it } from "vitest";
-import { LANGS, lessons } from "./index";
+import { LANGS, glossary, lessons } from "./index";
 import { sections as allSections } from "./sections";
 
 describe.each(Object.entries(lessons))("lesson %s", (slug, { lesson, text }) => {
@@ -66,6 +67,41 @@ describe.each(Object.entries(lessons))("lesson %s", (slug, { lesson, text }) => 
   });
 });
 
+describe("prediction checks", () => {
+  it.each(Object.entries(lessons))("%s: checks agree across languages", (_slug, { lesson, text }) => {
+    type T = { check?: { q: string; options: string[]; answer: number; why: string } };
+    for (const s of lesson.steps) {
+      const per = LANGS.map((l) => (text[l].steps as Record<string, T>)[s.id]?.check);
+      const base = per[0];
+      expect(per.every((c) => !!c === !!base), `${s.id}: check missing in a language`).toBe(true);
+      if (!base) continue;
+      expect(s.kind, `${s.id}: no check on the recap`).not.toBe("recap");
+      for (const c of per) {
+        expect(c!.options.length, `${s.id}: 2-4 options`).toBeGreaterThanOrEqual(2);
+        expect(c!.options.length).toBeLessThanOrEqual(4);
+        expect(c!.options.length, `${s.id}: same option count`).toBe(base.options.length);
+        expect(c!.answer, `${s.id}: same answer in every language`).toBe(base.answer);
+        expect(c!.answer >= 0 && c!.answer < c!.options.length).toBe(true);
+        expect(c!.q && c!.why && c!.options.every(Boolean), `${s.id}: empty text`).toBeTruthy();
+      }
+    }
+  });
+});
+
+describe("glossary", () => {
+  it("every term is written in every language and points at a real lesson", () => {
+    const ids = new Set<string>();
+    for (const g of glossary) {
+      expect(g.id, "id is kebab-case").toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+      expect(ids.has(g.id), `duplicate ${g.id}`).toBe(false);
+      ids.add(g.id);
+      expect(lessons[g.lesson], `${g.id}: lesson ${g.lesson}`).toBeTruthy();
+      for (const l of LANGS) expect(g.term[l]?.trim() && g.short[l]?.trim(), `${g.id} ${l}`).toBeTruthy();
+      for (const l of ["uz", "en"] as const) expect(/[Ѐ-ӿ]/.test(g.term[l] + g.short[l]), `${g.id} ${l} Cyrillic`).toBe(false);
+    }
+  });
+});
+
 describe("course map", () => {
   it("every lesson in sections.ts is written", () => {
     const missing = allSections.flatMap((s) => s.lessons).filter((slug) => !lessons[slug]);
@@ -74,5 +110,16 @@ describe("course map", () => {
   it("every written lesson is on the map exactly once", () => {
     const listed = allSections.flatMap((s) => s.lessons);
     for (const slug of Object.keys(lessons)) expect(listed.filter((l) => l === slug), slug).toHaveLength(1);
+  });
+});
+
+describe("scene layout", () => {
+  it.each(Object.entries(lessons))("%s: every load bar has a spot clear of names and blocks", (_slug, { lesson, text }) => {
+    const bad: string[] = [];
+    for (const [i, s] of resolve(lesson).entries()) {
+      const names = (id: string) => LANGS.map((l) => (text[l].nodes as Record<string, string>)[id] ?? id);
+      for (const id of loadSpots(Object.values(s.nodes), names).blocked) bad.push(`${lesson.steps[i]!.id}: ${id}`);
+    }
+    expect(bad).toEqual([]);
   });
 });

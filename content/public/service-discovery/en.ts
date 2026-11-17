@@ -62,6 +62,16 @@ const text: LessonText<typeof lesson> = {
       title: "Client-side discovery",
       body: "Orders asks the registry for healthy `inventory` instances, caches the list for a few seconds and picks one per call itself, round-robin.\n\nThe platform adds instance D under load. D registers, orders sees it on the next refresh, and traffic spreads over three instances without any deploy.",
       watch: "Every caller needs the discovery and balancing logic. With five languages, that is five libraries to keep correct.",
+      check: {
+        q: "Instance A loses power and has no chance to deregister. What happens to the calls Orders sends to A?",
+        options: [
+          "The registry drops A at once, so no calls fail",
+          "Orders moves A's share to C and D on its own",
+          "They keep going to A, and each waits 2 s and fails",
+        ],
+        answer: 2,
+        why: "The registry still lists A as passing, because A never said goodbye. Orders keeps sending a third of its calls there, each times out after 2 seconds, and 33% of stock checks fail.",
+      },
       fields: {
         passing: "Only instances whose health check passes. Dead ones should never be in the answer.",
         Address: "Orders connects straight to these addresses. No extra hop in the middle.",
@@ -71,6 +81,16 @@ const text: LessonText<typeof lesson> = {
       short: "Crash",
       title: "A crashed instance stays on the list",
       body: "Instance A's host loses power. A had no chance to deregister, so the registry still lists it as healthy.\n\nOrders keeps sending a third of its calls to A and waits 2 seconds for each. A list that only changes when instances politely say goodbye is not enough.",
+      check: {
+        q: "Each instance now sends a heartbeat every 5 s with a 15 s TTL. How soon does dead A stop getting traffic?",
+        options: [
+          "In about 20 seconds, with nobody touching anything",
+          "Only after an operator removes A from the registry",
+          "Instantly, the moment A's host loses power",
+        ],
+        answer: 0,
+        why: "When A's TTL runs out, the registry marks it critical and drops it from the healthy list. Traffic to A stops within about 20 seconds instead of 10 minutes.",
+      },
       fields: {
         timeout: "Two seconds per call, wasted on a machine that is gone.",
         passing: "The registry believes the last thing A told it. It has no way to know otherwise yet.",

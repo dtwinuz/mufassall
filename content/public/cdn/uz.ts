@@ -2,9 +2,9 @@ import type { LessonText } from "@mufassall/scene-schema";
 import type lesson from "./lesson";
 
 const text: LessonText<typeof lesson> = {
-  title: "CDN va chekka keshlar",
+  title: "CDN va edge keshlar",
   summary:
-    "Do'kon serveri bir qit'ada, xaridorlari boshqasida. Rasm va skriptlar foydalanuvchilarga yaqin chekka keshlarga (edge) ko'chadi: so'rov edge'ga qanday yetadi, qachon origin'ga qaytadi, faylni qanday almashtirish va nimani hech qachon keshlab bo'lmaydi.",
+    "Do'kon serveri bir qit'ada, xaridorlari boshqasida. Rasm va skriptlar foydalanuvchilarga yaqin edge (chekka server) keshlarga ko'chadi: so'rov edge'ga qanday yetadi, qachon origin'ga qaytadi, faylni qanday almashtirish va nimani hech qachon keshlab bo'lmaydi.",
   learn: [
     "Edge kesh foydalanuvchi va origin orasida qanday turadi, miss va hit qanchaga tushadi",
     "Nima va qancha keshlanishini `Cache-Control` hal qiladi",
@@ -60,6 +60,16 @@ const text: LessonText<typeof lesson> = {
       short: "Hit",
       title: "Hit: origin ishtirok etmaydi",
       body: "Shu hududdagi keyingi har xaridor rasmni to'g'ridan-to'g'ri edge'dan oladi. So'rovlarning 95% origin'ga umuman yetmaydi.\n\nSahifalar 100 ms atrofida ochiladi, origin deyarli bo'sh turadi.",
+      check: {
+        q: "Do'kon o'sha fayl nomi bilan yaxshiroq rasm yuklaydi. Xaridorlar nimani ko'radi?",
+        options: [
+          "Darhol yangi rasmni: u origin'da bor",
+          "Edge'lar qayta olguncha buzilgan rasmni",
+          "Bir kungacha eski rasmni",
+        ],
+        answer: 2,
+        why: "Edge'lar o'z nusxasini `max-age=86400` tugaguncha saqlaydi. Qaysi edge'ga tushishiga qarab, ba'zi xaridorlar bir kungacha eski rasmni ko'radi.",
+      },
       fields: {
         "X-Cache": "Edge keshidan javob berildi.",
         Age: "Bu nusxa keshda 5312 soniyadan beri turibdi, taxminan bir yarim soat.",
@@ -78,6 +88,16 @@ const text: LessonText<typeof lesson> = {
       short: "Purge",
       title: "Purge: har edge'ga faylni tashlashni ayt",
       body: "Muhandis CDN'ning purge API'sini chaqiradi. Bir necha soniyada har edge o'z nusxasini tashlaydi, keyingi so'rov yangi rasmni oladi.\n\nIshlaydi, lekin bu har o'zgarishdan keyingi qo'lda qadam, va purge'dan so'ng darhol barcha edge'lar birdaniga miss oladi.",
+      check: {
+        q: "Har o'zgarishdan keyin qo'lda purge qilmasdan fayllarni qanday almashtirish mumkin?",
+        options: [
+          "Har faylga bir necha soniyalik `max-age` qo'yish",
+          "Har fayl nomiga tarkibining hash'ini qo'shish",
+          "Har reliz'dan keyin wildcard bilan hammasini purge qilish",
+        ],
+        answer: 1,
+        why: "Yangi rasm yangi URL oladi, eski URL esa shunchaki boshqa so'ralmaydi. Fayllarni bir yilga keshlash mumkin, purge kerak emas, hit ulushi 97% ga chiqadi.",
+      },
       fields: {
         Authorization: "CDN akkaunt kaliti. Bu yerda yashirilgan.",
         paths: "Qaysi fayllar tashlanadi. Wildcard purge ancha ko'p narsani bo'shatadi va origin'ga qattiqroq uradi.",
@@ -98,6 +118,16 @@ const text: LessonText<typeof lesson> = {
       short: "Ko'p edge",
       title: "Har edge origin'dan o'zi so'raydi",
       body: "Ikkinchi hududdagi xaridorlarga o'z edge'i beriladi. Dunyo bo'ylab 41 ta edge bor, reliz'dan keyin har biri yangi skriptni alohida miss qiladi.\n\nOrigin bir daqiqada bitta faylga 41 ta bir xil so'rov oladi, reliz'dagi boshqa yangi fayllar ustiga. U sekinlashadi.",
+      check: {
+        q: "41 ta edge yangi skriptni alohida miss qilib origin'ga boradi. Buni yana bitta so'rovga nima aylantiradi?",
+        options: [
+          "Edge'lar origin o'rniga so'raydigan bitta o'rta kesh",
+          "Edge'lar bir-birining keshini to'g'ridan-to'g'ri o'qishi",
+          "Yangi skriptga uzunroq `max-age`",
+        ],
+        answer: 0,
+        why: "Edge'lar endi bitta origin shield'dan so'raydi. 41 ta edge bir xil faylni miss qilsa, shield uni bir marta oladi va qolganlarga beradi: origin'ga so'rovlar 1500/s dan 45/s ga tushadi.",
+      },
       fields: {
         MISS: "Har edge o'zi uchun miss oladi. Edge'lar keshini bir-biri bilan bo'lishmaydi.",
         "41 edges": "Bitta fayl uchun 41 ta bir xil so'rov, reliz'dagi har yangi faylga ko'paytiring.",

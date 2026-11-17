@@ -47,6 +47,16 @@ const text: LessonText<typeof lesson> = {
       short: "Two servers",
       title: "A load balancer and a second server",
       body: "A load balancer now receives every request and hands them out in turn: one to server 1, the next to server 2.\n\nEach server is half loaded and replies are fast again. The code did not change at all.",
+      check: {
+        q: "A user logged in on server 1. Round-robin sends their next click to server 2. What happens?",
+        options: [
+          "They are logged out: server 2 has no such session",
+          "Server 2 asks server 1 for the session",
+          "Nothing: the cookie alone proves the login",
+        ],
+        answer: 0,
+        why: "The session lives only in server 1's memory. Server 2 finds nothing and answers `401`, so users are thrown back to login every other click.",
+      },
       fields: {
         upstream: "The group of servers the load balancer can send a request to.",
         "round-robin": "The default: requests go to the servers in turn, without looking at who the user is.",
@@ -67,6 +77,16 @@ const text: LessonText<typeof lesson> = {
       title: "Sticky sessions: always the same server",
       body: "The load balancer now hashes the session cookie and always sends a user to the same server. Logouts stop.\n\nBut the load is no longer even: a few heavy users land on server 1, and the balancer is not allowed to move them.",
       watch: "Sticky sessions keep the state on one machine. They hide the problem, they do not remove it.",
+      check: {
+        q: "A deploy restarts server 1, where sticky sessions keep half the users. What happens to those users?",
+        options: [
+          "The balancer moves them to server 2 with sessions intact",
+          "They wait a few seconds, then carry on as before",
+          "They are all logged out and lose their carts",
+        ],
+        answer: 2,
+        why: "Every session lived only in server 1's RAM and vanished with the process. Thousands of users are logged out at once, and their half-filled carts are gone.",
+      },
       fields: {
         hash: "The server is chosen from the session cookie, not in turn.",
         consistent: "When a server is added or removed, most users keep their old server.",
@@ -106,6 +126,16 @@ const text: LessonText<typeof lesson> = {
       title: "Another way: the state travels with the request",
       body: "Instead of a session ID, login returns a signed token (JWT) that already contains the user ID and an expiry time. The server checks the signature with its key; no store lookup is needed.\n\nRedis is almost idle and every server can verify the token on its own.",
       watch: "A token is signed, not encrypted. Anyone holding it can read its contents, so put nothing secret inside.",
+      check: {
+        q: "A user presses log out on a stolen laptop. The signed token is valid for 15 minutes. What happens to it?",
+        options: [
+          "The server deletes it, so it stops working at once",
+          "It keeps working for up to 15 minutes",
+          "Its signature breaks, so servers reject it",
+        ],
+        answer: 1,
+        why: "Servers check only the signature and the expiry; they ask no one about the token. It stays valid until it expires, unless its ID is put on a small deny list in Redis.",
+      },
       fields: {
         access_token: "The signed token. The browser sends it in the `Authorization` header on every request.",
         expires_in: "Valid for 900 seconds (15 minutes). After that the client must get a new one.",
@@ -114,7 +144,7 @@ const text: LessonText<typeof lesson> = {
     revoke: {
       short: "Logout",
       title: "The price: a token cannot be taken back",
-      body: "The user presses «log out» on a stolen laptop. The token is still valid for up to 15 minutes, and the servers do not ask anyone about it.\n\nSo a small deny list returns: the token's ID goes into Redis until it would expire anyway. Short-lived tokens keep that list tiny.",
+      body: "The user presses “log out” on a stolen laptop. The token is still valid for up to 15 minutes, and the servers do not ask anyone about it.\n\nSo a small deny list returns: the token's ID goes into Redis until it would expire anyway. Short-lived tokens keep that list tiny.",
       fields: {
         deny: "A list of tokens that must no longer be accepted.",
         jti_7f2: "The token's own unique ID, from its `jti` claim.",

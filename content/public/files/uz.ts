@@ -33,6 +33,16 @@ const text: LessonText<typeof lesson> = {
       title: "Har bayt API orqali o'tadi",
       body: "Foydalanuvchi telefondan 180 MB video yuklaydi. Ilova uni API'ga yuboradi, API butun oqimni o'qib, o'z lokal diskiga yozadi.\n\nBir yarim daqiqa davomida bitta API worker'i faqat bayt ko'chiradi. Bir vaqtda bir necha o'nta yuklash bo'lsa, oddiy so'rovlar uchun worker qolmaydi.",
       watch: "Ilova serveri ko'p qisqa so'rov uchun qurilgan. Uzun yuklash butun vaqt davomida ulanish, xotira va worker'ni band qiladi.",
+      check: {
+        q: "Videolar API'ning o'z diskida to'planib boradi, API server esa ikkita. Nima sinadi?",
+        options: [
+          "Faqat yuklash sekinlashadi, ko'rish ishlayveradi",
+          "Hech narsa: balancer fayllarni ikki serverga taqsimlaydi",
+          "Disk to'lgach yozuv yiqiladi, ko'rishlarning yarmi 404",
+        ],
+        answer: 2,
+        why: "Lokal disk har yozuv yiqilguncha to'ladi, yiqilgan yuklashlar 18% ga chiqadi. `api-1` da saqlangan fayl `api-2` da yo'q, shuning uchun ko'rishlarning yarmi 404 qaytaradi.",
+      },
       fields: {
         Authorization: "Foydalanuvchi tokeni. Sir, shuning uchun yashirilgan.",
         "Content-Length": "Bitta so'rov tanasida 180 MB. 99% da uzilsa — boshidan.",
@@ -52,7 +62,7 @@ const text: LessonText<typeof lesson> = {
       short: "Presign",
       title: "API imzolaydi, telefon yuklaydi",
       body: "Fayllar endi object storage'da: katta obyektlar uchun qurilgan alohida servis, to'ladigan disk yo'q. Telefon API'dan ruxsat so'raydi va qisqa muddatli imzolangan URL oladi.\n\nBaytlar telefondan to'g'ridan-to'g'ri storage'ga boradi. API faqat foydalanuvchi kimligini va fayl qancha katta bo'lishi mumkinligini tekshiradi. Uning yuki 10% ga tushadi.",
-      watch: "Hajm va kontent turini ham imzolang, aks holda URL uni topib olgan har kim uchun tekin omborga aylanadi.",
+      watch: "Hajm va kontent turini ham imzolang, aks holda URL uni topib olgan har kim uchun tekin storage'ga aylanadi.",
       fields: {
         size: "API imzolashdan oldin limitni tekshiradi. 5 GB fayl yuklashdan keyin emas, shu yerda rad etiladi.",
         url: "Baytlar qayerga yuboriladi. API'ga emas: object storage'ga.",
@@ -63,7 +73,17 @@ const text: LessonText<typeof lesson> = {
     flaky: {
       short: "Beqaror tarmoq",
       title: "Mobil tarmoq: 80% bo'ldi, boshidan",
-      body: "Bitta `PUT` butun 180 MB'ni olib ketadi. Yurib ketayotgan avtobusdagi telefonda ulanish 151 MB da uziladi.\n\nIlova birinchi baytdan boshlashga majbur. Kuchsiz tarmoqda katta fayl hech qachon tugamasligi mumkin, har urinish esa foydalanuvchining mobil trafigini yeydi.",
+      body: "Bitta `PUT` butun 180 MB'ni olib ketadi. Yurib ketayotgan avtobusdagi telefonda ulanish 144 MB da uziladi.\n\nIlova birinchi baytdan boshlashga majbur. Kuchsiz tarmoqda katta fayl hech qachon tugamasligi mumkin, har urinish esa foydalanuvchining mobil trafigini yeydi.",
+      check: {
+        q: "Uzilgan ulanish butun 180 MB'ga tushmasligi uchun nima qilish kerak?",
+        options: [
+          "8 MB'lik qismlarga bo'lib, faqat yiqilganini qayta yuborish",
+          "Imzolangan URL muddatini uzaytirish",
+          "Yuklashni yana API orqali o'tkazish",
+        ],
+        answer: 0,
+        why: "Multipart yuklashda uzilish ko'pi bilan bitta 8 MB'lik qismga tushadi va faqat o'sha qism qayta yuboriladi. Yiqilgan yuklashlar 11% dan 0.4% ga tushadi.",
+      },
       fields: {
         "Content-Length": "Butun fayl bitta so'rovda: yo hammasi, yo hech narsa.",
         "connection reset": "Yuklash o'rtasida tarmoq uzildi. Shu paytgacha yuborilgan hamma narsa yo'qoldi.",
@@ -114,7 +134,17 @@ const text: LessonText<typeof lesson> = {
     viral: {
       short: "Viral",
       title: "Video viral bo'ldi",
-      body: "Minglab tomoshabin bitta videoni ochadi, har biri uni bitta regiondagi storage'dan oladi. Uzoqdagi tomoshabinlar ijro boshlanguncha 3 soniya kutadi.\n\nStorage'dan chiqqan har bayt pullik trafik. Oylik hisob bir haftada ikki barobar oshadi.",
+      body: "Minglab tomoshabin bitta videoni ochadi, har biri uni bitta regiondagi storage'dan oladi. Uzoqdagi tomoshabinlar ijro boshlanguncha 3 soniya kutadi.\n\nStorage'dan chiqqan har bayt pullik trafik. Oylik hisob bir haftada yetti barobar oshadi.",
+      check: {
+        q: "Minglab odam bitta videoni bitta storage regionidan ko'radi. Kutishni ham, hisobni ham nima kamaytiradi?",
+        options: [
+          "O'sha regionda tezroq storage tarifi",
+          "Nusxani tomoshabinga yaqin shaharlarda saqlaydigan CDN",
+          "Yuklab olishni proksilaydigan ko'proq API server",
+        ],
+        answer: 1,
+        why: "Regiondagi faqat birinchi so'rov storage'ga boradi, qolganlari edge'dan beriladi. Oylik xarajat $4200 dan $900 ga tushadi, ijro birinchi megabaytdan keyin boshlanadi.",
+      },
       fields: {
         "Content-Length": "Har ko'rishga 40 MB. Bitta faylning minglab ko'rilishi — minglab bir xil yuklab olish.",
         "X-Response-Time": "Storage regionidan uzoqda birinchi baytlar sekin keladi.",
@@ -123,18 +153,18 @@ const text: LessonText<typeof lesson> = {
     cdn: {
       short: "CDN",
       title: "Storage oldida CDN",
-      body: "Tomoshabinlar endi videoni CDN'dan oladi: ko'p shaharlardagi serverlar nusxani foydalanuvchiga yaqin saqlaydi. Regiondagi faqat birinchi so'rov storage'ga boradi, qolganlari chekkadan beriladi.\n\nPleyer faylni bo'laklab so'raydi, shuning uchun ijro birinchi megabaytdan keyin boshlanadi. Storage trafigi va xarajat keskin tushadi.",
+      body: "Tomoshabinlar endi videoni CDN'dan oladi: ko'p shaharlardagi serverlar nusxani foydalanuvchiga yaqin saqlaydi. Regiondagi faqat birinchi so'rov storage'ga boradi, qolganlari edge (chekka server) orqali beriladi.\n\nPleyer faylni bo'laklab so'raydi, shuning uchun ijro birinchi megabaytdan keyin boshlanadi. Storage trafigi va xarajat keskin tushadi.",
       watch: "Shaxsiy videolar uchun muddatli imzolangan CDN havolalarini ishlating, aks holda nusxalangan havola har kim uchun ishlaydi.",
       fields: {
         Range: "Pleyer faqat birinchi megabaytni so'raydi, keyingisini ijro davomida.",
-        "Cache-Control": "Ishlangan fayl o'z nomi ostida hech qachon o'zgarmaydi, shuning uchun chekka uni bir yil saqlashi mumkin.",
-        "X-Cache": "`HIT`: chekkadan berildi, storage'dan so'ralmadi.",
+        "Cache-Control": "Ishlangan fayl o'z nomi ostida hech qachon o'zgarmaydi, shuning uchun edge uni bir yil saqlashi mumkin.",
+        "X-Cache": "`HIT`: edge'dan berildi, storage'dan so'ralmadi.",
       },
     },
     recap: {
       short: "Xulosa",
       title: "Xulosa",
-      body: "Fayllar uchun besh qoida.\n\n1) Baytlar API orqali o'tmaydi: u qisqa muddatli URL imzolaydi, mijoz object storage'ga yuklaydi. 2) Katta fayllar birma-bir qayta yuborsa bo'ladigan qismlarda boradi. 3) Bazada fayl emas, metama'lumot va obyekt kaliti. 4) Og'ir ishlov hodisa ishga tushiradigan worker'da. 5) Ko'rishlar CDN orqali, o'zgarmaydigan fayllar uzoq keshlanadi.",
+      body: "Fayllar uchun besh qoida.\n\n1) Baytlar API orqali o'tmaydi: u qisqa muddatli URL imzolaydi, klient object storage'ga yuklaydi. 2) Katta fayllar birma-bir qayta yuborsa bo'ladigan qismlarda boradi. 3) Bazada fayl emas, metama'lumot va obyekt kaliti. 4) Og'ir ishlov hodisa ishga tushiradigan worker'da. 5) Ko'rishlar CDN orqali, o'zgarmaydigan fayllar uzoq keshlanadi.",
     },
   },
 };

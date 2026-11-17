@@ -71,6 +71,16 @@ const text: LessonText<typeof lesson> = {
       title: "The database reads every row",
       body: "To list the user's orders, the app asks the database for the last 20. There is no index on `user_id`, so the database reads all 1.8 million rows to find them.\n\nThat single query takes 281 ms: more than DNS, TCP and TLS together.",
       watch: "Most slow pages are not slow because of the network. Measure where the time goes before you guess.",
+      check: {
+        q: "We add an index on `(user_id, created_at)`. What happens to this page?",
+        options: [
+          "The query falls to a few ms; the network is the limit again",
+          "The query gets a bit faster but still dominates the page",
+          "The page slows down: every insert must now update the index",
+        ],
+        answer: 0,
+        why: "The database jumps to the user's orders and reads exactly 20 rows. The query drops from 281 ms to 4 ms, so the network round trips are the main cost again.",
+      },
       fields: {
         user_id: "The filter. Without an index on it, the database has to check every row.",
         "Seq Scan": "A sequential scan: the whole table is read from start to end.",
@@ -91,6 +101,16 @@ const text: LessonText<typeof lesson> = {
       short: "Response",
       title: "The answer travels back",
       body: "The rows go back to the app, the app builds JSON, the load balancer compresses and encrypts it and sends it to the browser.\n\nTotal: 176 ms. Of that, 158 ms were network round trips and only 18 ms were the servers doing work.",
+      check: {
+        q: "A new user opens the same page from abroad: 150 ms per round trip instead of 40. What happens to the total?",
+        options: [
+          "Barely changes: the servers are just as fast",
+          "Roughly triples: each handshake costs a full round trip",
+          "Stays near 176 ms, since the connection is reused",
+        ],
+        answer: 1,
+        why: "Server work is still 18 ms, but DNS, TCP, TLS and the request each pay a long round trip. The page now takes 558 ms instead of 176.",
+      },
       fields: {
         "server-timing": "The servers report their own time: 2 ms load balancer, 11 ms app, 4 ms database. The browser shows this in its dev tools.",
         "content-encoding": "The JSON is compressed with gzip, so fewer bytes cross the slow last mile.",

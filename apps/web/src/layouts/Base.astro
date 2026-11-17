@@ -14,7 +14,7 @@ interface Props {
   lang: Lang;
   title?: string;
   description?: string;
-  active?: "learn" | "lab";
+  active?: "learn" | "lab" | "glossary";
 }
 
 const { lang, title, description, active = "learn" } = Astro.props;
@@ -39,6 +39,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:type" content="website" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0b0f14" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)" />
     <script is:inline src="/theme.js"></script>
   </head>
   <body>
@@ -56,9 +59,14 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
         <nav class="site-nav" aria-label="main">
           <a href={`/${lang}/`} aria-current={active === "learn" ? "page" : undefined}>{s.nav.learn}</a>
           <a href={`/${lang}/lab/`} aria-current={active === "lab" ? "page" : undefined}>{s.nav.lab}</a>
-          <span class="site-nav__soon">{s.nav.practice} <small>{s.nav.soon}</small></span>
+          <a href={`/${lang}/glossary/`} aria-current={active === "glossary" ? "page" : undefined}>{s.nav.glossary}</a>
         </nav>
         <div class="site-tools">
+          <button type="button" class="search-btn" data-search-open aria-label={s.search.label} aria-keyshortcuts="Control+K Meta+K /">
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>
+            <span class="search-btn__text">{s.search.open}</span>
+            <kbd>Ctrl K</kbd>
+          </button>
           <nav class="langs" aria-label="language">
             {
               LANGS.map((l) => (
@@ -78,5 +86,13 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       <slot />
     </main>
     <footer class="site-foot wrap">{s.footer}</footer>
+    <dialog class="search" data-search aria-label={s.search.label} data-hint={s.search.hint} data-empty={s.search.empty} data-lesson={s.search.lesson} data-step={s.search.step} data-term={s.search.term}>
+      <div class="search__box">
+        <input type="search" role="combobox" aria-expanded="true" aria-controls="search-list" aria-autocomplete="list" placeholder={s.search.placeholder} aria-label={s.search.label} autocomplete="off" spellcheck="false" />
+        <ul id="search-list" role="listbox" class="search__list"></ul>
+      </div>
+    </dialog>
+    <script is:inline src="/search.js" defer></script>
+    <script is:inline src="/pwa.js" defer></script>
   </body>
 </html>

@@ -26,7 +26,7 @@ const next = nextSlug ? { title: titleOf(nextSlug), href: `/${lang}/l/${nextSlug
 
 <Base lang={lang} title={text.title} description={text.summary}>
   <Lesson client:load lesson={entry.lesson} text={text} lang={lang} crumbs={crumbs} next={next} />
-  <nav class="lesson-pager" aria-label={s.course.title}>
+  <nav class="lesson-pager" aria-label={s.course.pager}>
     {
       prevSlug ? (
         <a href={`/${lang}/l/${prevSlug}/`} rel="prev">
@@ -46,7 +46,7 @@ const next = nextSlug ? { title: titleOf(nextSlug), href: `/${lang}/l/${nextSlug
       )
     }
   </nav>
-  <details class="course-nav" data-course-nav>
+  <details class="course-nav" data-course-nav data-label-done={s.course.done} data-label-started={s.course.started}>
     <summary>{s.course.title}: {s.home.lessonsN.replace("{n}", String(order.length))}</summary>
     <ol class="course-nav__sections">
       {
@@ -69,5 +69,5 @@ const next = nextSlug ? { title: titleOf(nextSlug), href: `/${lang}/l/${nextSlug
       }
     </ol>
   </details>
-  <script is:inline src="/course.js" defer></script>
+  <script is:inline src="/progress.js" defer></script>
 </Base>

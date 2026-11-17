@@ -44,6 +44,12 @@ const text: LessonText<typeof lesson> = {
       title: "Count requests per second",
       body: "The API now keeps a counter per IP for the current second. The first 10 requests pass; from the 11th until the second ends it answers `429` at once, without touching the database.\n\nThe script still sends 900 a second, but 890 of them cost almost nothing. Load drops and the partner is fast again.",
       watch: "A rejection must be cheap. Check the limit before auth lookups, database calls or anything heavy.",
+      check: {
+        q: "The script sends 10 requests at the end of one second and 10 at the start of the next. What gets through?",
+        options: ["10: the limit is 10 per second", "All 20, within 200 ms", "10, and the second batch gets `429`"],
+        answer: 1,
+        why: "Each window counts from zero, so both say 10 of 10. The database gets 20 requests in 200 ms, twice the intended rate, and every check passed.",
+      },
       fields: {
         "429": "Too Many Requests: the standard answer that means “slow down”, not “you are broken”.",
         "Retry-After": "When to try again, in seconds. A polite client waits exactly this long.",
@@ -64,6 +70,16 @@ const text: LessonText<typeof lesson> = {
       short: "Sliding",
       title: "A sliding window looks back",
       body: "The **sliding window** counts the last second at any moment, not the calendar second. A cheap version keeps two counters and weights the previous second by how much of it still overlaps.\n\nThe edge trick stops working: at 12:00:01.250 the script has already spent its budget.",
+      check: {
+        q: "The partner app opens with 25 requests at once, then is quiet for a minute. What does the sliding window do?",
+        options: [
+          "Lets all 25 through: the average is far below the limit",
+          "Holds the extra 15 and sends them next second",
+          "Rejects 15 of them with `429`",
+        ],
+        answer: 2,
+        why: "The sliding window only sees 25 requests in one second, so it allows 10 and rejects 15. A well-behaved client loses requests and the user sees a half-empty screen.",
+      },
       fields: {
         "previous second": "The two counters: the whole last second and the current one so far.",
         estimate: "A quarter of the current second has passed, so three quarters of the previous one still count.",
@@ -94,7 +110,7 @@ const text: LessonText<typeof lesson> = {
     "shared-ip": {
       short: "Shared IP",
       title: "300 people behind one IP",
-      body: "A customer's office of 300 people reaches the internet through one address. To the limiter they look like one very busy client.\n\nThey share 10 requests a second, and most of their work fails with `429`. Meanwhile a script with a hundred cheap IP addresses gets ten times the limit.",
+      body: "A customer's office of 300 people reaches the internet through one address. To the limiter they look like one very busy client.\n\nThey share 10 requests a second, and most of their work fails with `429`. Meanwhile a script with a hundred cheap IP addresses gets a hundred times the limit.",
       watch: "An IP is not a person: NAT, mobile carriers and proxies put many users behind one address.",
       fields: {
         "X-Forwarded-For": "The office's public address, the same for all 300 people.",
@@ -106,6 +122,16 @@ const text: LessonText<typeof lesson> = {
       title: "Limit by key, not by address",
       body: "Authenticated calls are now limited per **API key** (or per user); the IP limit stays only for anonymous endpoints like login, and it is much looser.\n\nEach office user has a separate budget. A script with many IPs but one key gets one key's worth.",
       watch: "Free keys are easy to create. Limit sign-ups too, or a script will simply make a hundred keys.",
+      check: {
+        q: "The API moves to three servers, each counting in its own memory. How much does one key get?",
+        options: [
+          "30 a second: each server allows 10",
+          "10 a second: it is still one key",
+          "About 3 a second: the limit is split three ways",
+        ],
+        answer: 0,
+        why: "The load balancer spreads one key's requests over all three servers, and each allows 10. The script gets 30 a second, and no server reports an error.",
+      },
       fields: {
         "X-Api-Key": "The identity the limit is now counted for. It stays secret in the log.",
         "X-RateLimit-Scope": "Tells the client which limit applies to it: per key here.",

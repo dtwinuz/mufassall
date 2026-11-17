@@ -52,9 +52,19 @@ const text: LessonText<typeof lesson> = {
       title: "Bitta hodisani topic'ga yozish",
       body: "Buyurtmalar endi bitta hodisa, `order.placed`, ni topic'ga yozadi va do'konga javob beradi. Email, ombor va analitika har biri **obuna bo'ladi** va o'sha hodisani o'zi o'qiydi.\n\nTopic diskdagi faqat oxiriga yoziladigan jurnal (append-only log). Buyurtmalar uni kim o'qishini bilmaydi, yangi jamoa shunchaki obuna bo'ladi.",
       watch: "Endi checkout'dagi yagona chaqiruv yozish. U ishonchli bo'lishi shart, aks holda hodisa hamma uchun yo'qoladi.",
+      check: {
+        q: "Topic bor, analitika yana o'chdi. Checkout'ga nima bo'ladi?",
+        options: [
+          "Yana o'sha 5 soniyalik timeout'dan keyin yiqiladi",
+          "Hech narsa: analitika jurnalda orqada qoladi, xolos",
+          "Analitika qaytguncha buyurtmalar yozishni to'xtatadi",
+        ],
+        answer: 1,
+        why: "Buyurtmalar yozishda, email va ombor o'qishda davom etadi. Analitika guruhi faqat offset'ini surmay qo'yadi, lag'i 12 300 hodisaga yetadi, hech biri yo'qolmaydi.",
+      },
       fields: {
-        acks: "`all` — yozuv barcha sinxron broker replica'lariga ko'chirilgandan keyingina producer OK oladi.",
-        event_type: "O'tgan zamondagi fakt: bajar degan buyruq emas, allaqachon bo'lgan voqea.",
+        acks: "`all` — yozuv barcha sinxron broker replikalariga ko'chirilgandan keyingina producer OK oladi.",
+        event_type: "O'tgan zamondagi fakt: bajar degan buyruq emas, allaqachon bo'lgan hodisa.",
         offset: "Yozuvning partition ichidagi o'rni. Har o'quvchi shu jurnalda o'z offset'ini saqlaydi.",
       },
     },
@@ -85,6 +95,16 @@ const text: LessonText<typeof lesson> = {
       title: "Bitta obunachi ulgurmayapti",
       body: "Aksiya buyurtmalarni uch barobar oshirdi. Email va analitika ulguradi, ombor esa har hodisaga bazada update qiladi va 100% yuk bilan ishlaydi.\n\nUning lag'i daqiqasiga minglab o'sadi. Mijozlar allaqachon sotilgan tovarni omborda bor deb ko'radi.",
       watch: "Har obunachining o'z tezligi bor. Topic eng sekinini kutmaydi, butun g'oya shunda.",
+      check: {
+        q: "Ombor 100% yuk bilan ishlaydi, lag'i o'syapti. Boshqa obunachilarni sekinlatmasdan lag'ni nima tushiradi?",
+        options: [
+          "Topic ombor yetib olguncha kutib tursin",
+          "Omborga topic'ning alohida nusxasini berish",
+          "O'sha consumer group'ga ombor servisining ikkinchi nusxasini qo'shish",
+        ],
+        answer: 2,
+        why: "Guruh 6 ta partition'ni ikki ombor nusxasiga uchtadan bo'lib beradi. Ish ikkiga bo'linadi, lag 0 ga tushadi, email va analitika esa alohida guruh bo'lgani uchun har bir hodisani olishda davom etadi.",
+      },
     },
     group: {
       short: "Guruh",
@@ -102,6 +122,16 @@ const text: LessonText<typeof lesson> = {
       title: "Bekor qilish buyurtmadan oldin keldi",
       body: "Mijoz buyurtma beradi va bir soniyadan keyin bekor qiladi. Ikki hodisada kalit yo'q, shuning uchun ular turli partition'larga tushadi va ularni ombor servisining turli nusxalari o'qiydi.\n\nBekor qilish birinchi ishlanadi: hali bekor qiladigan narsa yo'q. Keyin buyurtma hech qachon to'lanmaydigan tovarni band qiladi.",
       watch: "Topic tartibni faqat bitta partition ichida saqlaydi. Partition'lar orasida tartib umuman yo'q.",
+      check: {
+        q: "Buyurtma va bekor qilish turli partition'larga tushdi. Ombor ularni yozilgan tartibda ko'rishi uchun nima kerak?",
+        options: [
+          "Buyurtma ID'sini yozuv kaliti qilish",
+          "Hamma partition'ni bitta ombor nusxasi o'qisin",
+          "Consumer'da hodisalarni `occurred_at` bo'yicha saralash",
+        ],
+        answer: 0,
+        why: "Partition kalitning hash'idan hisoblanadi, shuning uchun `ord_9051`'ning hamma hodisalari 2-partition'ga tushadi va tartibda o'qiladi. Turli buyurtmalar baribir hamma partition'larga tarqaladi, tartibsiz hodisalar 0 ga tushadi.",
+      },
       fields: {
         event_type: "Oldinroq berilgan buyurtmani bekor qilish.",
         partition: "5-partition, `order.placed` esa 2-partition'ga tushgan. O'quvchilar har xil, tartib yo'q.",

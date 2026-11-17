@@ -51,6 +51,16 @@ const text: LessonText<typeof lesson> = {
       short: "2PC",
       title: "Ikki fazali commit: avval hamma ovoz beradi",
       body: "Koordinator (bu yerda Buyurtmalar) har bir ishtirokchidan **prepare** qilishni so'raydi: ishni bajar, qatorlarni qulfla va ovoz ber. Hamma «ha» desa, **commit** yuboradi, aks holda **abort**.\n\nYetim to'lovlar yo'qoldi. Lekin har ishtirokchi qulfni butun aylanish davomida ushlab turadi, p95 uch barobar oshadi.",
+      check: {
+        q: "To'lovlar va Ombor «ha» deb ovoz bergach, Buyurtmalar yiqildi. Ikki ishtirokchi nima qiladi?",
+        options: [
+          "Qulfni ushlab kutadi: o'zicha qaror qila olmaydi",
+          "Timeout'dan keyin o'zi abort qilib qulfni bo'shatadi",
+          "O'zi commit qiladi, chunki hamma «ha» degan",
+        ],
+        answer: 0,
+        why: "Prepare qilgan ishtirokchi yolg'iz na commit, na abort qila oladi: natijani faqat koordinator biladi. Qulflar ushlanib turadi, boshqa buyurtmalar navbatda kutadi, p95 taxminan 9 soniyaga yetadi.",
+      },
       fields: {
         PREPARE: "1-faza: ishni bajar, lekin hali commit qilma.",
         VOTE: "Ishtirokchi commit qila olishini va'da qiladi. Endi u qarorni kutishga majbur.",
@@ -94,6 +104,16 @@ const text: LessonText<typeof lesson> = {
       title: "Xoreografiya: servislar hodisalarga javob beradi",
       body: "Xuddi shu sagani yuritishning boshqa yo'li: orkestrator yo'q. Buyurtmalar `OrderCreated` e'lon qiladi, To'lovlar unga javoban `PaymentCaptured` e'lon qiladi, Ombor esa bunga javob beradi.\n\nServislar bir-biriga kamroq bog'liq, mijoz javobni tezroq oladi. Narxi: jarayon ko'p joyga tarqalgan, «1042 buyurtma qayerda qotdi?» degan savolga hamma servis bo'ylab trace kerak.",
       watch: "Qadamlar ko'p bo'lsa, orkestratsiyani kuzatish osonroq. Xoreografiya kam ishtirokchili qisqa jarayonlarga mos.",
+      check: {
+        q: "Buyurtmalar buyurtmani commit qiladi, keyin hodisani e'lon qiladi. Broker timeout beradi, kod voz kechadi. Nima bo'ladi?",
+        options: [
+          "Broker hodisani keyinroq o'zi yetkazadi",
+          "Baza commit'i rollback bo'ladi, buyurtma saqlanmaydi",
+          "Buyurtma abadiy pending qoladi, ogohlantirish yo'q",
+        ],
+        answer: 2,
+        why: "Baza commit'i allaqachon bajarilgan, hodisa esa faqat xotirada edi. 1042 buyurtma `pending` bo'lib qoladi: hech kim pul yechmaydi, band qilmaydi, yo'qolgan hodisalar kuniga 9 taga yetadi.",
+      },
       fields: {
         key: "Buyurtma ID'si. Bitta buyurtmaning barcha hodisalari bitta partition'ga, tartib bilan tushadi.",
         type: "Nima bo'ldi. Har obunachi bunga nima qilishni o'zi hal qiladi.",
@@ -116,6 +136,16 @@ const text: LessonText<typeof lesson> = {
       short: "Outbox",
       title: "Outbox: hodisa buyurtma bilan birga yoziladi",
       body: "Buyurtmalar buyurtmani **va** hodisani bitta lokal tranzaksiyada `outbox` jadvaliga yozadi. Yo ikkala qator ham bor, yo hech biri yo'q.\n\nAlohida relay outbox'dagi yangi qatorlarni o'qiydi va broker qabul qilmaguncha qayta urinib e'lon qiladi. Hodisa kechikishi mumkin, lekin endi yo'qolmaydi.",
+      check: {
+        q: "Relay `ev_5c1` ni e'lon qiladi va qatorni «yuborildi» deb belgilashdan oldin yiqiladi. Qayta ishga tushgach nima bo'ladi?",
+        options: [
+          "Hodisa yo'qoladi: relay uni unutdi",
+          "Xuddi shu hodisani yana e'lon qiladi",
+          "Broker uni «allaqachon saqlangan» deb rad etadi",
+        ],
+        answer: 1,
+        why: "Qator hali belgilanmagan, shuning uchun relay uni yana yuboradi, broker esa yangi offset bilan saqlaydi. Outbox kamida bir marta kafolat beradi, To'lovlar nusxani `event_id` bo'yicha o'tkazib yuboradi.",
+      },
       fields: {
         BEGIN: "Buyurtmalar bazasida bitta lokal tranzaksiya. Broker qatnashmaydi.",
         outbox: "Hali e'lon qilinmagan hodisalarning oddiy jadvali.",

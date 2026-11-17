@@ -191,8 +191,7 @@ export default defineLesson({
         response: {
           format: "http",
           head: "HTTP/2 200",
-          headers: [["grpc-status", "0"]],
-          body: "QuoteReply { eta_min: 25 fee: 9000 }",
+          body: "QuoteReply { eta_min: 25 fee: 9000 }\ngrpc-status: 0",
         },
         marks: ["Quote", "grpc-timeout", "QuoteRequest", "grpc-status"],
       },

@@ -28,7 +28,7 @@ const text: LessonText<typeof lesson> = {
     sync: {
       short: "Sinxron",
       title: "Hamma ish javobdan oldin",
-      body: "Tashqi tizim callback yuboradi. API hujjatni tekshiradi, bazaga yozadi va faqat shundan keyin javob beradi.\n\nIsh og'ir bo'lsa, javob sekundlab kechikadi. Yuboruvchi tomonning esa o'z timeout'i bor.",
+      body: "Tashqi tizim callback yuboradi. API hujjatni tekshiradi, bazaga yozadi va faqat shundan keyin javob beradi.\n\nIsh og'ir bo'lsa, javob soniyalab kechikadi. Yuboruvchi tomonning esa o'z timeout'i bor.",
       watch: "Callback yuboruvchi sizning ishingiz tugashini cheksiz kutmaydi. Timeout bo'lsa, u qayta yuboradi yoki voz kechadi.",
       fields: {
         "X-Signature": "Yuboruvchi tanani imzolaydi: haqiqiy callback'ni soxtasidan ajratish uchun. Bu sir, shuning uchun bu yerda yashirilgan.",
@@ -41,6 +41,16 @@ const text: LessonText<typeof lesson> = {
       title: "Xato bo'lsa ham `200 OK`",
       body: "Bazaga yozish yarim yo'lda yiqildi. Kod istisnoni ushlab qoldi va baribir muvaffaqiyat qaytardi.\n\nTashqi tizim xabar yetib bordi deb hisoblaydi va qayta yubormaydi. Ma'lumot jim yo'qoladi: na log'da, na ekranda ko'rinadi.",
       watch: "Muvaffaqiyat javobi — bu va'da: «men buni saqladim». Saqlamagan bo'lsangiz, xato qaytaring, shunda yuboruvchi qayta urinadi.",
+      check: {
+        q: "`200` «saqlandi» degani bo'lishi kerak, lekin to'liq ish 4 s ga yaqin. Javobni ham halol, ham tez nima qiladi?",
+        options: [
+          "Yuboruvchidan timeout'ni 10 s ga oshirishni so'rash",
+          "Darhol `200` qaytarib, fonda saqlash",
+          "Xom xabarni inbox jadvaliga yozib, keyin javob berish",
+        ],
+        answer: 2,
+        why: "API xabarni kelgan holicha `inbox` jadvaliga yozadi va shundan keyin `200` qaytaradi. Javob soniyalardan 45 ms atrofiga tushadi, hech narsa yo'qolmaydi: xabar javobdan oldin saqlangan.",
+      },
       fields: {
         ERROR: "Baza yozuvni rad etdi. Bu `5xx` javobiga aylanishi kerak edi.",
         ROLLBACK: "Hech narsa saqlanmadi. Yuboruvchi esa baribir `200 OK` oldi.",
@@ -71,6 +81,16 @@ const text: LessonText<typeof lesson> = {
       title: "Ack juda erta berildi",
       body: "Worker xabarni olishi bilan navbatga «qabul qildim» (`ack`) deydi va keyin ishlay boshlaydi. Ish o'rtasida worker yiqildi.\n\nNavbat xabarni allaqachon o'chirgan, worker esa ishni tugatmagan. Xabar yo'qoldi.",
       watch: "`autoAck` qulay ko'rinadi, lekin u «yetkazildi» degani, «bajarildi» emas.",
+      check: {
+        q: "Worker endi ack'ni faqat natija yozilgandan keyin beradi. Nima o'zgaradi?",
+        options: [
+          "Hech narsa yo'qolmaydi va ikki marta ishlanmaydi",
+          "Hech narsa yo'qolmaydi, lekin ba'zi xabarlar ikki marta keladi",
+          "Navbat sekin ack'larni kutib qotib qoladi",
+        ],
+        answer: 1,
+        why: "Worker yiqilsa, navbat xabarni qayta yetkazadi, yo'qotish nolga tushadi. Lekin qisman ishlangan xabar yana keladi: daqiqasiga 4 ga yaqin takror.",
+      },
       fields: {
         auto_ack: "Navbat xabarni jo'natgan zahoti uni ishlangan deb hisoblaydi, worker hali hech narsa qilmagan.",
       },

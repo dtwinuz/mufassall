@@ -29,6 +29,16 @@ const text: LessonText<typeof lesson> = {
       short: "Transfer",
       title: "A transfer is two writes",
       body: "A user sends 50 000 from account `acc_42` to `acc_77`. The API runs two statements: take from one, add to the other.\n\nEach statement commits on its own (autocommit). Most of the time both succeed and nobody notices the gap between them.",
+      check: {
+        q: "The API process is killed right after the first `UPDATE` returns. What is left in the database?",
+        options: [
+          "Nothing changed: the database undoes the half transfer",
+          "Both changes: the second `UPDATE` is replayed later",
+          "acc_42 lost 50 000, and acc_77 never got it",
+        ],
+        answer: 2,
+        why: "With autocommit the first `UPDATE` was saved for good the moment it returned. The credit was never sent, and nothing in the database says a transfer was in progress, so the 50 000 is simply gone.",
+      },
       fields: {
         acc_42: "The sender. The first statement takes the money here.",
         acc_77: "The receiver. The second statement adds the money here.",
@@ -67,7 +77,17 @@ const text: LessonText<typeof lesson> = {
     "dirty-read": {
       short: "Dirty read",
       title: "Reading someone else's draft",
-      body: "A nightly report sums all balances. At the same moment a transfer has taken from `acc_42` but not yet added to `acc_77`. At the lowest isolation level the report sees this draft.\n\nThe total is 50 000 short, and if the transfer rolls back, the report used money that never existed. The default level in most databases, `READ COMMITTED`, never shows uncommitted rows.",
+      body: "A nightly report sums all balances. At the same moment a transfer has taken from `acc_42` but not yet added to `acc_77`. At the lowest isolation level the report sees this draft.\n\nThe total is 50 000 short, and if the transfer rolls back, the report used money that never existed. `READ COMMITTED`, the default in PostgreSQL, Oracle and SQL Server, never shows uncommitted rows. PostgreSQL does not allow dirty reads at all: it runs `READ UNCOMMITTED` as `READ COMMITTED`.",
+      check: {
+        q: "Two servers pay 50 000 and 30 000 from acc_42 (200 000): each reads, subtracts in code, writes back. Balance?",
+        options: [
+          "120 000: `READ COMMITTED` makes the second wait",
+          "170 000: the second write overwrites the first",
+          "An error: the database rejects the second write",
+        ],
+        answer: 1,
+        why: "Both read 200 000 before either committed. The 30 000 payment writes 170 000 over the 150 000, so 50 000 is taken from the user but missing from the balance. `READ COMMITTED` does not stop this.",
+      },
       fields: {
         "READ UNCOMMITTED": "The weakest level: reads see other transactions' unsaved changes. Few databases even allow it.",
         SUM: "The report reads every row, including the one in the middle of a transfer.",
@@ -91,6 +111,16 @@ const text: LessonText<typeof lesson> = {
       title: "Lock the row while you read it",
       body: "The read now takes a row lock: `SELECT ... FOR UPDATE`. A second transaction that wants the same row waits until the first commits, then reads the fresh value.\n\nThis is **pessimistic** locking: assume a conflict and queue everyone up front. Cheap when transactions are short.",
       watch: "For a plain debit even simpler works: `SET balance = balance - 50000 WHERE balance >= 50000` in one statement, no read needed.",
+      check: {
+        q: "A fraud check (300 ms to 2 s) is called between `FOR UPDATE` and the write. What happens under load?",
+        options: [
+          "Payments to busy accounts queue up; p95 jumps",
+          "Nothing: the lock lasts only a few milliseconds",
+          "The database aborts it with a deadlock error",
+        ],
+        answer: 0,
+        why: "The row stays locked for the whole external call. Other payments to the same account wait behind it, connections pile up and transfer p95 jumps to 1.4 s.",
+      },
       fields: {
         "FOR UPDATE": "Locks the selected rows until this transaction ends. Others can still read, but cannot lock or change them.",
         waits: "The second payment blocks here. It never sees the old balance.",

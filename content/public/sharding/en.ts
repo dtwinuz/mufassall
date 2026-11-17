@@ -60,6 +60,16 @@ const text: LessonText<typeof lesson> = {
       short: "Hash",
       title: "Shard by a hash of chat_id",
       body: "The new shard key is `chat_id`, and the shard is `hash(chat_id) % 3`. A good hash scatters chats evenly, so new and old chats are mixed on all three shards.\n\nAll messages of one chat live on one shard, so \"open chat c_8812\" touches one server. Load is 33–35% everywhere, p95 22 ms.",
+      check: {
+        q: "A new feature lists all messages a user sent, filtered by `sender_id`. How does the API run it?",
+        options: [
+          "It asks only the shard that holds this user",
+          "It refuses: every query must carry the shard key",
+          "It asks all three shards and waits for the slowest",
+        ],
+        answer: 2,
+        why: "`sender_id` is not the shard key, so any shard may hold the rows. The API asks all three and merges the answers; shard 2 needs 612 ms, so the whole query takes 615 ms.",
+      },
       fields: {
         chat_id: "The key matches the most common query: messages of one chat.",
         hash: "Turns similar ids into far-apart numbers, so neighbours do not pile up on one shard.",
@@ -90,6 +100,12 @@ const text: LessonText<typeof lesson> = {
       short: "Split key",
       title: "Split the hot chat into buckets",
       body: "For chats marked hot, the key becomes `(chat_id, bucket)`, where bucket is `msg_id % 8`. The eight buckets of `c_1` hash to different shards, so its writes are spread over all of them.\n\nThe cost: reading the latest messages of `c_1` now asks every shard and merges. That is acceptable for a handful of hot chats, not for all of them.",
+      check: {
+        q: "We add shard 3 and change routing from `hash % 3` to `hash % 4`. How much data has to move?",
+        options: ["Only shard 3's fair share, about 25%", "About 75% of all rows", "None: only new rows go to shard 3"],
+        answer: 1,
+        why: "A row stays only if `hash % 3` equals `hash % 4`, one row in four. The mover must copy 5.2 billion rows under load, which would take about nine days.",
+      },
       fields: {
         "hot chat": "Only a few chats get buckets. Normal chats stay on one shard.",
         bucket: "Part of the key. Bucket 5 of `c_1` lands on shard 0; others land elsewhere.",

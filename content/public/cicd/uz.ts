@@ -55,6 +55,16 @@ const text: LessonText<typeof lesson> = {
       short: "Rolling",
       title: "Rolling deploy: bir vaqtda bitta server",
       body: "CI serverlarni birma-bir almashtiradi. Har yangi server load balancer unga trafik yuborishidan va keyingi eski server to'xtatilishidan oldin health check'dan o'tishi kerak.\n\nUzilish yo'q, qo'shimcha server ham kerak emas. Lekin almashtirish davomida eski va yangi versiya foydalanuvchilarga bir vaqtda xizmat qiladi, shuning uchun ikkalasi bir xil baza va API'lar bilan ishlay olishi shart.",
+      check: {
+        q: "Keyingi build bitta checkout yo'lini buzadi, lekin `/healthz` hali ham ok deydi. Almashtirish qanday o'tadi?",
+        options: [
+          "Birinchi serverda to'xtaydi: health check uni to'sadi",
+          "Tuzatilguncha checkout so'rovlari faqat eski serverlarga boradi",
+          "Oltita serverning hammasiga yetadi; rollback 25 daqiqa oladi",
+        ],
+        answer: 2,
+        why: "Health check faqat jarayon tirikligini tekshiradi, shuning uchun har server undan o'tadi va trafik oladi. So'rovlarning 12% i yiqiladi, eski versiyani oltita serverdan qayta o'tkazish esa 25 daqiqa oladi.",
+      },
       fields: {
         healthz: "Load balancer har bir necha soniyada chaqiradigan endpoint.",
         status: "`ok` — jarayon tirik degani. Checkout ishlayapti degani emas.",
@@ -86,6 +96,16 @@ const text: LessonText<typeof lesson> = {
       short: "Canary",
       title: "Canary: avval foydalanuvchilarning 5% i",
       body: "Keyingi release green'ga tushadi, lekin load balancer unga so'rovlarning faqat 5% ini yuboradi. CI oxirgi uch daqiqadagi ikki to'plamning xato darajasini solishtiradi.\n\nGreen'da 4.1%, blue'da 0.3%. Yangi xato, lekin uni yigirma foydalanuvchidan faqat bittasi va bir necha daqiqa ko'radi.",
+      check: {
+        q: "Tungi soat 3 da green'da xato 4.1%, blue'da 0.3%. Keyin nima bo'ladi?",
+        options: [
+          "Pipeline'dagi qoida green og'irligini nolga tushiradi",
+          "Navbatchi muhandis uyg'onguncha green 5% ni olishda davom etadi",
+          "CI eski versiyani yana oltita serverdan o'tkazadi",
+        ],
+        answer: 0,
+        why: "Qoida pipeline'da yozilgan: canary xatosi uch daqiqa davomida barqaror to'plamnikidan ikki baravar ko'p bo'lsa, og'irligi nolga tushadi va release yomon deb belgilanadi. Hech kim uyg'oq turishi shart emas, butun trafik blue'ga qaytadi.",
+      },
       fields: {
         weight: "Trafik ulushi foizda. Blue 95 ni saqlaydi.",
         error_rate: "Oyna davomidagi xatolar foizda. Ikki to'plam yonma-yon solishtiriladi.",

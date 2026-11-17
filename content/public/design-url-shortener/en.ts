@@ -31,6 +31,16 @@ const text: LessonText<typeof lesson> = {
       short: "Estimate",
       title: "What we are building, and how big",
       body: "Two calls: `POST /api/links` turns a long URL into a short code, and `GET /<code>` redirects to it. Say 100 million new links a month: about **40 writes/s**. Links are clicked far more than created, roughly 100:1, so about **4 000 redirects/s** on average and three times that at peak.\n\nStorage: 6 billion links over five years at about 500 bytes each is about 3 TB. A 7-character base62 code gives 62^7 ≈ 3.5 trillion values, plenty of room. The system is read-heavy: every design choice below protects the redirect path.",
+      check: {
+        q: "First idea: the code is the first 7 base62 characters of the URL's MD5. What goes wrong as links grow?",
+        options: [
+          "Nothing: 62^7 values is plenty of room",
+          "Different URLs collide and inserts fail",
+          "Codes become guessable one after another",
+        ],
+        answer: 1,
+        why: "Truncating the hash throws away most of its bits, so different URLs start to share a code. Each collision is a failed insert and a retry: about 40 a day here, and more as the table grows.",
+      },
       fields: {
         long_url: "The destination. Validate it: scheme, length, and a blocklist of known phishing hosts.",
         code: "The short key. It is the primary key in the links table and the cache key later.",
@@ -61,6 +71,16 @@ const text: LessonText<typeof lesson> = {
       short: "Redirect",
       title: "The redirect: 302, not 301",
       body: "A click arrives as `GET /8sujL`. The API finds the long URL and answers with a redirect status and a `Location` header. The browser follows it.\n\nA **301** (permanent) is cached by the browser: the next click never reaches us. That saves load but we lose click counts and cannot change or expire the link. A **302** (temporary) brings every click back to us. We pick 302 and pay for it with traffic.",
+      check: {
+        q: "Traffic reaches 4 000 redirects/s, each one a lookup on the primary. What breaks?",
+        options: [
+          "The primary saturates; p99 climbs to 900 ms",
+          "Nothing: one indexed lookup is under 1 ms",
+          "Browsers start caching the 302 responses",
+        ],
+        answer: 0,
+        why: "The primary also takes all the writes. Its CPU hits 96% and each lookup waits in line, so p99 goes from 30 ms to 900 ms, although the data barely changes.",
+      },
       fields: {
         "302": "Temporary redirect: the browser must ask again next time.",
         Location: "Where the browser goes next: the stored long URL.",
@@ -70,7 +90,7 @@ const text: LessonText<typeof lesson> = {
     "read-flood": {
       short: "Read flood",
       title: "Every click is a database read",
-      body: "Traffic grows to 4 000 redirects/s. Each one runs the same lookup on the primary, which also takes all the writes. Its CPU sits at 96% and p99 climbs to 900 ms.\n\nThe data barely changes: a link is written once and read thousands of times. Reading it from the database every time is the waste.",
+      body: "Traffic reaches the 4 000 redirects/s from the estimate. Each one runs the same lookup on the primary, which also takes all the writes. Its CPU sits at 96% and p99 climbs to 900 ms.\n\nThe data barely changes: a link is written once and read thousands of times. Reading it from the database every time is the waste.",
       fields: {
         code: "The lookup key. The index is fine; the problem is the sheer number of lookups.",
         Time: "Normally under a millisecond. Under this load the query waits in line for CPU.",
@@ -91,6 +111,16 @@ const text: LessonText<typeof lesson> = {
       title: "Cache misses go to a read replica",
       body: "The remaining misses move to a read replica that streams changes from the primary. The primary now handles writes and almost nothing else; we can add more replicas as reads grow.\n\nReplication is asynchronous, so a replica is a little behind. Here the lag is 180 ms.",
       watch: "A link created and clicked within the lag misses on the replica and would get 404. On a miss, ask the primary before answering 404, or put the new link in the cache when you create it.",
+      check: {
+        q: "Marketing wants click counts, so each redirect runs `clicks = clicks + 1`. What happens on a viral link?",
+        options: [
+          "Nothing: the cache absorbs the extra load",
+          "Counts drift because the replica lags 180 ms",
+          "Updates queue on one row; p99 jumps to 320 ms",
+        ],
+        answer: 2,
+        why: "Writes cannot go to the cache or a replica: 4 000 reads/s become 4 000 writes/s on the primary. A viral link means thousands of updates to one row; they wait on its lock, and the redirect waits with them.",
+      },
       fields: {
         lag: "How far the replica is behind the primary. Watch it; alert when it grows past a few seconds.",
       },

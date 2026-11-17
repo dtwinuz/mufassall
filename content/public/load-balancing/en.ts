@@ -31,6 +31,16 @@ const text: LessonText<typeof lesson> = {
       short: "L4",
       title: "An L4 balancer moves connections",
       body: "The balancer works at the transport layer (L4). It sees IP addresses and ports, picks a server when a TCP connection opens, and then just copies bytes both ways.\n\nIt is fast and simple, and it never decrypts anything. But it does not know what an HTTP request is.",
+      check: {
+        q: "A partner sends 400 requests a second over one keep-alive connection. What does the L4 balancer do?",
+        options: [
+          "Spreads the requests evenly over A, B and C",
+          "Keeps all of them on the one server it picked",
+          "Closes the connection once it gets too busy",
+        ],
+        answer: 1,
+        why: "L4 decides once per connection. The partner's connection stays on A, which hits 96% while B and C sit at 22%, and p99 rises to 900 ms.",
+      },
       fields: {
         TCP: "The balancer's whole view: who connects to which port.",
         TLS: "The traffic is encrypted end to end. The balancer cannot see paths or headers.",
@@ -70,6 +80,16 @@ const text: LessonText<typeof lesson> = {
       short: "Heavy",
       title: "Same count, very different work",
       body: "A new report export takes 4 seconds per request; a normal request takes 13 ms. By bad luck, several exports land on C in a row, and round robin keeps sending C its fair share of everything else.\n\nC is at 98% with a long queue; A and B have room. p99 jumps to 2.6 s.",
+      check: {
+        q: "An export takes 4 s, a normal request 13 ms. Which rule takes pressure off the busy server?",
+        options: [
+          "Send each request to the server with fewest active",
+          "Keep round robin and add a fourth server",
+          "Pin each user to one server with a cookie",
+        ],
+        answer: 0,
+        why: "Least connections tracks requests in progress, so C, busy with exports, gets fewer new ones. The busiest server drops from 98% to 72%, p99 from 2.6 s to 380 ms.",
+      },
       fields: {
         export: "One of these is as much work as about 300 normal requests.",
         "Server-Timing": "4.1 s of work. Round robin counts it as one request, like any other.",
@@ -104,6 +124,16 @@ const text: LessonText<typeof lesson> = {
       title: "Health checks remove a dead server",
       body: "Every 2 seconds the balancer calls `/healthz` on each server. After 3 failures in a row, B is taken out of the pool and its traffic moves to A and C.\n\nErrors drop from 25% to almost zero: only requests in the few seconds before detection fail. When B answers again, it is added back.",
       watch: "Keep `/healthz` cheap and honest. If it checks the database, a database blip can mark every server dead at once.",
+      check: {
+        q: "B is back, but carts live in server memory, so users are pinned by a cookie. How is the load?",
+        options: [
+          "Even: the balancer still picks the freest server",
+          "Even, but each request pays for a cookie check",
+          "Uneven: B idles at 15% while A runs at 85%",
+        ],
+        answer: 2,
+        why: "Stickiness overrides the algorithm: users already pinned to A stay there, and almost nobody is pinned to the returned B. A runs at 85%, B at 15%, and p99 rises to 700 ms.",
+      },
       fields: {
         healthz: "A tiny endpoint: “I am up and can serve requests.”",
         "3 of 3": "Several failures in a row, so one slow answer does not throw a server out.",

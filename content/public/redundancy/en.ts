@@ -60,6 +60,16 @@ const text: LessonText<typeof lesson> = {
       short: "Replica",
       title: "A standby copy of the database",
       body: "A database cannot simply be doubled: two servers taking writes on their own would disagree. So DB 2 is a **replica**: it receives the primary's write-ahead log and replays it.\n\nThis is **active-passive**: DB 1 takes all writes, DB 2 follows a fraction of a second behind and waits.",
+      check: {
+        q: "DB 1 loses power. DB 2 has the data. What happens to new bookings?",
+        options: [
+          "DB 2 takes over writes by itself within seconds",
+          "The apps keep writing to DB 2 as it is",
+          "They fail until someone promotes DB 2 by hand",
+        ],
+        answer: 2,
+        why: "DB 2 is a read-only replica, so every write fails. Someone must notice, decide and promote it: about twenty minutes at night.",
+      },
       fields: {
         START_REPLICATION: "DB 2 asks the primary to stream its log from this position on.",
         WAL: "Write-ahead log: every change in order. Replaying it rebuilds the same data.",
@@ -81,6 +91,16 @@ const text: LessonText<typeof lesson> = {
       title: "Automatic failover",
       body: "A small cluster manager watches DB 1. After 10 seconds without an answer it **promotes** DB 2 to primary and points the name `db-primary.internal` at it.\n\nThe app servers reconnect to the same name and reach DB 2. Writes come back in about 30 seconds.",
       watch: "Failing over too quickly is risky too: a short network blip should not trigger a switch.",
+      check: {
+        q: "Replication is asynchronous. After failover, what about bookings DB 1 confirmed just before it died?",
+        options: [
+          "Some are gone: they never reached DB 2",
+          "All are safe: DB 2 replays them after promotion",
+          "They wait on DB 1 and merge back later",
+        ],
+        answer: 0,
+        why: "DB 1 confirmed writes before sending them to DB 2. 2.1 seconds of confirmed bookings existed only on its disk, so 240 guests were told “booked” and the booking is gone.",
+      },
       fields: {
         "db-primary.internal": "The apps never use a server's own address, only this role name.",
         "192.0.2.121": "Now DB 2's address. A 5-second TTL makes the apps notice quickly.",
@@ -123,6 +143,16 @@ const text: LessonText<typeof lesson> = {
       title: "Confirm only after the replica has it",
       body: "Booking writes now use **synchronous** replication: the primary answers “committed” only after the replica confirms it has the change on disk.\n\nA crash can no longer lose a confirmed booking. The price is one extra round trip on every write: about 3 ms between two zones.",
       watch: "If the only sync replica dies, writes stop. Production setups keep two replicas and wait for either one.",
+      check: {
+        q: "Zone B loses power: app 2 and DB 2 go down together. What do guests see?",
+        options: [
+          "A full outage until zone B is back",
+          "About 30 s of slower answers, no lost bookings",
+          "The site stays up, but the last seconds of bookings are lost",
+        ],
+        answer: 1,
+        why: "The load balancer drops app 2 and the cluster manager promotes DB 1. With sync replication DB 1 already had every confirmed write, so nothing is lost.",
+      },
       fields: {
         synchronous_commit: "Wait for the replica's confirmation before telling the client “done”.",
         COMMIT: "The guest gets “booked” only after this returns.",

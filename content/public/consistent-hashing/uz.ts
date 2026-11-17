@@ -29,7 +29,17 @@ const text: LessonText<typeof lesson> = {
     modulo: {
       short: "hash % 3",
       title: "Uchta kesh, bitta qoida: `hash % 3`",
-      body: "API sekundiga 5 000 ga yaqin profil o'qiydi. Har bir kalit uchta keshdan biriga tushadi: kalitning hash'ini olamiz, 3 ga bo'lamiz, qoldiq kesh raqami bo'ladi.\n\nO'qishlarning 95% i keshdan topiladi (cache hit). Bazaga sekundiga atigi 250 ta so'rov boradi.",
+      body: "API soniyasiga 5 000 ga yaqin profil o'qiydi. Har bir kalit uchta keshdan biriga tushadi: kalitning hash'ini olamiz, 3 ga bo'lamiz, qoldiq kesh raqami bo'ladi.\n\nO'qishlarning 95% i keshdan topiladi (cache hit). Bazaga soniyasiga atigi 250 ta so'rov boradi.",
+      check: {
+        q: "To'rtinchi kesh qo'shildi va qoida `hash % 4` bo'ldi. Hit rate nima bo'ladi?",
+        options: [
+          "O'sadi: ko'proq xotira ko'proq kalit sig'diradi",
+          "~24% gacha tushadi: kalitlarning ko'pi ko'chadi",
+          "Chorakka kamayadi: faqat D kesh bo'sh",
+        ],
+        answer: 1,
+        why: "3 → 4 node'da faqat to'rtta kalitdan bittasi qoldig'ini saqlaydi, shuning uchun o'qishlarning to'rtdan uch qismi endi noto'g'ri keshga qaraydi. Hit rate 95% dan 24% ga tushadi.",
+      },
       fields: {
         GET: "`hash(\"user:u_42\") = 2718281827`, `2718281827 % 3 = 1`, demak kalit B keshda turadi.",
         u_42: "Kalit ichidagi foydalanuvchi ID'si. Har bir API server unga bir xil keshni hisoblaydi, jadvalga qaramasdan.",
@@ -48,7 +58,7 @@ const text: LessonText<typeof lesson> = {
     "db-flood": {
       short: "Baza to'ldi",
       title: "Har bir miss bazaga tushadi",
-      body: "Hit rate 95% dan 24% ga tushdi. Baza sekundiga 250 o'qishdan 3 800 ga chiqdi, vaholanki u bir necha yuz so'rovga mo'ljallangan.\n\nSo'rovlar navbatga tiziladi, oddiy o'qish 410 ms oladi, API timeout bo'ladi. Kesh qo'shish yangi joylashuv qizigunicha tizimni sekinlashtirdi.",
+      body: "Hit rate 95% dan 24% ga tushdi. Baza soniyasiga 250 o'qishdan 3 800 ga chiqdi, vaholanki u bir necha yuz so'rovga mo'ljallangan.\n\nSo'rovlar navbatga tiziladi, oddiy o'qish 410 ms oladi, API timeout bo'ladi. Kesh qo'shish yangi keshlar to'lgunicha tizimni sekinlashtirdi.",
       watch: "Baza tayanadigan keshni birdaniga bo'shatib bo'lmaydi.",
       fields: {
         users: "Kesh ortidagi jadval. Uning odatiy yuki — 5% miss'lar.",
@@ -87,6 +97,16 @@ const text: LessonText<typeof lesson> = {
       short: "Vnode'lar",
       title: "Virtual node'lar: har bir keshga ko'p kichik nuqta",
       body: "Endi har bir keshga halqada 128 ta nuqta beriladi (`cache-a#0` … `cache-a#127`), har biri o'z hash'idan. 512 ta kichik yoy o'rtachalashadi: har bir kesh 25% ga juda yaqin qismga ega bo'ladi.\n\nQidiruv o'sha-o'sha: soat strelkasi bo'yicha keyingi nuqta, keyin shu nuqta egasi bo'lgan kesh. Kuchliroq keshga shunchaki ko'proq nuqta berish mumkin.",
+      check: {
+        q: "Har keshda 128 ta nuqta bor va B kesh o'ldi. Uning kalitlari qayerga ketadi?",
+        options: [
+          "Hammasi B dan soat strelkasi bo'yicha keyingi keshga",
+          "Hech qayerga: B qaytguncha miss bo'ladi",
+          "A, C va D ga deyarli teng",
+        ],
+        answer: 2,
+        why: "B ning 128 ta kichik yoyi soat strelkasi bo'yicha keyingi nuqtalarga o'tadi, bu nuqtalar esa A, C va D ga deyarli teng tegishli. Kalitlarning ~25% i ko'chadi, har tirik node B yukining uchdan birini oladi.",
+      },
       fields: {
         vnodes: "Virtual node'lar: halqadagi, hammasi bitta haqiqiy serverga olib boradigan nuqtalar.",
         "cache-c#17": "C keshning 17-nuqtasi. Turli keshlarning nuqtalari butun halqa bo'ylab aralashib turadi.",
@@ -106,7 +126,7 @@ const text: LessonText<typeof lesson> = {
     recap: {
       short: "Xulosa",
       title: "Xulosa",
-      body: "`hash % N` N hech qachon o'zgarmaguncha yaxshi. N o'zgarsa, deyarli har bir kalit ko'chadi.\n\n1) Node'lar va kalitlarni bitta halqaga qo'ying; kalit soat strelkasi bo'yicha keyingi node'ga tegishli. 2) Node qo'shilsa yoki chiqsa, kalitlarning faqat ~1/N qismi ko'chadi. 3) Har bir node'ga ko'p virtual nuqta bering, shunda yoylar va yuk tenglashadi. 4) Barcha mijozlar bir xil node ro'yxatini ishlatishi kerak.",
+      body: "`hash % N` N hech qachon o'zgarmaguncha yaxshi. N o'zgarsa, deyarli har bir kalit ko'chadi.\n\n1) Node'lar va kalitlarni bitta halqaga qo'ying; kalit soat strelkasi bo'yicha keyingi node'ga tegishli. 2) Node qo'shilsa yoki chiqsa, kalitlarning faqat ~1/N qismi ko'chadi. 3) Har bir node'ga ko'p virtual nuqta bering, shunda yoylar va yuk tenglashadi. 4) Barcha klientlar bir xil node ro'yxatini ishlatishi kerak.",
     },
   },
 };

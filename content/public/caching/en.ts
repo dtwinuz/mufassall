@@ -38,7 +38,17 @@ const text: LessonText<typeof lesson> = {
     "cache-aside": {
       short: "Cache-aside",
       title: "Look in the cache first",
-      body: "A cache sits next to the API. The API now asks the cache first, by key. If the key is there, the database is not touched.\n\nThe cache starts empty, so the first answer is «nothing here». That is a **miss**: the API goes to the database as before.",
+      body: "A cache sits next to the API. The API now asks the cache first, by key. If the key is there, the database is not touched.\n\nThe cache starts empty, so the first answer is “nothing here”. That is a **miss**: the API goes to the database as before.",
+      check: {
+        q: "After a miss the API stores the row with a 300 s TTL. What happens to database reads?",
+        options: [
+          "They stay at 2400/s: every request still checks the database",
+          "They drop to zero at once",
+          "They fall almost tenfold once keys are filled",
+        ],
+        answer: 2,
+        why: "Only the first reader of a key goes to the database; the rest read memory for 300 seconds. Reads fall from 2400/s to about 290/s, not to zero, because keys still expire and miss.",
+      },
       fields: {
         "product:1042": "One key per product. The key name is the contract between everyone who reads and writes it.",
         "(nil)": "A miss. The cache does not have this key yet.",
@@ -57,6 +67,16 @@ const text: LessonText<typeof lesson> = {
       short: "Hit",
       title: "A hit: answer from memory",
       body: "Now most requests find the key. A hit takes about a millisecond instead of tens.\n\nThe **hit ratio** is the share of reads answered by the cache. At 94%, only 6 reads in 100 reach the database.",
+      check: {
+        q: "The manager lowers the price in the database. What do buyers see on the product page?",
+        options: [
+          "The old price, for up to 5 minutes",
+          "The new price: the database is the source of truth",
+          "An error until the cache and database agree",
+        ],
+        answer: 0,
+        why: "Nobody told the cache about the write. It keeps serving the old copy until the 300-second TTL runs out.",
+      },
       fields: {
         GET: "One lookup by key. No query, no join.",
         price: "The price as of the moment the key was written. Remember this.",
@@ -87,6 +107,16 @@ const text: LessonText<typeof lesson> = {
       title: "A hot key expires during a sale",
       body: "At 08:00 a sale starts and thousands of people open the same product. At that moment its key expires.\n\nEvery one of them misses at the same instant and every one goes to the database with the same query. The database chokes on 2814 identical reads.",
       watch: "The hotter the key, the more dangerous its expiry.",
+      check: {
+        q: "2814 requests miss the same hot key at once. What brings the database back to one query?",
+        options: [
+          "Give that key a much longer TTL",
+          "One request rebuilds under a lock, the rest wait",
+          "Every request retries until the database answers",
+        ],
+        answer: 1,
+        why: "With an `NX` lock exactly one caller reads the database and refills the key. The other 2813 wait about 20 ms and read the cache, so database reads drop back to about 150/s.",
+      },
       fields: {
         expired: "The TTL ran out: normal behaviour, bad timing.",
         MISS: "2814 misses for one key within a few milliseconds.",

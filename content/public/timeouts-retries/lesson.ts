@@ -264,7 +264,7 @@ circuit rates: HALF_OPEN -> CLOSED`,
         request: charge("o_9152-charge"),
         response: {
           format: "json",
-          head: "HTTP/1.1 200 OK",
+          head: "HTTP/1.1 201 Created",
           headers: [["Idempotent-Replayed", "true"]],
           body: `{
   "charge_id": "ch_1",

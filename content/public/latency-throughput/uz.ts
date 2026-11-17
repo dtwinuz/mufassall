@@ -8,7 +8,7 @@ const text: LessonText<typeof lesson> = {
   learn: [
     "Kechikish (latency) va o'tkazuvchanlik (throughput), ular ishlov berilayotgan so'rovlar soni orqali qanday bog'langan",
     "p50, p95 va p99 ni o'qish va o'rtacha qiymat nega aldaydi",
-    "Server 100% ga yaqinlashganda kutish vaqti nega portlaydi",
+    "Server 100% ga yaqinlashganda kutish vaqti nega keskin oshadi",
     "Ortiqcha yukni erta rad etish va sekin ishni so'rov yo'lidan olib tashlash",
   ],
   nodes: {
@@ -67,7 +67,7 @@ const text: LessonText<typeof lesson> = {
     rush: {
       short: "Tig'iz soat",
       title: "Tig'iz soat: server 93% band",
-      body: "Kechqurun trafik ikki baravar oshib, soniyasiga 450 ga yetadi. API 440 tasini uddalaydi, yuki 93% ga chiqadi.\n\nHech bir so'rov og'irlashmadi, lekin mediana 41 dan 180 ms ga sakradi. So'rovlar endi ish boshlanishidan oldin bo'sh worker'ni navbatda kutadi.",
+      body: "Kechqurun trafik ikki baravardan ko'proq oshib, soniyasiga 450 ga yetadi. API 440 tasini uddalaydi, yuki 93% ga chiqadi.\n\nHech bir so'rov og'irlashmadi, lekin mediana 41 dan 180 ms ga sakradi. So'rovlar endi ish boshlanishidan oldin bo'sh worker'ni navbatda kutadi.",
       fields: {
         "Server-Timing": "139 ms navbatda kutish, 41 ms haqiqiy ish. Ish o'zgarmadi, kutish o'zgardi.",
       },
@@ -77,12 +77,32 @@ const text: LessonText<typeof lesson> = {
       title: "Nega 90% allaqachon ko'p",
       body: "Har bir mijozga 1 daqiqa sarflaydigan kassirni tasavvur qiling. U 50% band bo'lsa, taxminan 1 daqiqa kutasiz; 80% da 4 daqiqa; 90% da 9; 95% da 19. Kutish `yuk / (1 − yuk)` kabi o'sadi.\n\nShuning uchun egri chiziq uzoq vaqt tekis turadi, keyin keskin yuqoriga buriladi. 90% da ishlashga mo'ljallangan serverda to'satdan kelgan to'lqin, sekin so'rov yoki qo'shni serverning yo'qolishi uchun joy qolmaydi.",
       watch: "Quvvatni o'rtacha trafik uchun 90% da emas, eng yuqori trafik uchun taxminan 60–70% yukda rejalashtiring.",
+      check: {
+        q: "93% yukda ilova 3 s dan keyin voz kechib, darhol qayta urinadi. Foydali o'tkazuvchanlik nima bo'ladi?",
+        options: [
+          "Oshadi: urinish ko'p, muvaffaqiyat ham ko'p",
+          "440 da turadi: server allaqachon to'la band",
+          "Tushadi: qayta urinishlar o'sha tiqilgan navbatni to'ldiradi",
+        ],
+        answer: 2,
+        why: "Har qayta urinish o'sha navbatdagi yangi so'rov, server esa allaqachon ketgan mijozlar uchun ham ishlayveradi. Foydali o'tkazuvchanlik soniyasiga 440 dan 380 ga tushadi, qidiruvlarning 7% i xato bilan tugaydi.",
+      },
     },
     retries: {
       short: "Qayta urinish",
       title: "Mijozlar voz kechib, qayta urinadi",
       body: "Mobil ilova 3 s dan keyin kutishni to'xtatadi va o'sha qidiruvni darhol qayta yuboradi. Har bir qayta urinish — o'sha tiqilgan navbatdagi yangi so'rov.\n\nServer endi har qachongidan ko'p ishlaydi, lekin kamroq tugatadi: foydali o'tkazuvchanlik 380 ga tushadi, qidiruvlarning 7% i xato bilan tugaydi.",
       watch: "Pauzasiz qayta urinish sekin serverni o'lik serverga aylantiradi. Backoff va tasodifiy jitter qo'shing.",
+      check: {
+        q: "API tugata oladiganidan ko'p so'rov kelyapti. Ularning ko'pini nima tez saqlaydi?",
+        options: [
+          "Navbatni cheklab, ortig'iga tez `503` berish",
+          "Klient timeout'ini 3 s dan 10 s ga oshirish",
+          "Navbatni hammaga yetadigan qilib uzaytirish",
+        ],
+        answer: 0,
+        why: "Ko'pi bilan 64 ta ishlanayotgan va 100 ta kutayotgan so'rovdan ortig'i darhol `Retry-After` bilan `503` oladi. Yuk 85% ga tushadi, p50 48 ms ga qaytadi, xatolar 7% dan 4% ga kamayadi.",
+      },
       fields: {
         timeout: "Mijoz kutishni to'xtatdi, lekin server buni bilmaydi: ishni hech kim uchun bajarishda davom etadi.",
         "attempt 3": "Uchinchi nusxa nihoyat muvaffaqiyatli, server esa bitta ishni allaqachon uch marta qildi.",

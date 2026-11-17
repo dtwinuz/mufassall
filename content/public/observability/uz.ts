@@ -40,7 +40,7 @@ const text: LessonText<typeof lesson> = {
     logs: {
       short: "Log",
       title: "Strukturali log bitta joyda",
-      body: "Endi har servis har voqea uchun stdout'ga bitta JSON obyekt yozadi. Agent uni markaziy log omboriga yuboradi, u yerda matnni grep qilish o'rniga maydon bo'yicha filtrlash mumkin.\n\nSekin buyurtmalar endi topiladi: `duration_ms > 2000`. Lekin orders'dagi qaysi qator API'dagi qaysi qatorga mos, hali ham noma'lum.",
+      body: "Endi har servis har hodisa uchun stdout'ga bitta JSON obyekt yozadi. Agent uni markaziy log omboriga yuboradi, u yerda matnni grep qilish o'rniga maydon bo'yicha filtrlash mumkin.\n\nSekin buyurtmalar endi topiladi: `duration_ms > 2000`. Lekin orders'dagi qaysi qator API'dagi qaysi qatorga mos, hali ham noma'lum.",
       fields: {
         level: "`info`, `warn`, `error`. Maydon bo'yicha filtrlang, gapning ichidan ajratib olmang.",
         service: "Qatorni kim yozgan. Bitta omborda o'nta servis bo'lsa, bu birinchi filtr.",
@@ -60,7 +60,17 @@ const text: LessonText<typeof lesson> = {
     red: {
       short: "RED",
       title: "RED metrikalar: rate, errors, duration",
-      body: "Log alohida voqealarni tasvirlaydi. Metrikalar arzon hisoblagichlar: metrikalar bazasi ularni har servisdan 15 soniyada bir oladi. Nechta so'rov, nechtasi yiqildi, qancha davom etdi.\n\nBu har servis uchun **RED**: Rate, Errors, Duration. Orders'da oqim normal, xato kam, lekin davomiylikning dumi qalin. Muammo orders ichida yoki undan pastda.",
+      body: "Log alohida hodisalarni tasvirlaydi. Metrikalar arzon hisoblagichlar: metrikalar bazasi ularni har servisdan 15 soniyada bir oladi. Nechta so'rov, nechtasi yiqildi, qancha davom etdi.\n\nBu har servis uchun **RED**: Rate, Errors, Duration. Orders'da oqim normal, xato kam, lekin davomiylikning dumi qalin. Muammo orders ichida yoki undan pastda.",
+      check: {
+        q: "Orders'da davomiylik dumi qalin. USE metrikalar uning ostidagi baza haqida nima deydi?",
+        options: [
+          "To'yingan: so'rovlar ulanish kutyapti",
+          "Ortiqcha yuklangan: CPU 100% ga yaqin",
+          "Sog': CPU 41%, hech kim kutmayapti, xato yo'q",
+        ],
+        answer: 2,
+        why: "Bazada CPU 41%, ulanish kutayotgan so'rov yo'q, xato ham yo'q. USE bazani gumondorlar ro'yxatidan chiqaradi, demak sekin joy boshqa yerda.",
+      },
       fields: {
         http_requests_total: "Faqat o'sadigan hisoblagich. Baza uni soniyadagi so'rovlarga aylantiradi.",
         code: "Har javob kodi uchun alohida qator: xato ulushi = 500'lar / hammasi.",
@@ -100,6 +110,16 @@ const text: LessonText<typeof lesson> = {
       short: "Sekin span",
       title: "Sekin span'ni topamiz",
       body: "Bitta sekin trace'ni ochamiz. Orders 2,3 s oladi. Ichida bazaga yozish 38 ms. Keyin qoldiqlar servisiga 12 ta chaqiruv, birin-ketin, har biri taxminan 180 ms.\n\nBirorta chaqiruv sekin emas. Ular shunchaki juda ko'p va ketma-ket. Log va metrikalar buni ko'rsatmasdi, trace bir daqiqada ko'rsatadi.",
+      check: {
+        q: "Qoldiqlar servisiga 12 ta chaqiruv ketma-ket ketadi, har biri taxminan 180 ms. Buyurtma p95'ini nima tushiradi?",
+        options: [
+          "Butun savat uchun qoldiqlarni bir marta so'rash",
+          "Qoldiqlar servisiga ko'proq CPU berish",
+          "Buyurtmalar bazasiga indeks qo'shish",
+        ],
+        answer: 0,
+        why: "Birorta chaqiruv sekin emas edi, ular shunchaki ko'p va ketma-ket edi. Bitta paket chaqiruv 46 ms oladi, buyurtma p95'i 2,4 s dan 0,42 s ga tushadi.",
+      },
       fields: {
         create_order: "Ota span. Uning bolalari 2,3 soniya qayerga ketganini tushuntiradi.",
         sku_19: "Savatdagi har tovar uchun bitta chaqiruv. 12 tovar: 12 chaqiruv.",
@@ -110,6 +130,16 @@ const text: LessonText<typeof lesson> = {
       short: "Paket",
       title: "Butun savat uchun bitta chaqiruv",
       body: "Endi orders qoldiqlarni savatdagi barcha tovarlar uchun bir marta so'raydi. Buyurtma p95'i 2,4 s dan 0,42 s ga tushadi.\n\nYangi trace buni tasdiqlaydi: o'n ikkita o'rniga 46 ms'lik bitta qoldiq span'i. Trace id o'sha, bu qadam uchun esa yangi ota span id.",
+      check: {
+        q: "Har so'rovning trace'i kuniga 12 GB oladi. Buni qanday kamaytirib, ochiladigan trace'larni saqlab qolasiz?",
+        options: [
+          "Faqat API'ni trace qilish, ortidagi servislarni emas",
+          "Oddiy trace'larning 10% ini, sekin va xatolilarning hammasini saqlash",
+          "Barcha trace'lardan tasodifiy 10% ni saqlash, boshqa hech narsani",
+        ],
+        answer: 1,
+        why: "Tez va muvaffaqiyatli trace'lar asosan zerikarli, shuning uchun ularning 10% i saqlanadi, xatoli yoki 1 s dan sekin har trace esa qoladi. Ombor kuniga 2,5 GB ga tushadi.",
+      },
       fields: {
         skus: "Har tovarga alohida so'rov o'rniga hammasi bitta so'rovda.",
         traceparent: "O'sha trace id, yangi ota span id. Ombor bu chaqiruvni o'sha daraxtga qo'shadi.",

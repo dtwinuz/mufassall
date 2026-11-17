@@ -29,6 +29,16 @@ const text: LessonText<typeof lesson> = {
       short: "REST",
       title: "REST: one resource, one URL",
       body: "The \"My orders\" screen needs, for each of the last 20 orders, its status and the restaurant name. The REST API has a resource for that: `GET /v1/orders`.\n\nIt returns the full order object, about 40 fields: address, items, courier. The screen uses two of them. Downloading fields nobody shows is called **over-fetching**.",
+      check: {
+        q: "The list has only `restaurant_id`, but the screen needs the name. What does the app end up doing?",
+        options: [
+          "Shows the IDs instead of restaurant names",
+          "Makes one extra call per order: 21 in total",
+          "Asks the API once for all 20 restaurants",
+        ],
+        answer: 1,
+        why: "The name is missing, so the app fetches each restaurant separately: one call for the list and twenty more. On a mobile network the screen now takes 2.6 s.",
+      },
       fields: {
         GET: "Reading only. Safe to repeat and easy to cache.",
         data: "The list itself. Keeping it under a key leaves room for paging info next to it.",
@@ -62,6 +72,16 @@ const text: LessonText<typeof lesson> = {
       title: "GraphQL: the client writes the query",
       body: "A GraphQL server describes all data as one typed schema. The app sends a query that lists exactly the fields it needs, nested as deep as the screen needs, through one URL.\n\nOne call, no extra fields. The price: every query is different, so a plain HTTP cache does not help, and the server must guard against very heavy queries.",
       watch: "Limit query depth and cost, otherwise one client can ask for the whole database in a single request.",
+      check: {
+        q: "The phone now sends one GraphQL query. What happens behind it on the server?",
+        options: [
+          "One join query returns orders with restaurants",
+          "The server forwards it to REST: one call in total",
+          "21 database queries, one per order's restaurant",
+        ],
+        answer: 2,
+        why: "The server resolves `restaurant` separately for each order, so 21 database queries hide behind one request. Database load jumps to 75% and the screen slows down again.",
+      },
       fields: {
         query: "A read. Changes go through a `mutation` instead.",
         orders: "The answer has the same shape as the query.",
@@ -124,6 +144,16 @@ const text: LessonText<typeof lesson> = {
       title: "The retry places a second order",
       body: "The user taps \"Order\". The request reaches the server and the order is created, but the network drops the response. The app sees an error and repeats the `POST`.\n\nThe server cannot tell a repeat from a new order. The user gets two orders and two charges.",
       watch: "A `POST` is not safe to repeat by default. Mobile networks guarantee repeats.",
+      check: {
+        q: "How can the server tell a retried order from a new one?",
+        options: [
+          "The app sends the same random key with each retry",
+          "The server rejects a second order for the same `cart_id`",
+          "The app waits longer for the response before retrying",
+        ],
+        answer: 0,
+        why: "With an `Idempotency-Key` the server stores the key with its response. A repeat with a known key creates nothing and gets the saved response, so double orders drop to zero.",
+      },
       fields: {
         POST: "Creates something new on every call.",
         cart_id: "The same cart both times. The server does not use it to spot repeats.",

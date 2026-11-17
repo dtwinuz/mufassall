@@ -32,6 +32,16 @@ const text: LessonText<typeof lesson> = {
       title: "The users table leaks",
       body: "A backup of the users table ends up public. Passwords were stored as plain SHA-256, without salt.\n\nSHA-256 is built to be fast: a single GPU tries billions of guesses a second. In a day 62% of the hashes are cracked, and people reuse those passwords elsewhere.",
       watch: "Plan for the leak, not against it. Storage must stay safe after the attacker has the file.",
+      check: {
+        q: "Passwords are now stored with argon2id and a random salt per user. What changes?",
+        options: [
+          "Little: GPUs crack argon2 about as fast",
+          "Login takes seconds and users complain",
+          "Login gets ~250 ms slower; cracking almost stops",
+        ],
+        answer: 2,
+        why: "Each guess now costs about 250 ms and 64 MB, so guessing gets millions of times slower: cracked hashes fall from 62% to 0.5%. A quarter second at login goes unnoticed.",
+      },
       fields: {
         password_sha256: "A fast hash of the password. Hidden here; in the leak it is a ready target for guessing.",
         salt: "None. Equal passwords give equal hashes, so one guess cracks everyone who chose `123456`.",
@@ -52,6 +62,16 @@ const text: LessonText<typeof lesson> = {
       short: "Session",
       title: "Session: a random id in a cookie",
       body: "After the password checks out, the API creates a session in the store (`u_42`, expires in 7 days) and gives the browser a random id in a cookie.\n\nEvery next request carries the cookie; the API looks the id up. Logout is simple: delete the session.",
+      check: {
+        q: "A new orders service must also know who is calling. What does that cost with sessions?",
+        options: [
+          "Every request in every service is a lookup in one store",
+          "Nothing: the cookie itself says who the user is",
+          "Each service has to keep its own session copy",
+        ],
+        answer: 0,
+        why: "The cookie holds only a random id, so orders looks up every request in the session store too. The store climbs to 92% and becomes the one thing that slows everything.",
+      },
       fields: {
         password: "Sent only over HTTPS and only to the login endpoint. Never logged.",
         "Set-Cookie": "`sid=...; HttpOnly; Secure; SameSite=Lax`. HttpOnly keeps JavaScript, and XSS, away from it. Value hidden.",
@@ -71,6 +91,16 @@ const text: LessonText<typeof lesson> = {
       title: "JWT: a signed token any service can check",
       body: "The auth API now issues an **access token**: a JWT with the user id and an expiry, signed with the API's private key.\n\nOrders checks the signature with the public key and reads the claims. No lookup, no shared store: the session store drops to 25%.",
       watch: "A JWT is signed, not encrypted. Anyone holding it can read the payload, so put no secrets in it.",
+      check: {
+        q: "The user logs out, but their JWT already leaked through a logged URL. What happens?",
+        options: [
+          "Orders rejects it: logout cancelled the token",
+          "It keeps working until `exp`, here 30 days",
+          "It works only from the user's own IP address",
+        ],
+        answer: 1,
+        why: "Logout deleted only the browser's copy. Orders checks the signature, not a central list, so the token is valid until it expires, 30 days after `iat`.",
+      },
       fields: {
         Authorization: "`Bearer` and the token. Whoever holds the token is the user. Hidden here.",
         kid: "Which signing key was used, so keys can be rotated.",
@@ -137,7 +167,7 @@ const text: LessonText<typeof lesson> = {
     recap: {
       short: "Recap",
       title: "Recap",
-      body: "Four rules for authentication.\n\n1) Store passwords with a slow, salted hash (argon2id, bcrypt). 2) Sessions are easy to revoke; JWTs are easy to verify anywhere, so keep them short. 3) Pair a 15-minute access token with a rotated refresh token, and revoke by deleting refresh tokens. 4) Prefer an identity provider for login and add MFA; mask every secret in logs.",
+      body: "Four rules for authentication.\n\n1) Store passwords with a slow, salted hash (argon2id, bcrypt). 2) Sessions are easy to revoke; JWTs are easy to verify anywhere, so keep them short. 3) Pair a 15-minute access token with a rotated refresh token, and revoke by deleting refresh tokens. 4) Prefer an identity provider for login and add MFA; never put tokens in URLs, where logs keep them.",
     },
   },
 };

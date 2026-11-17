@@ -4,19 +4,19 @@ import type lesson from "./lesson";
 const text: LessonText<typeof lesson> = {
   title: "URL qisqartirgich loyihasi",
   summary:
-    "Uzun havola kiradi, qisqa kod chiqadi, har bosish esa redirect. Butun servisni qadamma-qadam quramiz: hisob-kitob, qisqa kod, redirect, kesh, replica, bosishlar statistikasi, alias va muddat.",
+    "Uzun havola kiradi, qisqa kod chiqadi, har bosish esa redirect. Butun servisni qadamma-qadam quramiz: hisob-kitob, qisqa kod, redirect, kesh, replika, bosishlar statistikasi, alias va muddat.",
   learn: [
     "O'qish ko'p bo'lgan servis hajmini bir necha raqamdan qanday hisoblash",
     "Nega hisoblagich + base62 URL hash'idan yaxshiroq",
     "301 yoki 302: har birida nimadan voz kechasiz",
-    "Kesh, replica va navbat bazadan yukni qayerda oladi",
+    "Kesh, replika va navbat bazadan yukni qayerda oladi",
   ],
   nodes: {
     user: "Brauzer",
     api: "Havola API",
     db: "Havolalar bazasi (primary)",
     cache: "Havola keshi",
-    replica: "O'qish replica'si",
+    replica: "O'qish replikasi",
     queue: "Bosishlar navbati",
     worker: "Bosishlar worker'i",
     stats: "Statistika bazasi",
@@ -31,6 +31,16 @@ const text: LessonText<typeof lesson> = {
       short: "Hisob",
       title: "Nima quramiz va qancha katta",
       body: "Ikki chaqiruv: `POST /api/links` uzun URL'ni qisqa kodga aylantiradi, `GET /<code>` esa unga yo'naltiradi. Oyiga 100 million yangi havola desak, bu taxminan **40 yozish/s**. Havola yaratilganidan ko'ra ancha ko'p bosiladi, taxminan 100:1, demak o'rtacha **4 000 redirect/s**, cho'qqida esa uch barobar.\n\nXotira: besh yilda 6 milliard havola, har biri ~500 bayt, jami ~3 TB. 7 belgili base62 kod 62^7 ≈ 3,5 trillion qiymat beradi, joy yetarli. Tizimda o'qish ustun: quyidagi har qaror redirect yo'lini himoya qiladi.",
+      check: {
+        q: "Birinchi g'oya: kod — URL MD5'ining base62 dagi dastlabki 7 belgisi. Havolalar ko'payganda nima buziladi?",
+        options: [
+          "Hech narsa: 62^7 qiymat yetarli joy",
+          "Turli URL'lar to'qnashadi va insert yiqiladi",
+          "Kodlarni ketma-ket taxmin qilish mumkin",
+        ],
+        answer: 1,
+        why: "Hash'ni kesish uning ko'p bitini tashlab yuboradi va turli URL'lar bir xil kodga tusha boshlaydi. Har to'qnashuv — muvaffaqiyatsiz insert va takror: bu yerda kuniga ~40, jadval o'sgan sari ko'payadi.",
+      },
       fields: {
         long_url: "Manzil. Uni tekshiring: sxema, uzunlik va ma'lum fishing hostlar ro'yxati.",
         code: "Qisqa kalit. Havolalar jadvalida primary key, keyin kesh kaliti ham shu.",
@@ -61,6 +71,16 @@ const text: LessonText<typeof lesson> = {
       short: "Redirect",
       title: "Redirect: 301 emas, 302",
       body: "Bosish `GET /8sujL` bo'lib keladi. API uzun URL'ni topadi va redirect status hamda `Location` sarlavhasi bilan javob beradi. Brauzer unga o'tadi.\n\n**301** (doimiy) brauzerda keshlanadi: keyingi bosish bizga yetib kelmaydi. Yuk kamayadi, lekin bosishlar sanog'i yo'qoladi, havolani o'zgartirib ham, muddatini tugatib ham bo'lmaydi. **302** (vaqtinchalik) har bosishni bizga qaytaradi. Biz 302 ni tanlaymiz va buning narxini trafik bilan to'laymiz.",
+      check: {
+        q: "Trafik 4 000 redirect/s ga yetdi, har biri primary'da qidiruv. Nima buziladi?",
+        options: [
+          "Primary to'lib qoladi; p99 900 ms ga chiqadi",
+          "Hech narsa: indeksli qidiruv 1 ms dan kam",
+          "Brauzerlar 302 javoblarni keshlay boshlaydi",
+        ],
+        answer: 0,
+        why: "Primary barcha yozishlarni ham oladi. CPU 96% ga yetadi, har qidiruv navbatda kutadi va p99 30 ms dan 900 ms ga chiqadi, ma'lumot deyarli o'zgarmasa ham.",
+      },
       fields: {
         "302": "Vaqtinchalik redirect: brauzer keyingi safar yana so'rashi shart.",
         Location: "Brauzer keyin qayerga boradi: saqlangan uzun URL.",
@@ -70,7 +90,7 @@ const text: LessonText<typeof lesson> = {
     "read-flood": {
       short: "O'qish oqimi",
       title: "Har bosish bazadan o'qish",
-      body: "Trafik 4 000 redirect/s ga o'sdi. Har biri primary'da bir xil qidiruvni bajaradi, primary esa barcha yozishlarni ham oladi. CPU 96% da, p99 900 ms ga chiqdi.\n\nMa'lumot deyarli o'zgarmaydi: havola bir marta yoziladi va minglab marta o'qiladi. Uni har safar bazadan o'qish isrof.",
+      body: "Trafik bahodagi 4 000 redirect/s ga yetdi. Har biri primary'da bir xil qidiruvni bajaradi, primary esa barcha yozishlarni ham oladi. CPU 96% da, p99 900 ms ga chiqdi.\n\nMa'lumot deyarli o'zgarmaydi: havola bir marta yoziladi va minglab marta o'qiladi. Uni har safar bazadan o'qish isrof.",
       fields: {
         code: "Qidiruv kaliti. Indeks joyida; muammo qidiruvlar sonida.",
         Time: "Odatda millisekunddan kam. Bu yukda so'rov CPU uchun navbatda turadi.",
@@ -87,12 +107,22 @@ const text: LessonText<typeof lesson> = {
       },
     },
     replicas: {
-      short: "Replica",
-      title: "Kesh miss'lari read replica'ga",
-      body: "Qolgan miss'lar primary'dan o'zgarishlarni oqim bilan oladigan read replica'ga o'tadi. Endi primary faqat yozishni oladi; o'qish o'sganda yana replica qo'shamiz.\n\nReplikatsiya asinxron, shuning uchun replica biroz orqada. Bu yerda kechikish (lag) 180 ms.",
-      watch: "Lag ichida yaratilib bosilgan havola replica'da topilmaydi va 404 olishi mumkin. Miss bo'lsa 404 dan oldin primary'dan so'rang yoki yangi havolani yaratishda keshga ham yozing.",
+      short: "Replika",
+      title: "Kesh miss'lari read replikaga",
+      body: "Qolgan miss'lar primary'dan o'zgarishlarni oqim bilan oladigan read replikaga o'tadi. Endi primary faqat yozishni oladi; o'qish o'sganda yana replika qo'shamiz.\n\nReplikatsiya asinxron, shuning uchun replika biroz orqada. Bu yerda kechikish (lag) 180 ms.",
+      watch: "Lag ichida yaratilib bosilgan havola replikada topilmaydi va 404 olishi mumkin. Miss bo'lsa 404 dan oldin primary'dan so'rang yoki yangi havolani yaratishda keshga ham yozing.",
+      check: {
+        q: "Marketing bosishlar sonini istaydi, har redirect `clicks = clicks + 1` qiladi. Viral havolada nima bo'ladi?",
+        options: [
+          "Hech narsa: qo'shimcha yukni kesh ko'taradi",
+          "Replika 180 ms orqada, sanoq chalkashadi",
+          "Update'lar bitta qatorda navbatga turadi; p99 320 ms",
+        ],
+        answer: 2,
+        why: "Yozish keshga ham, replikaga ham bormaydi: 4 000 o'qish/s primary'da 4 000 yozish/s ga aylanadi. Viral havola bitta qatorga minglab update degani; ular qator qulfini kutadi, redirect esa ular bilan birga kutadi.",
+      },
       fields: {
-        lag: "Replica primary'dan qancha orqada. Kuzatib boring; bir necha soniyadan oshsa alert.",
+        lag: "Replika primary'dan qancha orqada. Kuzatib boring; bir necha soniyadan oshsa alert.",
       },
     },
     "click-count": {
@@ -107,13 +137,13 @@ const text: LessonText<typeof lesson> = {
     "click-queue": {
       short: "Navbat",
       title: "Bosishlar navbatga, worker sanaydi",
-      body: "Endi redirect faqat kichik voqea (event) chiqaradi va javob qaytaradi. Worker navbatni o'qiydi, har havola bo'yicha har daqiqadagi bosishlarni qo'shadi va alohida statistika bazasiga bitta qator bilan yozadi.\n\nEvent kaliti kod, shuning uchun bitta havolaning barcha bosishlari bitta partition'ga tushadi va bitta worker ularni qulfsiz qo'sha oladi. Redirect p99 yana 12 ms.",
-      watch: "Navbat ishlamasa ham redirect ishlashi shart. Event'larni kichik lokal bufer bilan javob kutmasdan yuboring: bir nechta bosish yo'qolsa mayli, redirect yiqilsa yo'q.",
+      body: "Endi redirect faqat kichik hodisa (event) chiqaradi va javob qaytaradi. Worker navbatni o'qiydi, har havola bo'yicha har daqiqadagi bosishlarni qo'shadi va alohida statistika bazasiga bitta qator bilan yozadi.\n\nEvent kaliti kod, shuning uchun bitta havolaning barcha bosishlari bitta partition'ga tushadi va bitta worker ularni qulfsiz qo'sha oladi. Redirect p99 yana 12 ms.",
+      watch: "Navbat ishlamasa ham redirect ishlashi shart. Hodisalarni kichik lokal bufer bilan javob kutmasdan yuboring: bir nechta bosish yo'qolsa mayli, redirect yiqilsa yo'q.",
       fields: {
         partition: "`8sujL` kalitidan tanlanadi: bu havolaning har bosishi 7-partition'ga, tartib bilan tushadi.",
         ts: "Bosish vaqti, kech kelgan event ham to'g'ri daqiqaga tushsin.",
-        country: "Chekkada IP'dan olinadi. Xom IP emas, faqat mamlakat saqlanadi.",
-        offset: "Event'ning partition'dagi o'rni. Worker uni batch yozilgandan keyin commit qiladi.",
+        country: "Edge (chekka server) darajasida IP'dan olinadi. Xom IP emas, faqat mamlakat saqlanadi.",
+        offset: "Hodisaning partition'dagi o'rni. Worker uni batch yozilgandan keyin commit qiladi.",
       },
     },
     alias: {
@@ -137,7 +167,7 @@ const text: LessonText<typeof lesson> = {
     recap: {
       short: "Xulosa",
       title: "Xulosa",
-      body: "Redirect yo'li bu mahsulotning o'zi: uni qisqa tuting va primary'ni undan chetda saqlang.\n\n1) Avval hisoblang: 40 yozish/s, 4 000 o'qish/s, 3 TB. 2) Bloklab olingan hisoblagich + base62 takrorlarsiz noyob kod beradi. 3) 302 har bosishni ko'rinadigan qiladi. 4) Issiq havolalarga kesh, miss'larga replica, bosishlarni sanashga navbat. 5) Alias jadvalni bo'lishadi, lekin kod shaklini emas; muddat kesh TTL'ini cheklaydi.",
+      body: "Redirect yo'li bu mahsulotning o'zi: uni qisqa tuting va primary'ni undan chetda saqlang.\n\n1) Avval hisoblang: 40 yozish/s, 4 000 o'qish/s, 3 TB. 2) Bloklab olingan hisoblagich + base62 takrorlarsiz noyob kod beradi. 3) 302 har bosishni ko'rinadigan qiladi. 4) Issiq havolalarga kesh, miss'larga replika, bosishlarni sanashga navbat. 5) Alias jadvalni bo'lishadi, lekin kod shaklini emas; muddat kesh TTL'ini cheklaydi.",
     },
   },
 };

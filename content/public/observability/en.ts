@@ -61,6 +61,16 @@ const text: LessonText<typeof lesson> = {
       short: "RED",
       title: "RED metrics: rate, errors, duration",
       body: "Logs describe single events. Metrics are cheap counters that the metrics DB reads from each service every 15 seconds: how many requests, how many failed, how long they took.\n\nThis is **RED** for every service: Rate, Errors, Duration. Orders shows normal rate, few errors and a fat duration tail. The problem is inside orders or below it.",
+      check: {
+        q: "Orders has a fat duration tail. What do USE metrics say about the database under it?",
+        options: [
+          "It is saturated: queries wait for connections",
+          "It is overloaded: CPU is near 100%",
+          "It is healthy: 41% CPU, nothing waiting, no errors",
+        ],
+        answer: 2,
+        why: "The database sits at 41% CPU with zero queries waiting and no errors. USE rules it out, so the slow part must be elsewhere.",
+      },
       fields: {
         http_requests_total: "A counter that only grows. The DB turns it into requests per second.",
         code: "One series per status code: the error rate is 500s divided by all.",
@@ -100,6 +110,16 @@ const text: LessonText<typeof lesson> = {
       short: "Slow span",
       title: "Finding the slow span",
       body: "Open one slow trace. Orders takes 2.3 s. Inside it, the database insert takes 38 ms. Then come 12 calls to inventory, one after another, about 180 ms each.\n\nNo single call is slow. There are just too many, in a row. Logs and metrics could not show this; the trace makes it obvious in a minute.",
+      check: {
+        q: "Twelve inventory calls run one after another, about 180 ms each. What brings checkout p95 down?",
+        options: [
+          "Ask inventory once for the whole cart",
+          "Give the inventory service more CPU",
+          "Add an index to the orders database",
+        ],
+        answer: 0,
+        why: "No single call was slow; there were too many in a row. One batched call takes 46 ms, and checkout p95 falls from 2.4 s to 0.42 s.",
+      },
       fields: {
         create_order: "The parent span. Its children explain where its 2.3 seconds went.",
         sku_19: "One call per item in the cart. A cart with 12 items means 12 calls.",
@@ -110,6 +130,16 @@ const text: LessonText<typeof lesson> = {
       short: "Batch",
       title: "One call for the whole cart",
       body: "Orders now asks inventory once for all items in the cart. Checkout p95 falls from 2.4 s to 0.42 s.\n\nThe new trace confirms it: one stock span of 46 ms instead of twelve. The same trace id shows up, with a new parent span id for this hop.",
+      check: {
+        q: "Tracing every request costs 12 GB a day. How do you cut that and keep the traces people open?",
+        options: [
+          "Trace only the API, not the services behind it",
+          "Keep 10% of normal traces, plus all slow and failed ones",
+          "Keep a random 10% of all traces, nothing else",
+        ],
+        answer: 1,
+        why: "Fast, successful traces are mostly boring, so only 10% of them are kept, while every trace with an error or over 1 s stays. Storage drops to 2.5 GB a day.",
+      },
       fields: {
         skus: "All items in one request instead of one request per item.",
         traceparent: "Same trace id, new parent span id. The trace store adds this call to the same tree.",

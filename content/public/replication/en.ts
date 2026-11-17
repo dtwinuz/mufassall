@@ -39,6 +39,16 @@ const text: LessonText<typeof lesson> = {
       short: "Replicas",
       title: "Two followers copy the leader's log",
       body: "DB A becomes the leader: it alone takes writes. DB B and DB C are followers. Each one connects to the leader and receives the write-ahead log as a stream, then replays it to hold the same data.\n\nThe API sends writes to the leader and spreads reads across the two replicas. Leader load drops to 35%, p95 to 45 ms.",
+      check: {
+        q: "Reads now go to the replicas. A user saves a new bio and reloads the page at once. What can they see?",
+        options: [
+          "The new bio: the commit already succeeded",
+          "An error until the replicas catch up",
+          "The old bio, because the replica is behind",
+        ],
+        answer: 2,
+        why: "The write commits on the leader, but the reload reads from DB B. DB B is 900 ms behind, so it returns the old bio.",
+      },
       fields: {
         START_REPLICATION: "The follower asks for the log stream from a position onward.",
         SLOT: "A replication slot: the leader keeps the log until this follower has received it.",
@@ -79,6 +89,16 @@ const text: LessonText<typeof lesson> = {
       short: "Leader down",
       title: "The leader dies",
       body: "DB A loses its disk. Reads still work on the replicas, but every write fails.\n\nThe replicas stopped receiving the log in the middle of the stream. Neither of them is allowed to take writes yet.",
+      check: {
+        q: "We promote the most up-to-date replica. Replication was async. What happens to the leader's last acknowledged commits?",
+        options: [
+          "All are kept: the newest replica has them",
+          "Some are lost: they never reached a replica",
+          "The new leader replays them from DB A's disk",
+        ],
+        answer: 1,
+        why: "DB C is promoted, but DB A had acknowledged 12 commits that no replica received. Those users were told \"saved\" and their data is gone.",
+      },
       fields: {
         UPDATE: "A write. Only the leader can take it, and there is no leader.",
         "Connection refused": "The API keeps retrying and users see errors on save.",
