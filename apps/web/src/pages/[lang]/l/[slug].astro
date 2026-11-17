@@ -2,6 +2,10 @@
 import { LANGS, type Lang, lessons, order, sectionOf, sections } from "@mufassall/content";
 import "@mufassall/scene-engine/player.css";
 import Lesson from "../../../components/Lesson";
+import WhatIf from "../../../components/WhatIf";
+import { practiceFor, PRACTICE_UI } from "@mufassall/scene-engine";
+import { hasWhatIf } from "@mufassall/scene-engine/whatif-model";
+import "@mufassall/scene-engine/whatif.css";
 import Base from "../../../layouts/Base.astro";
 import { site } from "../../../i18n/site";
 import { lessonLd } from "../../../og/ld";
@@ -27,7 +31,9 @@ const next = nextSlug ? { title: titleOf(nextSlug), href: `/${lang}/l/${nextSlug
 
 <Base lang={lang} title={text.title} description={text.summary} image={`/og/${lang}/${slug}.png`} jsonLd={lessonLd(lang, slug)}>
   <Lesson client:load lesson={entry.lesson} text={text} lang={lang} crumbs={crumbs} next={next} />
+  {hasWhatIf(slug) && <WhatIf client:visible slug={slug} lang={lang} />}
   <p class="lesson-extras">
+    {practiceFor(entry.lesson) && <a href={`/${lang}/lab/?practice=${slug}`}>{PRACTICE_UI[lang].heading}</a>}
     <a href={`/${lang}/l/${slug}/sheet/`}>{s.learner.sheet.link}</a>
     <a href={`/${lang}/compare/?a=${slug}`}>{s.learner.compare.title}</a>
   </p>

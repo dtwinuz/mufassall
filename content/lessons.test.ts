@@ -1,9 +1,47 @@
-import { PUBLIC_MASK, annotate, maskedRaw, resolve } from "@mufassall/scene-schema";
+import {
+  type LessonInput,
+  type LessonText,
+  PUBLIC_MASK,
+  type SceneState,
+  type StepInput,
+  type StepText,
+  annotate,
+  maskedRaw,
+  resolve,
+  resolveScenario,
+} from "@mufassall/scene-schema";
 import { loadSpots } from "@mufassall/scene-schema/layout";
 import { validateLesson } from "@mufassall/scene-schema/validate";
 import { describe, expect, it } from "vitest";
-import { LANGS, glossary, lessons } from "./index";
+import { LANGS, type Lang, glossary, lessons } from "./index";
 import { sections as allSections } from "./sections";
+
+type Texts = Record<Lang, LessonText<LessonInput>>;
+type ScenarioTexts = Record<string, { label?: string; steps?: Record<string, StepText> } | undefined>;
+
+/** Every step a reader can reach: the base story, then each scenario's own steps. */
+function everyStep(lesson: LessonInput): { step: StepInput; sc: string | null }[] {
+  return [
+    ...lesson.steps.map((step) => ({ step, sc: null })),
+    ...(lesson.scenarios ?? []).flatMap((s) => s.steps.map((step) => ({ step, sc: s.id }))),
+  ];
+}
+
+function stepText(text: Texts, lang: Lang, sc: string | null, id: string): StepText | undefined {
+  const t = text[lang];
+  if (sc === null) return (t.steps as Record<string, StepText>)[id];
+  return ((t.scenarios ?? {}) as ScenarioTexts)[sc]?.steps?.[id];
+}
+
+/** Every state a reader can see, each with the id of its step. */
+function everyState(lesson: LessonInput): { id: string; state: SceneState }[] {
+  const base = resolve(lesson).map((state, i) => ({ id: lesson.steps[i]!.id, state }));
+  const extra = (lesson.scenarios ?? []).flatMap((s) => {
+    const states = resolveScenario(lesson, s.id);
+    return s.steps.map((step, i) => ({ id: `${s.id}/${step.id}`, state: states[states.length - s.steps.length + i]! }));
+  });
+  return [...base, ...extra];
+}
 
 describe.each(Object.entries(lessons))("lesson %s", (slug, { lesson, text }) => {
   it("has a valid shape and resolves", () => {
@@ -11,27 +49,47 @@ describe.each(Object.entries(lessons))("lesson %s", (slug, { lesson, text }) => 
     expect(lesson.tier).toBe("public");
     validateLesson(lesson);
     expect(() => resolve(lesson)).not.toThrow();
+    for (const s of lesson.scenarios ?? []) expect(() => resolveScenario(lesson, s.id), `scenario ${s.id}`).not.toThrow();
   });
 
   it.each(LANGS)("is fully written in %s", (lang) => {
     const t = text[lang];
-    const nodeIds = new Set(lesson.steps.flatMap((s) => Object.keys(s.nodes ?? {})));
+    const nodeIds = new Set(everyStep(lesson).flatMap(({ step }) => Object.keys(step.nodes ?? {})));
     for (const id of nodeIds) expect((t.nodes as Record<string, string>)[id], `node ${id}`).toBeTruthy();
     for (const m of lesson.metrics) expect((t.metrics as Record<string, string>)[m.id], `metric ${m.id}`).toBeTruthy();
-    for (const s of lesson.steps) {
-      const st = (t.steps as Record<string, { title: string; short: string; body: string }>)[s.id];
-      expect(st?.title && st.short && st.body, `step ${s.id}`).toBeTruthy();
+    for (const { step, sc } of everyStep(lesson)) {
+      const st = stepText(text as Texts, lang, sc, step.id);
+      expect(st?.title && st.short && st.body, `step ${sc ? `${sc}/` : ""}${step.id}`).toBeTruthy();
     }
     expect(t.learn.length).toBeGreaterThan(0);
+    // scenario texts: a label for each scenario, and nothing written for scenarios or steps that do not exist
+    const written = (t.scenarios ?? {}) as ScenarioTexts;
+    const scenarios = lesson.scenarios ?? [];
+    expect(Object.keys(written).sort(), "scenario texts match the scenarios").toEqual(scenarios.map((s) => s.id).sort());
+    for (const s of scenarios) {
+      expect(written[s.id]?.label?.trim(), `scenario ${s.id}: label`).toBeTruthy();
+      expect(Object.keys(written[s.id]?.steps ?? {}).sort(), `scenario ${s.id}: step texts`).toEqual(s.steps.map((x) => x.id).sort());
+    }
+  });
+
+  it("writes scenarios like the base story", () => {
+    for (const s of lesson.scenarios ?? []) {
+      expect(s.steps.length, `${s.id}: 2-4 steps`).toBeGreaterThanOrEqual(2);
+      expect(s.steps.length).toBeLessThanOrEqual(4);
+      const work = s.steps.filter((x) => x.kind !== "recap");
+      const withWire = work.filter((x) => x.exchange).length;
+      expect(withWire * 2, `${s.id}: at least half of the steps show the real request`).toBeGreaterThanOrEqual(work.length);
+      const last = s.steps.at(-1)!;
+      expect(Object.keys(last.metrics ?? {}).length, `${s.id}: the outcome step moves a metric`).toBeGreaterThan(0);
+    }
   });
 
   it("follows the course conventions", () => {
-    const states = resolve(lesson);
     expect(lesson.steps.at(-1)?.kind, "last step is the recap").toBe("recap");
     expect(lesson.steps.length).toBeGreaterThanOrEqual(7);
-    for (const [i, s] of states.entries()) {
+    for (const { id, state: s } of everyState(lesson)) {
       const cells = Object.values(s.nodes).map((n) => n.at.join(","));
-      expect(new Set(cells).size, `${lesson.steps[i]!.id}: two nodes on one cell`).toBe(cells.length);
+      expect(new Set(cells).size, `${id}: two nodes on one cell`).toBe(cells.length);
       for (const n of Object.values(s.nodes)) {
         for (const c of n.at) expect(c >= 0 && c <= 12, `${n.id} at ${n.at} is off the 0..12 grid`).toBe(true);
       }
@@ -45,7 +103,7 @@ describe.each(Object.entries(lessons))("lesson %s", (slug, { lesson, text }) => 
   });
 
   it("public wire messages carry no real secret, every mark appears and is explained", () => {
-    for (const s of lesson.steps) {
+    for (const { step: s, sc } of everyStep(lesson)) {
       const ex = s.exchange;
       if (!ex) continue;
       const seen = new Set<string>();
@@ -59,7 +117,7 @@ describe.each(Object.entries(lessons))("lesson %s", (slug, { lesson, text }) => 
       for (const name of ex.marks ?? []) {
         expect(seen.has(name), `${s.id}: mark ${name} not found in the message`).toBe(true);
         for (const lang of LANGS) {
-          const fields = (text[lang].steps as Record<string, { fields?: Record<string, string> }>)[s.id]?.fields;
+          const fields = stepText(text as Texts, lang, sc, s.id)?.fields;
           expect(fields?.[name], `${lang} ${s.id}: note for ${name}`).toBeTruthy();
         }
       }
@@ -69,9 +127,8 @@ describe.each(Object.entries(lessons))("lesson %s", (slug, { lesson, text }) => 
 
 describe("prediction checks", () => {
   it.each(Object.entries(lessons))("%s: checks agree across languages", (_slug, { lesson, text }) => {
-    type T = { check?: { q: string; options: string[]; answer: number; why: string } };
-    for (const s of lesson.steps) {
-      const per = LANGS.map((l) => (text[l].steps as Record<string, T>)[s.id]?.check);
+    for (const { step: s, sc } of everyStep(lesson)) {
+      const per = LANGS.map((l) => stepText(text as Texts, l, sc, s.id)?.check);
       const base = per[0];
       expect(per.every((c) => !!c === !!base), `${s.id}: check missing in a language`).toBe(true);
       if (!base) continue;
@@ -116,9 +173,9 @@ describe("course map", () => {
 describe("scene layout", () => {
   it.each(Object.entries(lessons))("%s: every load bar has a spot clear of names and blocks", (_slug, { lesson, text }) => {
     const bad: string[] = [];
-    for (const [i, s] of resolve(lesson).entries()) {
+    for (const { id: step, state: s } of everyState(lesson)) {
       const names = (id: string) => LANGS.map((l) => (text[l].nodes as Record<string, string>)[id] ?? id);
-      for (const id of loadSpots(Object.values(s.nodes), names).blocked) bad.push(`${lesson.steps[i]!.id}: ${id}`);
+      for (const id of loadSpots(Object.values(s.nodes), names).blocked) bad.push(`${step}: ${id}`);
     }
     expect(bad).toEqual([]);
   });
@@ -128,7 +185,7 @@ describe("scene layout", () => {
     const widest = (id: string) =>
       Math.max(...LANGS.map((l) => ((text[l].nodes as Record<string, string>)[id] ?? id).length));
     const bad: string[] = [];
-    for (const [i, s] of resolve(lesson).entries()) {
+    for (const { id: step, state: s } of everyState(lesson)) {
       for (const e of Object.values(s.edges)) {
         const a = s.nodes[e.from];
         const b = s.nodes[e.to];
@@ -144,7 +201,7 @@ describe("scene layout", () => {
             const px = ax + (bx - ax) * t;
             const py = ay + (by - ay) * t;
             if (px > nx - half && px < nx + half && py > ny + 24 && py < ny + 38) {
-              bad.push(`${lesson.steps[i]!.id}: ${e.id} over ${n.id}`);
+              bad.push(`${step}: ${e.id} over ${n.id}`);
               break;
             }
           }

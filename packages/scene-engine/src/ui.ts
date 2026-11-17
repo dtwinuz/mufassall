@@ -1,4 +1,4 @@
-import type { Flow, NodeKind, NodeStatus, StepKind } from "@mufassall/scene-schema";
+import type { EdgeMode, Flow, NodeKind, NodeStatus, StepKind } from "@mufassall/scene-schema";
 
 /** Lab (diagram editor) strings, per language. */
 export interface LabStrings {
@@ -65,6 +65,7 @@ export interface LabStrings {
   shareTitle: string;
   exportPng: string;
   exportSvg: string;
+  exportMermaid: string;
   simulate: string;
   traffic: string; // "Traffic: {n} req/s"
   spike: string;
@@ -170,6 +171,49 @@ export interface UiStrings {
     edgeRestored: string;
     metric: string;
   };
+  /** scenario switcher and edge modes; optional so a host without them falls back to SCENARIO_UI */
+  scenario?: ScenarioStrings;
+}
+
+export interface ScenarioStrings {
+  /** radio group name: "Scenario" */
+  label: string;
+  /** the base story as the first option */
+  base: string;
+  modes: Record<EdgeMode | "none", string>;
+  /** legend: a call waits for its reply on the same line; async does not wait */
+  legend: Record<EdgeMode, string>;
+  /** "What changed": "{from} → {to}: {was} → {now}" */
+  edgeMode: string;
+}
+
+/** Built-in scenario strings, used when the host's UiStrings has no `scenario` entry. */
+export const SCENARIO_UI: Record<"uz" | "ru" | "en", ScenarioStrings> = {
+  uz: {
+    label: "Ssenariy",
+    base: "Odatdagi",
+    modes: { call: "sinxron chaqiruv", async: "asinxron xabar", none: "oddiy chiziq" },
+    legend: { call: "chaqiruv: javob shu chiziqda qaytadi", async: "asinxron: kutmaydi" },
+    edgeMode: "{from} → {to}: {was} → {now}",
+  },
+  ru: {
+    label: "Сценарий",
+    base: "Обычный",
+    modes: { call: "синхронный вызов", async: "асинхронное сообщение", none: "обычная линия" },
+    legend: { call: "вызов: ответ по той же линии", async: "асинхронно: без ожидания" },
+    edgeMode: "{from} → {to}: {was} → {now}",
+  },
+  en: {
+    label: "Scenario",
+    base: "Normal",
+    modes: { call: "synchronous call", async: "async message", none: "plain line" },
+    legend: { call: "call: the reply returns on the same line", async: "async: no waiting" },
+    edgeMode: "{from} → {to}: {was} → {now}",
+  },
+};
+
+export function scenarioUi(ui: UiStrings, lang: string): ScenarioStrings {
+  return ui.scenario ?? SCENARIO_UI[lang as keyof typeof SCENARIO_UI] ?? SCENARIO_UI.en;
 }
 
 /**

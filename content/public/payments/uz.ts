@@ -127,6 +127,42 @@ const text: LessonText<typeof lesson> = {
       body: "To'lov shlyuzi uchun to'rt qoida.\n\n1) Summa eng kichik birlikda, kasr son emas. 2) Har chaqiruv takrorlanishi mumkin: shlyuz ID bo'yicha qidiring va o'sha javobni qaytaring. 3) Mol faqat `state: 2` dan keyin jo'natiladi. 4) Bekor qilishning ikki holati bor: `-1` puldan oldin, `-2` puldan keyin.",
     },
   },
+  scenarios: {
+    late: {
+      label: "Perform 30 s",
+      steps: {
+        "perform-slow": {
+          short: "Sekin perform",
+          title: "Do'kon `Perform`'ga 30 soniyada javob beradi",
+          body: "Buyurtmalar bazasini uzoq hisobot qulflab turibdi. API tranzaksiyani bajaradi, lekin javob 30 soniyadan keyin chiqadi.\n\n`PerformTransaction` — sinxron chaqiruv: shlyuz uni ochiq ushlab, javobni shu chiziqda kutadi. Uning timeout'i ancha qisqa.",
+          watch: "Do'kon bazasida allaqachon `state: 2`. Shlyuz buni eshitmagan.",
+          fields: {
+            "X-Response-Time": "30 soniya. Bu paytda shlyuz kutishni to'xtatgan.",
+            state: "Do'kon bazasida `2`: u yerda buyurtma to'langan hisoblanadi.",
+          },
+        },
+        "perform-cancel": {
+          short: "Bekor",
+          title: "Shlyuz voz kechadi va bekor qiladi",
+          body: "Shlyuz uchun vaqtida javob yo'q — to'lov o'tmadi degani. U pulni xaridorga qaytaradi va `4` sababi bilan `CancelTransaction` yuboradi.\n\nBu orada do'kon `state: 2` ni ko'rib, buyurtmani omborga allaqachon yuborgan.",
+          fields: {
+            reason: "`4` — timeout bo'yicha bekor qilindi. Shlyuz uchun bajarish yakunlanmagan.",
+            state: "`-2` — bajarilgandan keyin bekor qilindi. Do'kon rozi, lekin posilka allaqachon qadoqlangan.",
+          },
+        },
+        "perform-end": {
+          short: "Natija",
+          title: "Natija: pul qaytdi, mol qaytmadi",
+          body: "Hisobot tugaydi, baza yana tez. Do'kon jo'natmani qaytarishga urinadi, lekin posilka allaqachon kuryerda.\n\nOdatdagi yo'l bilan solishtiring: o'sha buyurtma, o'sha chaqiruvlar, faqat bitta sekin javob. Kuniga 5 ga yaqin buyurtma to'lovsiz ketadi, har birini qo'lda quvish kerak.",
+          watch: "Chaqiruvga sekin javob — kechikkan muvaffaqiyat emas: chaqiruvchi uchun bu xato.",
+          fields: {
+            recall: "Do'kon ombordan posilkani to'xtatishni so'raydi.",
+            "409": "Kech: posilka ketgan. Buyurtma jo'natilgan, lekin to'lanmagan.",
+          },
+        },
+      },
+    },
+  },
 };
 
 export default text;

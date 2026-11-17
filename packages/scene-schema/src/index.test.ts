@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type annotate, defineLesson, diff, emptyState, resolve } from "./index";
+import { type ScenarioTexts, type annotate, branchIndex, defineLesson, diff, emptyState, resolve, resolveScenario, scenarioSteps } from "./index";
 
 const base = defineLesson({
   slug: "demo",
@@ -115,6 +115,93 @@ describe("annotate on hostile input", () => {
     annotate({ format: "json", head: "x", body: `{"a": ${" ".repeat(20000)}]` }, ["a"], ["a"]);
     annotate({ format: "json", head: "x", body: '"'.repeat(20001) }, ["a"], ["a"]);
     expect(performance.now() - t0).toBeLessThan(500);
+  });
+});
+
+const branched = defineLesson({
+  ...base,
+  steps: [
+    {
+      id: "one",
+      kind: "problem",
+      nodes: { a: { kind: "actor", at: [0, 0] }, b: { kind: "service", at: [3, 0] } },
+      edges: { ab: { from: "a", to: "b", mode: "call" } },
+      metrics: { errors: 0 },
+    },
+    { id: "two", kind: "fix", metrics: { errors: 1 } },
+    { id: "three", kind: "recap" },
+  ],
+  scenarios: [
+    {
+      id: "late",
+      from: "one",
+      steps: [
+        { id: "late-wait", kind: "case", nodes: { b: { state: "slow" } }, edges: { ab: { mode: "async" } }, metrics: { errors: 40 } },
+        { id: "late-end", kind: "case", metrics: { errors: 90 } },
+      ],
+    },
+  ],
+});
+
+describe("edge mode", () => {
+  it("is carried through steps and absent by default", () => {
+    expect(resolve(base)[0]!.edges.ab!.mode).toBeUndefined();
+    expect("mode" in resolve(base)[0]!.edges.ab!).toBe(false);
+    const states = resolve(branched);
+    expect(states[0]!.edges.ab!.mode).toBe("call");
+    expect(states[2]!.edges.ab!.mode).toBe("call");
+  });
+
+  it("is reported by diff", () => {
+    const states = resolveScenario(branched, "late");
+    expect(diff(states[0]!, states[1]!)).toContainEqual({ op: "~", type: "edge-mode", id: "ab", from: "a", to: "b", was: "call", now: "async" });
+  });
+});
+
+describe("scenarios", () => {
+  it("types scenario texts by scenario and step id", () => {
+    const st = { short: "s", title: "t", body: "b" };
+    const ok: ScenarioTexts<typeof branched> = { late: { label: "Late", steps: { "late-wait": st, "late-end": st } } };
+    // @ts-expect-error a step the scenario does not have
+    const extra: ScenarioTexts<typeof branched> = { late: { label: "Late", steps: { "late-wait": st, "late-end": st, nope: st } } };
+    // @ts-expect-error a missing step text
+    const missing: ScenarioTexts<typeof branched> = { late: { label: "Late", steps: { "late-wait": st } } };
+    expect([ok, extra, missing]).toHaveLength(3);
+  });
+
+  it("keeps resolve() on the base story", () => {
+    expect(resolve(branched)).toHaveLength(3);
+  });
+
+  it("branches from the base step and applies its own steps on top", () => {
+    const states = resolveScenario(branched, "late");
+    expect(scenarioSteps(branched, "late").map((s) => s.id)).toEqual(["one", "late-wait", "late-end"]);
+    expect(branchIndex(branched, "late")).toBe(0);
+    expect(states).toHaveLength(3);
+    expect(states[0]).toEqual(resolve(branched)[0]);
+    expect(states[1]!.nodes.b!.state).toBe("slow");
+    expect(states[2]!.metrics.errors).toBe(90);
+    // the base story is untouched
+    expect(resolve(branched)[1]!.nodes.b!.state).toBe("ok");
+  });
+
+  it("rejects unknown scenarios, unknown branch points and reused step ids", async () => {
+    expect(() => resolveScenario(branched, "nope")).toThrow(/unknown scenario/);
+    const badFrom = { ...branched, scenarios: [{ ...branched.scenarios[0], from: "zzz" }] };
+    expect(() => resolveScenario(badFrom, "late")).toThrow(/unknown step/);
+    const clash = { ...branched, scenarios: [{ ...branched.scenarios[0], steps: [{ id: "two", kind: "case" as const }] }] };
+    expect(() => resolveScenario(clash, "late")).toThrow(/duplicate/);
+
+    const { validateLesson } = await import("./validate");
+    expect(() => validateLesson(branched)).not.toThrow();
+    expect(() => validateLesson(clash)).toThrow(/already used/);
+    expect(() => validateLesson(badFrom)).toThrow(/unknown step/);
+    const twice = { ...branched, scenarios: [branched.scenarios[0], { ...branched.scenarios[0], steps: [{ id: "x", kind: "case" as const }] }] };
+    expect(() => validateLesson(twice)).toThrow(/duplicate scenario/);
+    const fromLast = { ...branched, scenarios: [{ ...branched.scenarios[0], from: "three" }] };
+    expect(() => validateLesson(fromLast)).toThrow(/last step/);
+    const badMode = { ...branched, steps: [{ ...branched.steps[0], edges: { ab: { from: "a", to: "b", mode: "sync" } } }, ...branched.steps.slice(1)] };
+    expect(() => validateLesson(badMode as unknown as typeof branched)).toThrow(/mode/);
   });
 });
 

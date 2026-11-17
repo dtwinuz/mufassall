@@ -17,12 +17,15 @@ export const NODE_KINDS = [
 export const NODE_STATES = ["ok", "slow", "down"] as const;
 export const FLOWS = ["request", "ack", "fail", "retry", "dup"] as const;
 export const STEP_KINDS = ["problem", "fix", "case", "recap"] as const;
+/** `call`: the caller waits and the reply returns on the same line; `async`: fire-and-forget, any answer comes later on another edge. */
+export const EDGE_MODES = ["call", "async"] as const;
 export const LEVELS = ["beginner", "intermediate", "advanced"] as const;
 export const TIERS = ["public", "internal", "restricted"] as const;
 
 export type NodeKind = (typeof NODE_KINDS)[number];
 export type NodeStatus = (typeof NODE_STATES)[number];
 export type Flow = (typeof FLOWS)[number];
+export type EdgeMode = (typeof EDGE_MODES)[number];
 export type StepKind = (typeof STEP_KINDS)[number];
 export type Level = (typeof LEVELS)[number];
 export type Tier = (typeof TIERS)[number];
@@ -43,6 +46,8 @@ export interface EdgePatch {
   rate?: number;
   /** packets die half way: a lost message */
   cut?: boolean;
+  /** absent: a plain line, as before */
+  mode?: EdgeMode;
 }
 
 export const WIRE_FORMATS = ["json", "xml", "http", "sql", "text"] as const;
@@ -81,6 +86,16 @@ export interface StepInput {
   exchange?: Exchange;
 }
 
+/**
+ * An alternative ending (D2 "scenarios"): the base story up to and including step `from`,
+ * then these steps on top. The base story is the default, "normal" path.
+ */
+export interface ScenarioInput {
+  id: string;
+  from: string;
+  steps: readonly StepInput[];
+}
+
 export interface MetricDef {
   id: string;
   unit: string;
@@ -94,6 +109,7 @@ export interface LessonInput {
   tier: Tier;
   metrics: readonly MetricDef[];
   steps: readonly StepInput[];
+  scenarios?: readonly ScenarioInput[];
 }
 
 /** Identity helper that keeps literal ids, so lesson texts are type-checked against the scene. */
@@ -102,10 +118,13 @@ export function defineLesson<const T extends LessonInput>(lesson: T): T {
 }
 
 type Steps<T extends LessonInput> = T["steps"][number];
+type Scenarios<T extends LessonInput> = NonNullable<T["scenarios"]>[number];
+type ScenarioSteps<T extends LessonInput> = Scenarios<T>["steps"][number];
 type KeysOf<S, K extends string> = S extends { [P in K]?: infer R } ? (R extends object ? keyof R : never) : never;
 
 export type StepId<T extends LessonInput> = Steps<T>["id"];
-export type NodeId<T extends LessonInput> = Extract<KeysOf<Steps<T>, "nodes">, string>;
+export type NodeId<T extends LessonInput> = Extract<KeysOf<Steps<T> | ScenarioSteps<T>, "nodes">, string>;
+export type ScenarioId<T extends LessonInput> = Scenarios<T>["id"];
 export type MetricId<T extends LessonInput> = T["metrics"][number]["id"];
 
 export interface StepText {
@@ -129,6 +148,17 @@ export interface StepCheck {
   why: string;
 }
 
+export interface ScenarioText<Id extends string = string> {
+  /** switcher label, 1-3 words: "30 s late" */
+  label: string;
+  steps: Record<Id, StepText>;
+}
+
+/** Scenario texts keyed by scenario id, with a text for every step of that scenario. */
+export type ScenarioTexts<T extends LessonInput> = {
+  [S in Scenarios<T> as S["id"]]: ScenarioText<S["steps"][number]["id"]>;
+};
+
 export interface LessonText<T extends LessonInput> {
   title: string;
   summary: string;
@@ -136,6 +166,7 @@ export interface LessonText<T extends LessonInput> {
   nodes: Record<NodeId<T>, string>;
   metrics: Record<MetricId<T>, string>;
   steps: Record<StepId<T>, StepText>;
+  scenarios?: ScenarioTexts<T>;
 }
 
 export interface NodeState {
@@ -153,6 +184,7 @@ export interface EdgeState {
   flow: Flow;
   rate: number;
   cut: boolean;
+  mode?: EdgeMode;
 }
 
 export interface SceneState {
@@ -178,12 +210,14 @@ function clone(s: SceneState): SceneState {
  * (D2 "steps" semantics); this returns the complete state after each step.
  */
 export function resolve(input: LessonInput): SceneState[] {
-  const lesson = input;
-  const metricIds = new Set(lesson.metrics.map((m) => m.id));
-  const seen = new Set<string>();
-  let cur = empty();
+  return fold(input, input.steps, empty(), new Set());
+}
 
-  return lesson.steps.map((step) => {
+function fold(lesson: LessonInput, steps: readonly StepInput[], start: SceneState, seen: Set<string>): SceneState[] {
+  const metricIds = new Set(lesson.metrics.map((m) => m.id));
+  let cur = start;
+
+  return steps.map((step) => {
     const where = `step "${step.id}"`;
     if (seen.has(step.id)) throw new Error(`${where}: duplicate step id`);
     seen.add(step.id);
@@ -231,6 +265,8 @@ export function resolve(input: LessonInput): SceneState[] {
         rate: patch.rate ?? prev?.rate ?? 1,
         cut: patch.cut ?? prev?.cut ?? false,
       };
+      const mode = patch.mode ?? prev?.mode;
+      if (mode !== undefined) next.edges[key]!.mode = mode;
     }
 
     for (const e of Object.values(next.edges)) {
@@ -258,12 +294,46 @@ export function resolve(input: LessonInput): SceneState[] {
   });
 }
 
+function scenarioOf(lesson: LessonInput, id: string): { scenario: ScenarioInput; at: number } {
+  const scenario = lesson.scenarios?.find((s) => s.id === id);
+  if (!scenario) throw new Error(`lesson "${lesson.slug}": unknown scenario "${id}"`);
+  const at = lesson.steps.findIndex((s) => s.id === scenario.from);
+  if (at < 0) throw new Error(`scenario "${id}": branches from unknown step "${scenario.from}"`);
+  return { scenario, at };
+}
+
+/** Index of the base step a scenario branches from. */
+export function branchIndex(lesson: LessonInput, scenarioId: string): number {
+  return scenarioOf(lesson, scenarioId).at;
+}
+
+/** The steps a reader walks in a scenario: base steps up to `from`, then the scenario's own. */
+export function scenarioSteps(lesson: LessonInput, scenarioId: string): StepInput[] {
+  const { scenario, at } = scenarioOf(lesson, scenarioId);
+  return [...lesson.steps.slice(0, at + 1), ...scenario.steps];
+}
+
+/**
+ * Full states of a scenario, aligned with `scenarioSteps`. A scenario step id must not repeat a
+ * base step id nor another scenario's: texts, checks and feedback are keyed by step id.
+ */
+export function resolveScenario(lesson: LessonInput, scenarioId: string): SceneState[] {
+  const { scenario, at } = scenarioOf(lesson, scenarioId);
+  const seen = new Set(lesson.steps.map((s) => s.id));
+  for (const other of lesson.scenarios ?? []) {
+    if (other.id !== scenarioId) for (const s of other.steps) seen.add(s.id);
+  }
+  const base = resolve(lesson).slice(0, at + 1);
+  return [...base, ...fold(lesson, scenario.steps, base[at]!, seen)];
+}
+
 export type Change =
   | { op: "+" | "-"; type: "node"; id: string }
   | { op: "~"; type: "node-state"; id: string; from: NodeStatus; to: NodeStatus }
   | { op: "+" | "-"; type: "edge"; id: string; from: string; to: string }
   | { op: "~"; type: "edge-flow"; id: string; from: string; to: string; was: Flow; now: Flow }
   | { op: "+" | "-"; type: "edge-cut"; id: string; from: string; to: string }
+  | { op: "~"; type: "edge-mode"; id: string; from: string; to: string; was: EdgeMode | undefined; now: EdgeMode | undefined }
   | { op: "~"; type: "metric"; id: string; was: number | undefined; now: number };
 
 /** What changed between two consecutive states: the source of the "What changed" panel. */
@@ -287,6 +357,7 @@ export function diff(prev: SceneState, next: SceneState): Change[] {
     }
     if (p.flow !== e.flow) out.push({ op: "~", type: "edge-flow", id: k, from: e.from, to: e.to, was: p.flow, now: e.flow });
     if (p.cut !== e.cut) out.push({ op: e.cut ? "-" : "+", type: "edge-cut", id: k, from: e.from, to: e.to });
+    if (p.mode !== e.mode) out.push({ op: "~", type: "edge-mode", id: k, from: e.from, to: e.to, was: p.mode, now: e.mode });
   }
   for (const [k, e] of Object.entries(prev.edges)) {
     if (!next.edges[k] && next.nodes[e.from] && next.nodes[e.to]) {

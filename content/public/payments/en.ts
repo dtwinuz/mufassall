@@ -127,6 +127,42 @@ const text: LessonText<typeof lesson> = {
       body: "Four rules for a payment gateway.\n\n1) Amounts in the smallest unit, never floats. 2) Every call can repeat: look up the gateway ID and return the same answer. 3) Goods leave only after `state: 2`. 4) Cancel has two cases: `-1` before the money, `-2` after it.",
     },
   },
+  scenarios: {
+    late: {
+      label: "Perform in 30 s",
+      steps: {
+        "perform-slow": {
+          short: "Slow perform",
+          title: "The shop answers `Perform` in 30 seconds",
+          body: "The orders database is locked by a long report. The API performs the transaction, but the answer leaves after 30 seconds.\n\n`PerformTransaction` is a synchronous call: the gateway holds it open and waits for the answer on the same line. Its timeout is much shorter.",
+          watch: "The shop's database already says `state: 2`. The gateway has not heard that.",
+          fields: {
+            "X-Response-Time": "30 seconds. By then the gateway has stopped waiting.",
+            state: "`2` in the shop's database: the order counts as paid there.",
+          },
+        },
+        "perform-cancel": {
+          short: "Cancelled",
+          title: "The gateway gives up and cancels",
+          body: "For the gateway, no answer in time means the payment did not go through. It returns the money to the payer and sends `CancelTransaction` with reason `4`.\n\nMeanwhile the shop, seeing `state: 2`, has already sent the order to the warehouse.",
+          fields: {
+            reason: "`4` — cancelled by timeout. For the gateway the perform never completed.",
+            state: "`-2` — cancelled after it was performed. The shop agrees, but the parcel is already packed.",
+          },
+        },
+        "perform-end": {
+          short: "Outcome",
+          title: "Outcome: the money went back, the goods did not",
+          body: "The report ends and the database is fast again. The shop tries to recall the shipment, but the parcel is already with the courier.\n\nCompare with the normal path: the same order, the same calls, only one slow answer. About 5 orders a day leave unpaid, and each has to be chased by hand.",
+          watch: "A slow answer to a call is not a late success: for the caller it is a failure.",
+          fields: {
+            recall: "The shop asks the warehouse to stop the parcel.",
+            "409": "Too late: the parcel has left. The order is shipped and unpaid.",
+          },
+        },
+      },
+    },
+  },
 };
 
 export default text;

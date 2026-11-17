@@ -1,5 +1,5 @@
 import type { NodeKind } from "@mufassall/scene-schema";
-import { type LabDoc, emptyDoc } from "./lab";
+import { type LabDoc, emptyDoc, has } from "./lab";
 import { simulate } from "./sim";
 
 /**
@@ -14,7 +14,14 @@ export type Rule =
   /** every request path from a `from` node to a `to` node passes a `via` node */
   | { kind: "via"; from: NodeKind; to: NodeKind; via: NodeKind }
   /** at `rps`, taking down any single node of a kind keeps errors under `errors` */
-  | { kind: "survive"; node: NodeKind; rps: number; errors: number };
+  | { kind: "survive"; node: NodeKind; rps: number; errors: number }
+  /**
+   * a chain of request links whose node kinds read `kinds` in order; a kind may repeat
+   * (two services in a row) and load balancers may sit anywhere in between
+   */
+  | { kind: "path"; kinds: NodeKind[] }
+  /** both kinds are on the diagram and no request link goes straight from a `from` node to a `to` node */
+  | { kind: "noEdge"; from: NodeKind; to: NodeKind };
 
 export interface Challenge {
   id: string;
@@ -137,6 +144,34 @@ function reaches(doc: LabDoc, a: string, b: string): boolean {
   return false;
 }
 
+/** Structure, not traffic: a cut link still shows the design, so `path` and `noEdge` count it. */
+const links = (doc: LabDoc) => Object.values(doc.edges).filter((e) => PASSING.has(e.flow) && has(doc.nodes, e.from) && has(doc.nodes, e.to));
+
+export function hasKindPath(doc: LabDoc, kinds: readonly NodeKind[]): boolean {
+  if (kinds.length === 0) return false;
+  const out = new Map<string, string[]>();
+  for (const e of links(doc)) out.set(e.from, [...(out.get(e.from) ?? []), e.to]);
+  const last = kinds.length - 1;
+  // state = (node, index of the kind it stands for); repeats keep the index, so it is a finite walk
+  const seen = new Set<string>();
+  const stack: [string, number][] = Object.values(doc.nodes)
+    .filter((n) => n.kind === kinds[0])
+    .map((n) => [n.id, 0]);
+  while (stack.length) {
+    const [id, i] = stack.pop()!;
+    if (i === last) return true;
+    const key = `${id}@${i}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    for (const to of out.get(id) ?? []) {
+      const k = doc.nodes[to]!.kind;
+      if (k === kinds[i + 1]) stack.push([to, i + 1]);
+      else if (k === kinds[i] || k === "lb") stack.push([to, i]);
+    }
+  }
+  return false;
+}
+
 export function checkRule(doc: LabDoc, rule: Rule): boolean {
   const of = (k: NodeKind) => Object.values(doc.nodes).filter((n) => n.kind === k);
   switch (rule.kind) {
@@ -161,6 +196,12 @@ export function checkRule(doc: LabDoc, rule: Rule): boolean {
         const r = simulate(broken, rule.rps);
         return r.ok > 0 && r.errorRate < rule.errors;
       });
+    }
+    case "path":
+      return hasKindPath(doc, rule.kinds);
+    case "noEdge": {
+      if (of(rule.from).length === 0 || of(rule.to).length === 0) return false;
+      return !links(doc).some((e) => doc.nodes[e.from]!.kind === rule.from && doc.nodes[e.to]!.kind === rule.to);
     }
   }
 }

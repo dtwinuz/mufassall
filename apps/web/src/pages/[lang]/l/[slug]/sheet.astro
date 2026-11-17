@@ -1,9 +1,10 @@
 ---
 import { LANGS, type Lang, lessons, sectionOf } from "@mufassall/content";
-import { Scene, lessonBounds } from "@mufassall/scene-engine";
+import { Scene, designState, hasExchanges, lessonBounds, toD2, toMermaidFlowchart, toMermaidSequence } from "@mufassall/scene-engine";
 import { resolve } from "@mufassall/scene-schema";
 import "@mufassall/scene-engine/player.css";
 import Base from "../../../../layouts/Base.astro";
+import { diagram } from "../../../../i18n/learner";
 import { site } from "../../../../i18n/site";
 import { rich, sheetOf } from "../../../../lib/learner";
 
@@ -23,6 +24,16 @@ const last = states[states.length - 1]!;
 const section = sectionOf(slug);
 const where = section ? s.sections[section.id]?.title : undefined;
 const href = `/${lang}/l/${slug}/`;
+
+// "Diagram as code": generated here at build time, sheet.js only switches tabs and copies
+const D = diagram[lang];
+const design = designState(entry.lesson);
+const nodeLabels = text.nodes as Record<string, string>;
+const codes = [
+  { id: "flow", name: D.flow, syntax: "mermaid", code: toMermaidFlowchart(design, nodeLabels, { words: D.words }) },
+  ...(hasExchanges(entry.lesson) ? [{ id: "seq", name: D.seq, syntax: "mermaid", code: toMermaidSequence(entry.lesson, text) }] : []),
+  { id: "d2", name: D.d2, syntax: "d2", code: toD2(design, nodeLabels, { words: D.words }) },
+].map((c) => ({ ...c, code: c.code.trimEnd() }));
 ---
 
 <Base lang={lang} title={`${sheet.title} · ${L.title}`} description={sheet.summary}>
@@ -56,6 +67,30 @@ const href = `/${lang}/l/${slug}/`;
         <Scene state={{ ...last, focus: [] }} box={lessonBounds(states)} labels={text.nodes as Record<string, string>} title={text.title} paused reduced runKey={0} />
       </div>
     </figure>
+
+    <section class="sheet__block sheet__code" data-part="code" data-code-tabs data-copied={D.copied} data-failed={D.failed} aria-labelledby="code-title">
+      <h2 id="code-title">{D.title}</h2>
+      <p class="sheet__code-lead">{D.lead}</p>
+      <div class="sheet__tabs" role="tablist" aria-label={D.tabs} hidden>
+        {
+          codes.map((c, i) => (
+            <button type="button" role="tab" id={`code-tab-${c.id}`} aria-controls={`code-${c.id}`} aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1}>
+              {c.name}
+            </button>
+          ))
+        }
+      </div>
+      {
+        codes.map((c) => (
+          <div class="sheet__panel" role="tabpanel" id={`code-${c.id}`} aria-labelledby={`code-tab-${c.id}`} tabindex="0">
+            <h3 class="sheet__panel-name" data-panel-name>{c.name}</h3>
+            <pre><code class={`language-${c.syntax}`} data-code>{c.code}</code></pre>
+            <button type="button" class="mf-btn" data-copy hidden>{D.copy}</button>
+          </div>
+        ))
+      }
+      <p class="sr-only" role="status" aria-live="polite" data-copy-status></p>
+    </section>
 
     {
       sheet.recap.length > 0 && (
@@ -132,3 +167,61 @@ const href = `/${lang}/l/${slug}/`;
   </article>
   <script is:inline src="/sheet.js" defer></script>
 </Base>
+
+<style>
+  .sheet__code-lead {
+    color: var(--muted);
+  }
+  .sheet__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 12px 0 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .sheet__tabs [role="tab"] {
+    min-height: 36px;
+    padding: 0 12px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    cursor: pointer;
+  }
+  .sheet__tabs [role="tab"][aria-selected="true"] {
+    border-bottom-color: var(--signal);
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .sheet__tabs [role="tab"]:focus-visible,
+  .sheet__panel:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+  .sheet__panel {
+    margin-top: 12px;
+  }
+  .sheet__panel-name {
+    margin: 16px 0 6px;
+    font-size: 1rem;
+  }
+  .sheet__panel pre {
+    max-height: 26rem;
+    margin: 0 0 8px;
+    padding: 12px 14px;
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) - 6px);
+    background: var(--code);
+    font: 0.85rem/1.5 var(--font-mono);
+    tab-size: 2;
+  }
+  /* code on paper cannot be pasted, and the scene picture above already shows the design */
+  @media print {
+    .sheet__code {
+      display: none;
+    }
+  }
+</style>

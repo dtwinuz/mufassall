@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { NodeKind, NodeState, SceneState } from "@mufassall/scene-schema";
 import { LOAD_Y, type LoadSpot, loadSpots } from "@mufassall/scene-schema/layout";
 import { BLOCK_A, BLOCK_B, BLOCK_H, type Box, edgeSegment, fromIso, iso } from "./iso";
-import { CUT_AT, type Lane, runPackets } from "./packets";
+import { ASYNC_MARK_AT, CUT_AT, type Lane, returnSegment, runPackets } from "./packets";
 
 const A = BLOCK_A;
 const B = BLOCK_B;
@@ -247,7 +247,10 @@ export function Scene({ state, box, labels, title, paused, reduced, runKey, acti
         seg.y1 += ny * 5;
         seg.y2 += ny * 5;
       }
-      return [{ id: e.id, x1: r1(seg.x1), y1: r1(seg.y1), x2: r1(seg.x2), y2: r1(seg.y2), len: seg.len, flow: e.flow, rate: e.rate, cut: e.cut }];
+      const lane: Lane = { id: e.id, x1: r1(seg.x1), y1: r1(seg.y1), x2: r1(seg.x2), y2: r1(seg.y2), len: seg.len, flow: e.flow, rate: e.rate, cut: e.cut };
+      if (e.mode) lane.mode = e.mode;
+      if (e.mode === "call") lane.back = returnSegment(lane);
+      return [lane];
     });
   }, [state]);
 
@@ -255,7 +258,7 @@ export function Scene({ state, box, labels, title, paused, reduced, runKey, acti
   // (a load or status change, e.g. the Lab simulation slider, keeps them flowing)
   const lanesRef = useRef(lanes);
   lanesRef.current = lanes;
-  const laneKey = lanes.map((l) => `${l.id}:${l.x1},${l.y1},${l.x2},${l.y2},${l.flow},${l.rate},${l.cut ? 1 : 0}`).join("|");
+  const laneKey = lanes.map((l) => `${l.id}:${l.x1},${l.y1},${l.x2},${l.y2},${l.flow},${l.rate},${l.cut ? 1 : 0},${l.mode ?? ""}`).join("|");
   useEffect(() => {
     if (reduced || !layer.current) return;
     return runPackets(layer.current, lanesRef.current, () => pausedRef.current);
@@ -308,7 +311,7 @@ export function Scene({ state, box, labels, title, paused, reduced, runKey, acti
           return (
             <g
               key={l.id}
-              className={`mf-edge mf-edge--${l.flow}${l.cut ? " mf-edge--cut" : ""}${l.id === active || l.id === edit?.selectedEdge ? " mf-edge--active" : ""}`}
+              className={`mf-edge mf-edge--${l.flow}${l.cut ? " mf-edge--cut" : ""}${l.mode ? ` mf-edge--${l.mode}` : ""}${l.id === active || l.id === edit?.selectedEdge ? " mf-edge--active" : ""}`}
               onPointerDown={
                 edit?.onEdgeDown
                   ? (e) => {
@@ -339,6 +342,24 @@ export function Scene({ state, box, labels, title, paused, reduced, runKey, acti
                 d={`M${l.x1} ${l.y1} L${l.x2} ${l.y2}`}
                 markerEnd={l.cut ? undefined : `url(#mf-arrow-${l.flow})`}
               />
+              {/* the reply of a call returns beside its request; a cut call never gets one */}
+              {l.back && !l.cut && (
+                <path
+                  className={runKey > 0 ? "mf-edge__return mf-edge__line--draw" : "mf-edge__return"}
+                  d={`M${l.back.x1} ${l.back.y1} L${l.back.x2} ${l.back.y2}`}
+                  markerEnd={`url(#mf-arrow-${l.flow})`}
+                />
+              )}
+              {l.mode === "async" && (
+                <g
+                  className="mf-edge__async"
+                  transform={`translate(${Math.round((l.x1 + (l.x2 - l.x1) * ASYNC_MARK_AT) * 10) / 10} ${Math.round((l.y1 + (l.y2 - l.y1) * ASYNC_MARK_AT) * 10) / 10})`}
+                >
+                  {/* a small clock: whatever answer there is comes later */}
+                  <circle r={5.5} />
+                  <path d="M0 -3 V0 H2.6" />
+                </g>
+              )}
               {l.cut && (
                 <g className="mf-edge__cut" transform={`translate(${cx} ${cy})`}>
                   <circle r={7} />

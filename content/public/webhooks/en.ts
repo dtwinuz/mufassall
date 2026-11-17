@@ -184,6 +184,38 @@ const text: LessonText<typeof lesson> = {
       body: "Six rules for webhooks.\n\n1) Send from a queue with a timeout, never inside the business request. 2) Sign id, timestamp and raw body with a per-endpoint secret; verify in constant time. 3) Reject old timestamps and remember seen ids. 4) Retry on a growing schedule with jitter. 5) The receiver stores the id with a unique key, answers fast and works in the background. 6) Do not rely on order: use versions or fetch current state; isolate and disable dead endpoints.",
     },
   },
+  scenarios: {
+    slow: {
+      label: "Shop in 30 s",
+      steps: {
+        "shop-slow": {
+          short: "Slow shop",
+          title: "The shop takes 30 seconds to answer",
+          body: "One shop handles the whole event inside the webhook request, and today its database is slow: every answer takes 30 seconds.\n\nThe delivery is a call: the sender waits for the answer on the same line, but only for 10 seconds. After that the attempt counts as failed, whatever the shop does later.",
+          watch: "The payment itself was not touched: it only dropped the event into the queue and moved on.",
+          fields: {
+            timeout: "The sender stops waiting at 10 s and schedules a retry.",
+            "10:00:30": "The shop's `200` arrives 20 s after the sender hung up. Nobody reads it.",
+          },
+        },
+        "shop-retry": {
+          short: "Retries",
+          title: "Every retry is handled again",
+          body: "The sender retries the same event, and each retry also takes 30 seconds and also times out. The shop finishes every attempt anyway.\n\nThe order is paid once, but the bonus is added on every attempt, about 40 times a day.",
+          fields: {
+            "Webhook-Id": "The same event id on every attempt. The shop does not check it yet.",
+            "attempt 3": "For the sender the third failure in a row.",
+            bonus: "Each finished attempt adds the bonus again.",
+          },
+        },
+        "shop-end": {
+          short: "Outcome",
+          title: "Outcome: the payments stay fast, this shop pays",
+          body: "Payments still take 60 ms: thanks to the queue, a slow shop cannot hold them. Compare with the inline design, where every payment for this shop would now take 30 seconds.\n\nThe cost stays with this shop: 5200 deliveries waiting, about 60 double bonuses a day and a busy sender. The receiver fixes it on its side: answer fast, work later.",
+        },
+      },
+    },
+  },
 };
 
 export default text;

@@ -130,6 +130,65 @@ const text: LessonText<typeof lesson> = {
       body: "Ishonchli callback uchun to'rt qoida.\n\n1) `200` faqat xabar saqlangandan keyin. 2) Og'ir ish navbat va worker'da. 3) Ack — ish tugagach. 4) Har ish idempotent: takror kelsa ham natija bitta.",
     },
   },
+  scenarios: {
+    slow: {
+      label: "Javob 30 s",
+      steps: {
+        "slow-db": {
+          short: "Sekin baza",
+          title: "Inbox'ga yozish 30 soniya oladi",
+          body: "Bazada og'ir hisobot ishlayapti, har yozuv qulfni kutadi. Odatda bir necha millisekund oladigan inbox yozuvi endi 30 soniya davom etadi.\n\nCallback — sinxron chaqiruv: yuboruvchi ulanishni ushlab, `200` ni shu chiziqda kutadi. U allaqachon voz kechgan.",
+          watch: "Javob baribir keladi. Faqat uni endi hech kim kutmayapti.",
+          fields: {
+            "X-Response-Time": "30 soniya. Yuboruvchining timeout'i 3 soniya, uning uchun bu yetkazish muvaffaqiyatsiz.",
+          },
+        },
+        "slow-retry": {
+          short: "Qayta urinish",
+          title: "Timeout'lar qayta yuborishga aylanadi",
+          body: "Yuboruvchi uchun har timeout — yetkazilmagan xabar, shuning uchun u o'sha callback'ni qayta yuboradi. Har urinish ham 30 soniya kutadi va yana timeout bo'ladi.\n\nBitta hodisa endi uch marta keladi, ortiqcha trafik esa sekin bazani yanada sekinlashtiradi.",
+          fields: {
+            "X-Retry-Count": "Uchinchi urinish. Oldingi ikkitasi saqlangan, lekin ularning `200` javobi kech qolgan.",
+            event_id: "Har safar bir xil ID. Idempotentlik bo'lmasa, har nusxa alohida topshiriqqa aylanadi.",
+          },
+        },
+        "slow-end": {
+          short: "Natija",
+          title: "Natija: hech narsa yo'qolmadi, ish uch barobar",
+          body: "Hech narsa yo'qolmadi: har nusxa saqlangan. Lekin navbat nusxalar bilan to'ladi, worker bitta ishni uch martagacha bajaradi — daqiqasiga 36 ga yaqin.\n\nOdatdagi yo'l bilan solishtiring: tez `200` faqat tezlik uchun emas. Aynan u yuboruvchini qayta yuborishdan to'xtatadi.",
+        },
+      },
+    },
+    lost: {
+      label: "Callback yo'qoldi",
+      steps: {
+        gone: {
+          short: "Yo'qoldi",
+          title: "Callback yetib kelmaydi",
+          body: "Yuboruvchi bilan sizning orangizdagi tarmoq nosozligi ba'zi callback'larni yo'lda yo'qotadi. Yuboruvchi javob olmadi va bir necha urinishdan keyin voz kechdi.\n\nSizning tomonda hech narsa bo'lmadi: na xato, na log qatori. `doc_5521` hujjati abadiy kutish holatida qoladi.",
+          watch: "Kelmagan callback'ni ko'rib bo'lmaydi. Uni faqat manba bilan muntazam solishtirish topadi.",
+          fields: {
+            event_id: "Bu hodisa API'ga yetmadi. Sizning tomonda uning ID'sini hech kim bilmaydi.",
+          },
+        },
+        "gone-poll": {
+          short: "Solishtirish",
+          title: "Solishtirish: kutayotganlar haqida o'zing so'ra",
+          body: "Har bir necha daqiqada API uzoq kutib qolgan hujjatlarni oladi va ularning holatini yuboruvchidan o'zi so'raydi.\n\nBu teskari yo'nalishdagi sinxron chaqiruv: API kutadi, holat shu chiziqda qaytadi. Yo'qolgan callback'lar endi yo'qolmaydi, faqat kechikadi.",
+          fields: {
+            Authorization: "Yuboruvchi API'si uchun sizning kalitingiz. Bu sir, shuning uchun yashirilgan.",
+            status: "Haqiqiy holat. API uni callback kelgandek yozib qo'yadi.",
+            updated_at: "Holat yuboruvchida qachon o'zgargani. Yo'qolgan callback ham shuni aytgan bo'lardi.",
+          },
+        },
+        "gone-end": {
+          short: "Natija",
+          title: "Natija: kech va ba'zan ikki marta",
+          body: "Tarmoq tiklanadi va kechikkan callback nihoyat keladi — solishtirish holatni allaqachon yozib bo'lgach. Bitta hodisa endi ikki tomondan keladi, daqiqasiga 2 martaga yaqin.\n\nSolishtirishning narxi: yuboruvchiga qo'shimcha so'rovlar va takrorlar. Shuning uchun ishlov idempotent bo'lishi shart.",
+        },
+      },
+    },
+  },
 };
 
 export default text;

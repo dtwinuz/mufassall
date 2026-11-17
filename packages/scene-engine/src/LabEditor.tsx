@@ -1,6 +1,7 @@
 import { FLOWS, NODE_KINDS, NODE_STATES, type NodeKind } from "@mufassall/scene-schema";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { downloadPng, downloadSvg } from "./export";
+import { toMermaidFlowchart } from "./textexport";
 import { type Box, gridBounds, rectBounds } from "./iso";
 import { useReducedMotion } from "./motion";
 import {
@@ -25,6 +26,10 @@ import { Scene, type SceneEdit } from "./Scene";
 import { simView, simulate } from "./sim";
 import { CHALLENGES, type Rule, checkRule } from "./challenges";
 import { type LabStrings, type UiStrings, fill, formatNumber } from "./ui";
+import { PRACTICE_KEY, parsePractice, practiceSlug, recordSolved, today } from "./practice";
+import { practiceStrings } from "./practice-ui";
+import { type PracticeLoad, PracticePanel } from "./PracticePanel";
+import "./practice.css";
 
 const STORE_KEY = "mufassall:v1:lab";
 const SOLVED_KEY = "mufassall:v1:lab:solved";
@@ -216,7 +221,18 @@ function takeLink(): LabDoc | null {
   return nodeCount(linked) > 0 ? linked : null;
 }
 
-function initial(lab: LabStrings): { doc: LabDoc; before?: LabDoc; fromLink: boolean } {
+/** a practice keeps its own canvas per lesson, so it never touches the reader's free diagram */
+const practiceDocKey = (slug: string) => `mufassall:v1:lab:practice:${slug}`;
+
+function initial(lab: LabStrings, practice: string | null): { doc: LabDoc; before?: LabDoc; fromLink: boolean } {
+  if (practice) {
+    try {
+      const raw = store.get(practiceDocKey(practice));
+      return { doc: raw ? sanitize(JSON.parse(raw)) : emptyDoc(), fromLink: false };
+    } catch {
+      return { doc: emptyDoc(), fromLink: false };
+    }
+  }
   const raw = store.get(STORE_KEY);
   let saved: LabDoc | undefined;
   try {
@@ -241,7 +257,8 @@ export interface LabEditorProps {
 }
 
 export function LabEditor({ ui, lab }: LabEditorProps) {
-  const [first] = useState(() => initial(lab));
+  const [practice] = useState(() => practiceSlug(window.location.search));
+  const [first] = useState(() => initial(lab, practice));
   const [hist, setHist] = useState<History>(() => ({ past: first.before ? [first.before] : [], present: first.doc, future: [] }));
   const doc = hist.present;
   const [tool, setTool] = useState<Tool>({ mode: "select" });
@@ -278,8 +295,36 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
   });
 
   useEffect(() => {
-    store.set(STORE_KEY, JSON.stringify(doc));
-  }, [doc]);
+    store.set(practice ? practiceDocKey(practice) : STORE_KEY, JSON.stringify(doc));
+  }, [doc, practice]);
+
+  const ps = practiceStrings(lang);
+  const [pload, setPload] = useState<PracticeLoad>({ status: "loading" });
+  useEffect(() => {
+    if (!practice) return;
+    let live = true;
+    fetch(`/${lang}/practice/${practice}.json`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((raw: unknown) => {
+        const file = parsePractice(raw, practice);
+        if (live) setPload(file ? { status: "ok", file } : { status: "fail" });
+      })
+      .catch(() => live && setPload({ status: "fail" }));
+    return () => {
+      live = false;
+    };
+  }, [practice, lang]);
+  const [practiceDone, setPracticeDone] = useState<string | undefined>(() => {
+    if (!practice) return undefined;
+    try {
+      const v = JSON.parse(store.get(PRACTICE_KEY) ?? "{}") as Record<string, unknown>;
+      return typeof v[practice] === "string" ? (v[practice] as string) : undefined;
+    } catch {
+      return undefined;
+    }
+  });
+  /** after "show solution" a pass is not recorded as solved (until the next visit) */
+  const [peeked, setPeeked] = useState(false);
 
   // a node that vanished (undo, delete, import) can no longer start a connection
   useEffect(() => {
@@ -328,7 +373,8 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
 
   /** Swap in a diagram from outside; the reader's own one is backed up with a "restore" toast. */
   const replaceDoc = (next: LabDoc, note?: string) => {
-    const backed = backupFor(doc, next);
+    // a practice canvas is its own; undo brings it back, and the free diagram's backup stays untouched
+    const backed = practice ? false : backupFor(doc, next);
     commit(next);
     setSel(null);
     window.clearTimeout(toastTimer.current);
@@ -615,6 +661,22 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
     const target = c.rules.find((r) => r.kind === "load" || r.kind === "survive");
     if (target && "rps" in target) setRps(target.rps);
   };
+  const pfile = pload.status === "ok" ? pload.file : null;
+  const pchecks = useMemo(() => (pfile ? pfile.rules.map((r) => checkRule(doc, r)) : []), [pfile, doc]);
+  const pAll = pchecks.length > 0 && pchecks.every(Boolean);
+  useEffect(() => {
+    if (!practice || !pAll || peeked) return;
+    const day = today();
+    if (practiceDone === day) return;
+    store.set(PRACTICE_KEY, JSON.stringify(recordSolved(store.get(PRACTICE_KEY), practice, day)));
+    setPracticeDone(day);
+  }, [practice, pAll, peeked, practiceDone]);
+  const showSolution = () => {
+    if (!pfile) return;
+    setPeeked(true);
+    replaceDoc(sanitize(pfile.solution), ps.solutionShown);
+  };
+
   const ruleText = (r: Rule) => {
     const pct = (v: number) => num(v * 100, Number.isInteger(Math.round(v * 1000) / 10) ? 0 : 1);
     switch (r.kind) {
@@ -626,6 +688,10 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
         return fill(lab.ruleVia, { from: lab.kinds[r.from], to: lab.kinds[r.to], via: lab.kinds[r.via] });
       case "survive":
         return fill(lab.ruleSurvive, { kind: lab.kinds[r.node], rps: num(r.rps), err: pct(r.errors) });
+      case "path":
+        return fill(ps.rulePath, { path: r.kinds.map((k) => lab.kinds[k]).join(" → ") });
+      case "noEdge":
+        return fill(ps.ruleNoEdge, { from: lab.kinds[r.from], to: lab.kinds[r.to] });
     }
   };
 
@@ -757,6 +823,20 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
       </section>
 
       <aside className="mf-lab__side">
+        {practice ? (
+          <PracticePanel
+            ps={ps}
+            lab={lab}
+            lang={lang}
+            slug={practice}
+            load={pload}
+            checks={pchecks}
+            ruleText={ruleText}
+            solvedOn={practiceDone}
+            onSolution={showSolution}
+            onStartOver={() => replaceDoc(emptyDoc())}
+          />
+        ) : (
         <div className={`mf-panel__card mf-lab__challenge${challenge ? " mf-lab__challenge--on" : ""}`}>
           <h2 id="mf-lab-challenges">{lab.challenges}</h2>
           <select name="challenge" aria-labelledby="mf-lab-challenges" value={challengeId} onChange={(e) => (e.currentTarget.value ? startChallenge(e.currentTarget.value) : setChallengeId(""))}>
@@ -796,6 +876,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
             </>
           )}
         </div>
+        )}
         <div className="mf-panel__card">
           {node ? (
             <form className="mf-lab__form" onSubmit={(e) => e.preventDefault()}>
@@ -934,6 +1015,9 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
             </button>
             <button type="button" className="mf-btn" onClick={() => picture("svg")}>
               {lab.exportSvg}
+            </button>
+            <button type="button" className="mf-btn" onClick={() => copyText(toMermaidFlowchart(toScene(doc), doc.labels))}>
+              {lab.exportMermaid}
             </button>
           </div>
           <button type="button" className="mf-btn" onClick={exportJson}>

@@ -59,10 +59,10 @@ export default defineLesson({
         orders: { kind: "db", at: [8, 5] },
       },
       edges: {
-        pay: { from: "payer", to: "gateway", rate: 2 },
-        call: { from: "gateway", to: "api", rate: 2 },
-        answer: { from: "api", to: "gateway", flow: "ack", rate: 2 },
-        read: { from: "api", to: "orders", rate: 2 },
+        // every step of the protocol is a call: the gateway waits, the answer returns on the same line
+        pay: { from: "payer", to: "gateway", rate: 2, mode: "call" },
+        call: { from: "gateway", to: "api", rate: 2, mode: "call" },
+        read: { from: "api", to: "orders", rate: 2, mode: "call" },
       },
       metrics: { p95: 120, double: 0, unpaid: 0 },
       focus: ["gateway", "api"],
@@ -163,7 +163,7 @@ export default defineLesson({
       id: "ship-early",
       kind: "problem",
       nodes: { warehouse: { kind: "worker", at: [8, 0] } },
-      edges: { ship: { from: "api", to: "warehouse", rate: 2 } },
+      edges: { ship: { from: "api", to: "warehouse", rate: 2, mode: "call" } },
       metrics: { unpaid: 4 },
       focus: ["api", "warehouse"],
       exchange: {
@@ -240,5 +240,86 @@ export default defineLesson({
       },
     },
     { id: "recap", kind: "recap" },
+  ],
+  scenarios: [
+    {
+      id: "late",
+      from: "perform",
+      steps: [
+        {
+          id: "perform-slow",
+          kind: "problem",
+          nodes: { api: { state: "slow" }, orders: { state: "slow", load: 96 } },
+          metrics: { p95: 30000 },
+          focus: ["gateway", "api", "orders"],
+          exchange: {
+            edge: "call",
+            request: rpc(4, "PerformTransaction", `{ "id": "gw_6f41" }`),
+            response: {
+              format: "json",
+              head: "HTTP/1.1 200 OK",
+              headers: [["X-Response-Time", "30140 ms"]],
+              body: `{
+  "jsonrpc": "2.0",
+  "result": {
+    "transaction": "tx_77",
+    "perform_time": 1795392901144,
+    "state": 2
+  },
+  "id": 4
+}`,
+            },
+            marks: ["X-Response-Time", "state"],
+            masked: ["Authorization"],
+          },
+        },
+        {
+          id: "perform-cancel",
+          kind: "problem",
+          nodes: { warehouse: { kind: "worker", at: [8, 0] } },
+          edges: { ship: { from: "api", to: "warehouse", rate: 2, mode: "call" } },
+          focus: ["gateway", "api", "warehouse"],
+          exchange: {
+            edge: "call",
+            request: rpc(
+              7,
+              "CancelTransaction",
+              `{
+    "id": "gw_6f41",
+    "reason": 4
+  }`,
+            ),
+            response: reply(
+              7,
+              `{
+    "transaction": "tx_77",
+    "cancel_time": 1795392903020,
+    "state": -2
+  }`,
+            ),
+            marks: ["reason", "state"],
+            masked: ["Authorization"],
+          },
+        },
+        {
+          id: "perform-end",
+          kind: "case",
+          nodes: { api: { state: "ok" }, orders: { state: "ok", load: 60 } },
+          edges: { ship: { flow: "fail" } },
+          metrics: { p95: 150, unpaid: 5 },
+          focus: ["api", "warehouse"],
+          exchange: {
+            edge: "ship",
+            request: { format: "http", head: "POST /shipments/1042/recall HTTP/1.1" },
+            response: {
+              format: "json",
+              head: "HTTP/1.1 409 Conflict",
+              body: `{ "error": "parcel already with the courier" }`,
+            },
+            marks: ["recall", "409"],
+          },
+        },
+      ],
+    },
   ],
 });

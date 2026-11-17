@@ -184,6 +184,38 @@ const text: LessonText<typeof lesson> = {
       body: "Webhook'lar uchun oltita qoida.\n\n1) Biznes so'rovi ichida emas, navbatdan timeout bilan yuboring. 2) Id, vaqt va xom tanani har manzilning o'z siri bilan imzolang; doimiy vaqtda tekshiring. 3) Eski vaqtni rad eting va ko'rilgan id'larni eslab qoling. 4) Tasodifiy yoyilishli, o'sib boruvchi jadval bo'yicha qayta urining. 5) Qabul qiluvchi id'ni noyob kalit bilan saqlaydi, tez javob beradi va fonda ishlaydi. 6) Tartibga tayanmang: versiyalardan foydalaning yoki joriy holatni oling; o'lik manzillarni ajrating va o'chiring.",
     },
   },
+  scenarios: {
+    slow: {
+      label: "Do'kon 30 s",
+      steps: {
+        "shop-slow": {
+          short: "Sekin do'kon",
+          title: "Do'kon 30 soniyada javob beradi",
+          body: "Bitta do'kon butun hodisani webhook so'rovining o'zida bajaradi, bugun esa uning bazasi sekin: har javob 30 soniya oladi.\n\nYetkazish — chaqiruv: yuboruvchi javobni shu chiziqda kutadi, lekin faqat 10 soniya. Undan keyin urinish muvaffaqiyatsiz hisoblanadi, do'kon keyin nima qilishidan qat'i nazar.",
+          watch: "To'lovning o'ziga tegilmadi: u hodisani navbatga tashladi va davom etdi.",
+          fields: {
+            timeout: "Yuboruvchi 10 s da kutishni to'xtatadi va qayta urinishni rejalashtiradi.",
+            "10:00:30": "Do'konning `200` javobi yuboruvchi uzilgandan 20 s keyin keladi. Uni hech kim o'qimaydi.",
+          },
+        },
+        "shop-retry": {
+          short: "Qayta urinish",
+          title: "Har takror yana bajariladi",
+          body: "Yuboruvchi o'sha hodisani qayta yuboradi, har urinish ham 30 soniya oladi va yana timeout bo'ladi. Do'kon esa baribir har urinishni oxirigacha bajaradi.\n\nBuyurtma bir marta to'langan, lekin bonus har urinishda qo'shiladi — kuniga 40 martaga yaqin.",
+          fields: {
+            "Webhook-Id": "Har urinishda o'sha hodisa id'si. Do'kon uni hali tekshirmaydi.",
+            "attempt 3": "Yuboruvchi uchun ketma-ket uchinchi muvaffaqiyatsizlik.",
+            bonus: "Tugagan har urinish bonusni yana qo'shadi.",
+          },
+        },
+        "shop-end": {
+          short: "Natija",
+          title: "Natija: to'lovlar tez, narxini shu do'kon to'laydi",
+          body: "To'lovlar hamon 60 ms oladi: navbat tufayli sekin do'kon ularni ushlab tura olmaydi. Webhook to'lov ichida yuborilgan variant bilan solishtiring: u yerda shu do'konga har to'lov endi 30 soniya davom etardi.\n\nNarx shu do'konda qoladi: 5200 ta yetkazish kutmoqda, kuniga 60 ga yaqin ikki baravar bonus va band yuboruvchi. Qabul qiluvchi buni o'z tomonida tuzatadi: tez javob ber, keyin ishla.",
+        },
+      },
+    },
+  },
 };
 
 export default text;

@@ -1,0 +1,196 @@
+/* "What happens if…" panel. Same tokens as player.css; mobile first. */
+
+.mf-whatif {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 24px 0 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg);
+}
+.mf-whatif.is-bad {
+  border-color: var(--bad);
+}
+
+.mf-whatif__title {
+  margin: 0;
+  font: 600 20px/1.2 var(--font-sans);
+  letter-spacing: -0.01em;
+}
+.mf-whatif__intro,
+.mf-whatif__note {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.mf-whatif__note {
+  margin: 0;
+  font-size: 13px;
+}
+.mf-whatif__sub {
+  margin: 4px 0 0;
+  font: 500 11px/1.3 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.mf-whatif__params {
+  display: grid;
+  gap: 14px;
+}
+.mf-whatif__param {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.mf-whatif__label {
+  font: 500 14px/1.3 var(--font-sans);
+}
+.mf-whatif__inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.mf-whatif__range {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  min-height: 32px;
+  margin: 0;
+  accent-color: var(--signal);
+}
+.mf-whatif__num {
+  flex: 0 0 auto;
+  width: 6.5em;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--bg);
+  color: var(--fg);
+  font: 500 14px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.mf-whatif__unit {
+  flex: 0 0 auto;
+  min-width: 2.2em;
+  color: var(--muted);
+  font: 500 13px/1 var(--font-mono);
+}
+.mf-whatif__range:focus-visible,
+.mf-whatif__num:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+.mf-whatif__hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.mf-whatif__results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.mf-whatif__stat {
+  min-width: 0;
+  padding: 8px 12px 9px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--stage);
+}
+.mf-whatif__stat dt {
+  font: 500 11px/1.3 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.mf-whatif__stat dd {
+  margin: 3px 0 0;
+  font: 600 19px/1.2 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.mf-whatif__stat dd small {
+  margin-left: 3px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+.mf-whatif__stat.is-warn {
+  border-color: var(--warn);
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+.mf-whatif__stat.is-bad {
+  border-color: var(--bad);
+  box-shadow: inset 3px 0 0 var(--bad);
+}
+.mf-whatif__stat.is-bad dd {
+  color: var(--bad);
+}
+
+.mf-whatif__warn {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--bad);
+  border-radius: calc(var(--radius) - 4px);
+  color: var(--fg);
+  font-size: 14px;
+  line-height: 1.45;
+  box-shadow: inset 3px 0 0 var(--bad);
+}
+
+.mf-whatif__formula {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 4px);
+  background: var(--code, var(--stage));
+  color: var(--fg);
+  font: 400 13px/1.6 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mf-whatif__formula code {
+  font: inherit;
+}
+
+.mf-whatif__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.mf-whatif__copied {
+  color: var(--muted);
+  font-size: 13px;
+}
+.mf-whatif__copied:empty {
+  display: none;
+}
+
+@media (min-width: 720px) {
+  .mf-whatif {
+    padding: 20px 22px;
+  }
+  .mf-whatif__params {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mf-whatif .mf-btn {
+    transition: none;
+  }
+}

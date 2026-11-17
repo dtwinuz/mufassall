@@ -1,0 +1,65 @@
+/* Lab practice ("build it yourself" after a lesson). Colours come from the host's tokens, like player.css. */
+
+.mf-practice h2 {
+  margin: 0 0 8px;
+}
+.mf-practice--done {
+  border-color: var(--ok);
+}
+.mf-practice__progress {
+  margin: 0 0 8px;
+  font: 500 13px var(--font-mono);
+  color: var(--muted);
+}
+.mf-practice__hints {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  list-style: none;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  font-size: 14px;
+}
+.mf-practice__hints ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+.mf-practice__level {
+  display: block;
+  font: 500 12px var(--font-mono);
+  color: var(--signal-strong);
+}
+.mf-practice__ask {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--signal);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--signal) 6%, transparent);
+}
+.mf-practice__ask p {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+.mf-practice .mf-lab__seg {
+  margin-top: 8px;
+}
+.mf-practice__back {
+  text-decoration: none;
+}
+.mf-practice a:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mf-practice--done {
+    transition: border-color 0.3s ease;
+  }
+}
+
+/* phone: the task comes before the canvas, like a running challenge */
+@media (max-width: 640px) {
+  .mf-lab__side > .mf-practice {
+    order: 0;
+  }
+}

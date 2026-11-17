@@ -1,7 +1,62 @@
 /**
  * Shape of the learner-tool strings (site[lang].learner): estimate calculator, streak, cheat sheets,
- * compare, learning paths and share cards. Types only, so tools/check-i18n.mjs can load site.ts as is.
+ * compare, learning paths and share cards. site.ts only imports types from here, so
+ * tools/check-i18n.mjs can load it as is.
  */
+
+/** "Diagram as code" on the cheat sheet. Checked by learner.test.ts (all languages, no Cyrillic in uz/en). */
+export interface DiagramStrings {
+  title: string;
+  lead: string;
+  tabs: string; // aria label of the tab list
+  flow: string;
+  seq: string;
+  d2: string;
+  copy: string;
+  copied: string;
+  failed: string;
+  /** words on edges inside the generated code */
+  words: { retry: string; dup: string; lost: string; call: string; async: string };
+}
+
+export const diagram: Record<"uz" | "ru" | "en", DiagramStrings> = {
+  uz: {
+    title: "Diagramma kod sifatida",
+    lead: "Darsdagi yakuniy sxemani matn ko'rinishida oling va Jira, GitLab, GitHub, Notion yoki hujjatga qo'ying: Mermaid u yerlarda o'zi chiziladi. D2 uchun alohida variant bor.",
+    tabs: "Diagramma formati",
+    flow: "Mermaid: sxema",
+    seq: "Mermaid: so'rovlar ketma-ketligi",
+    d2: "D2",
+    copy: "Nusxa olish",
+    copied: "Nusxa olindi",
+    failed: "Nusxa olinmadi: matn belgilandi, Ctrl+C bosing",
+    words: { retry: "qayta urinish", dup: "dublikat", lost: "yo'qoldi", call: "chaqiruv", async: "asinxron" },
+  },
+  ru: {
+    title: "Диаграмма как код",
+    lead: "Итоговая схема урока в виде текста: вставьте её в Jira, GitLab, GitHub, Notion или документацию, там Mermaid рисуется сам. Есть и вариант для D2.",
+    tabs: "Формат диаграммы",
+    flow: "Mermaid: схема",
+    seq: "Mermaid: последовательность запросов",
+    d2: "D2",
+    copy: "Копировать",
+    copied: "Скопировано",
+    failed: "Не удалось скопировать: текст выделен, нажмите Ctrl+C",
+    words: { retry: "повтор", dup: "дубль", lost: "потеряно", call: "вызов", async: "асинхронно" },
+  },
+  en: {
+    title: "Diagram as code",
+    lead: "The lesson's final design as text: paste it into Jira, GitLab, GitHub, Notion or your docs, where Mermaid renders by itself. There is a D2 version too.",
+    tabs: "Diagram format",
+    flow: "Mermaid: flowchart",
+    seq: "Mermaid: request sequence",
+    d2: "D2",
+    copy: "Copy",
+    copied: "Copied",
+    failed: "Could not copy: the text is selected, press Ctrl+C",
+    words: { retry: "retry", dup: "duplicate", lost: "lost", call: "call", async: "async" },
+  },
+};
 export interface LearnerStrings {
   nav: { tools: string; paths: string };
   tools: { title: string; lead: string; open: string; items: Record<"estimate" | "compare" | "lab" | "paths", { title: string; text: string }> };
