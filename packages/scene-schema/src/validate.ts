@@ -8,6 +8,7 @@ const nodePatch = z
     kind: z.enum(NODE_KINDS),
     at: z.tuple([z.number().int(), z.number().int()]),
     state: z.enum(NODE_STATES),
+    load: z.number().int().min(0).max(100),
   })
   .partial()
   .strict();

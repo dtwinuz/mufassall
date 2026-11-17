@@ -11,6 +11,7 @@ import {
 } from "@mufassall/scene-schema";
 import { lessonBounds } from "./iso";
 import { Scene } from "./Scene";
+import { encodeDoc, fromScene } from "./lab";
 import { inline, paragraphs, plain } from "./text";
 import { type UiStrings, fill, formatNumber } from "./ui";
 import { Wire } from "./Wire";
@@ -44,9 +45,11 @@ export interface LessonPlayerProps<T extends LessonInput> {
   lang: string;
   crumbs?: string;
   next?: { title: string; href: string };
+  /** Lab page URL; when set, the current step can be opened there for editing */
+  labHref?: string;
 }
 
-export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, crumbs, next }: LessonPlayerProps<T>) {
+export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, crumbs, next, labHref }: LessonPlayerProps<T>) {
   const states = useMemo(() => resolve(lesson), [lesson]);
   const box = useMemo(() => lessonBounds(states), [states]);
   const total = states.length;
@@ -186,6 +189,11 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
                 <button type="button" className="mf-btn" aria-pressed={paused} onClick={() => setPaused((p) => !p)}>
                   {paused ? ui.play : ui.pause}
                 </button>
+                {labHref && (
+                  <a className="mf-btn" href={`${labHref}#d=${encodeDoc(fromScene(state, labels))}`}>
+                    {ui.openInLab}
+                  </a>
+                )}
               </div>
             </div>
 

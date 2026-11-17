@@ -1,109 +1,6 @@
 import type { Lang } from "@mufassall/content";
 import type { UiStrings } from "@mufassall/scene-engine";
 
-export interface SiteStrings {
-  langName: string;
-  tagline: string;
-  description: string;
-  nav: { learn: string; map: string; practice: string; lab: string; soon: string };
-  theme: string;
-  skip: string;
-  home: {
-    title: string;
-    lead: string;
-    tracks: Record<string, { title: string; text: string }>;
-    start: string;
-    continue: string;
-    done: string;
-    upcoming: string;
-    upcomingList: string[];
-  };
-  footer: string;
-}
-
-export const site: Record<Lang, SiteStrings> = {
-  uz: {
-    langName: "O'zbekcha",
-    tagline: "Jarayonlarni mufassal, qadamma-qadam",
-    description:
-      "Tizimlar va biznes jarayonlarini jonli sahnada qadamma-qadam o'rgatadigan platforma: xabar qayerga boradi, qayerda yo'qoladi va qanday tuzatiladi.",
-    nav: { learn: "Darslar", map: "Xarita", practice: "Mashq", lab: "Lab", soon: "tez kunda" },
-    theme: "Mavzuni almashtirish",
-    skip: "Asosiy qismga o'tish",
-    home: {
-      title: "Tizim qanday ishlashini ko'ring, yodlamang",
-      lead: "Har bir dars — bitta muammo va uning yechimi. Sahnada so'rovlar harakatlanadi, tugunlar yiqiladi, raqamlar o'zgaradi. Siz esa har qadamda nima o'zgarganini ko'rasiz.",
-      tracks: {
-        reliability: { title: "Ishonchlilik", text: "Xabarlar yo'qolmasligi va ikki marta ishlanmasligi uchun." },
-        payments: { title: "To'lovlar", text: "Pul ikki marta yechilmasligi va mol to'lovsiz ketmasligi uchun." },
-      },
-      start: "Boshlash",
-      continue: "Davom ettirish",
-      done: "O'tildi",
-      upcoming: "Navbatdagi darslar",
-      upcomingList: [
-        "Elektron imzo: hujjat qanday imzolanadi va tekshiriladi",
-        "Hujjat holatlari: ko'p tomonli holat mashinasi",
-        "Navbatlar va qayta urinishlar: backoff, DLQ",
-      ],
-    },
-    footer: "dtwin loyihasi. Kod MIT, darslar CC BY-SA 4.0.",
-  },
-  ru: {
-    langName: "Русский",
-    tagline: "Процессы подробно, шаг за шагом",
-    description:
-      "Платформа, которая показывает системы и бизнес-процессы в живой сцене шаг за шагом: куда идёт сообщение, где оно теряется и как это исправить.",
-    nav: { learn: "Уроки", map: "Карта", practice: "Практика", lab: "Лаборатория", soon: "скоро" },
-    theme: "Сменить тему",
-    skip: "Перейти к содержимому",
-    home: {
-      title: "Смотрите, как работает система, а не заучивайте",
-      lead: "Каждый урок — одна проблема и её решение. В сцене движутся запросы, падают узлы, меняются цифры, а вы на каждом шаге видите, что изменилось.",
-      tracks: {
-        reliability: { title: "Надёжность", text: "Чтобы сообщения не терялись и не обрабатывались дважды." },
-        payments: { title: "Платежи", text: "Чтобы деньги не списывались дважды, а товар не уходил без оплаты." },
-      },
-      start: "Начать",
-      continue: "Продолжить",
-      done: "Пройдено",
-      upcoming: "Следующие уроки",
-      upcomingList: [
-        "Электронная подпись: как документ подписывается и проверяется",
-        "Статусы документа: машина состояний с несколькими сторонами",
-        "Очереди и повторы: backoff, DLQ",
-      ],
-    },
-    footer: "Проект dtwin. Код MIT, уроки CC BY-SA 4.0.",
-  },
-  en: {
-    langName: "English",
-    tagline: "Processes, step by step, in detail",
-    description:
-      "A platform that shows systems and business processes in a live scene, step by step: where a message goes, where it gets lost and how to fix it.",
-    nav: { learn: "Lessons", map: "Map", practice: "Practice", lab: "Lab", soon: "soon" },
-    theme: "Switch theme",
-    skip: "Skip to content",
-    home: {
-      title: "See how the system works instead of memorising it",
-      lead: "Every lesson is one problem and its fix. Requests move across the scene, nodes fail, numbers change, and at every step you see exactly what changed.",
-      tracks: {
-        reliability: { title: "Reliability", text: "So messages are never lost and never handled twice." },
-        payments: { title: "Payments", text: "So money is never charged twice and goods never leave unpaid." },
-      },
-      start: "Start",
-      continue: "Continue",
-      done: "Done",
-      upcoming: "Coming next",
-      upcomingList: [
-        "Digital signatures: how a document is signed and verified",
-        "Document statuses: a multi-party state machine",
-        "Queues and retries: backoff, DLQ",
-      ],
-    },
-    footer: "A dtwin project. Code MIT, lessons CC BY-SA 4.0.",
-  },
-};
 
 export const player: Record<Lang, UiStrings> = {
   uz: {
@@ -127,7 +24,8 @@ export const player: Record<Lang, UiStrings> = {
     youLearn: "Nimani o'rganasiz",
     modelNote: "Raqamlar — model ssenariysi, o'lchov emas",
     sceneLabel: "Sahna: {title}",
-    units: { "/min": "/daq", "/day": "/kun" },
+    openInLab: "Lab'da ochish",
+    units: { "/min": "/daq", "/day": "/kun", "/h": "/soat", s: "s", GB: "GB", TB: "TB", MB: "MB" },
     wire: { title: "Haqiqiy so'rov", request: "So'rov", response: "Javob", masked: "yashirilgan" },
     states: { ok: "ishlayapti", slow: "sekin", down: "ishdan chiqdi" },
     flows: { request: "so'rov", ack: "javob", fail: "xato", retry: "qayta yetkazish", dup: "takroriy" },
@@ -165,7 +63,18 @@ export const player: Record<Lang, UiStrings> = {
     youLearn: "Вы узнаете",
     modelNote: "Цифры — модельный сценарий, не замеры",
     sceneLabel: "Сцена: {title}",
-    units: { "/s": "/с", ms: "мс", "/min": "/мин", "/day": "/день" },
+    openInLab: "Открыть в Лаборатории",
+    units: {
+      "/s": "/с",
+      ms: "мс",
+      "/min": "/мин",
+      "/h": "/ч",
+      "/day": "/день",
+      s: "с",
+      GB: "ГБ",
+      TB: "ТБ",
+      MB: "МБ",
+    },
     wire: { title: "Настоящий запрос", request: "Запрос", response: "Ответ", masked: "скрыто" },
     states: { ok: "работает", slow: "медленно", down: "упал" },
     flows: { request: "запрос", ack: "ответ", fail: "ошибка", retry: "повторная доставка", dup: "дубликат" },
@@ -203,6 +112,7 @@ export const player: Record<Lang, UiStrings> = {
     youLearn: "You will learn",
     modelNote: "Numbers are a model scenario, not measurements",
     sceneLabel: "Scene: {title}",
+    openInLab: "Open in Lab",
     wire: { title: "The real request", request: "Request", response: "Response", masked: "hidden" },
     states: { ok: "healthy", slow: "slow", down: "down" },
     flows: { request: "request", ack: "reply", fail: "error", retry: "redelivery", dup: "duplicate" },

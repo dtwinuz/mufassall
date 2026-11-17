@@ -1,7 +1,8 @@
 import { PUBLIC_MASK, annotate, maskedRaw, resolve } from "@mufassall/scene-schema";
 import { validateLesson } from "@mufassall/scene-schema/validate";
 import { describe, expect, it } from "vitest";
-import { LANGS, lessons, tracks } from "./index";
+import { LANGS, lessons } from "./index";
+import { sections as allSections } from "./sections";
 
 describe.each(Object.entries(lessons))("lesson %s", (slug, { lesson, text }) => {
   it("has a valid shape and resolves", () => {
@@ -21,6 +22,25 @@ describe.each(Object.entries(lessons))("lesson %s", (slug, { lesson, text }) => 
       expect(st?.title && st.short && st.body, `step ${s.id}`).toBeTruthy();
     }
     expect(t.learn.length).toBeGreaterThan(0);
+  });
+
+  it("follows the course conventions", () => {
+    const states = resolve(lesson);
+    expect(lesson.steps.at(-1)?.kind, "last step is the recap").toBe("recap");
+    expect(lesson.steps.length).toBeGreaterThanOrEqual(7);
+    for (const [i, s] of states.entries()) {
+      const cells = Object.values(s.nodes).map((n) => n.at.join(","));
+      expect(new Set(cells).size, `${lesson.steps[i]!.id}: two nodes on one cell`).toBe(cells.length);
+      for (const n of Object.values(s.nodes)) {
+        for (const c of n.at) expect(c >= 0 && c <= 12, `${n.id} at ${n.at} is off the 0..12 grid`).toBe(true);
+      }
+    }
+    const work = lesson.steps.filter((s) => s.kind !== "recap");
+    const withWire = work.filter((s) => s.exchange).length;
+    expect(withWire * 2, "at least half of the steps show the real request").toBeGreaterThanOrEqual(work.length);
+    for (const lang of ["uz", "en"] as const) {
+      expect(/[Ѐ-ӿ]/.test(JSON.stringify(text[lang])), `${lang} text contains Cyrillic`).toBe(false);
+    }
   });
 
   it("public wire messages carry no real secret, every mark appears and is explained", () => {
@@ -46,6 +66,13 @@ describe.each(Object.entries(lessons))("lesson %s", (slug, { lesson, text }) => 
   });
 });
 
-it("every track lesson exists", () => {
-  for (const t of tracks) for (const slug of t.lessons) expect(lessons[slug], slug).toBeDefined();
+describe("course map", () => {
+  it("every lesson in sections.ts is written", () => {
+    const missing = allSections.flatMap((s) => s.lessons).filter((slug) => !lessons[slug]);
+    expect(missing).toEqual([]);
+  });
+  it("every written lesson is on the map exactly once", () => {
+    const listed = allSections.flatMap((s) => s.lessons);
+    for (const slug of Object.keys(lessons)) expect(listed.filter((l) => l === slug), slug).toHaveLength(1);
+  });
 });

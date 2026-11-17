@@ -1,0 +1,22 @@
+---
+import { LANGS, type Lang } from "@mufassall/content";
+import "@mufassall/scene-engine/player.css";
+import Lab from "../../components/Lab";
+import Base from "../../layouts/Base.astro";
+import { site } from "../../i18n/site";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const s = site[lang];
+---
+
+<Base lang={lang} title={s.labPage.title} description={s.labPage.lead} active="lab">
+  <header class="page-head">
+    <h1>{s.labPage.title}</h1>
+    <p>{s.labPage.lead}</p>
+  </header>
+  <Lab client:only="react" lang={lang} />
+</Base>

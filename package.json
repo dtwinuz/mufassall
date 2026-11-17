@@ -7,14 +7,15 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "dev": "pnpm --filter @mufassall/web dev",
-    "build": "pnpm --filter @mufassall/web build && node tools/postbuild.mjs",
+    "dev": "pnpm gen && pnpm --filter @mufassall/web dev",
+    "build": "pnpm gen && pnpm --filter @mufassall/web build && node tools/postbuild.mjs",
     "preview": "pnpm --filter @mufassall/web preview",
-    "typecheck": "pnpm -r --parallel typecheck",
-    "test": "vitest run",
+    "typecheck": "pnpm gen && pnpm -r --parallel typecheck",
+    "test": "pnpm gen && vitest run",
     "check:i18n": "node tools/check-i18n.mjs",
     "check:leaks": "node tools/leak-guard.mjs apps/web/dist",
-    "check": "pnpm typecheck && pnpm test && pnpm check:i18n && pnpm build && pnpm check:leaks"
+    "check": "pnpm typecheck && pnpm test && pnpm check:i18n && pnpm build && pnpm check:leaks",
+    "gen": "node tools/gen-registry.mjs"
   },
   "devDependencies": {
     "typescript": "~5.9.3",

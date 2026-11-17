@@ -8,15 +8,16 @@ import "@fontsource/geist-mono/600.css";
 import "../styles/tokens.css";
 import "../styles/site.css";
 import { LANGS, type Lang } from "@mufassall/content";
-import { site } from "../i18n/ui";
+import { site } from "../i18n/site";
 
 interface Props {
   lang: Lang;
   title?: string;
   description?: string;
+  active?: "learn" | "lab";
 }
 
-const { lang, title, description } = Astro.props;
+const { lang, title, description, active = "learn" } = Astro.props;
 const s = site[lang];
 const pageTitle = title ? `${title} · mufassall` : `mufassall · ${s.tagline}`;
 const desc = description ?? s.description;
@@ -53,10 +54,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
           <span>mufassall</span>
         </a>
         <nav class="site-nav" aria-label="main">
-          <a href={`/${lang}/`} aria-current="page">{s.nav.learn}</a>
-          <span class="site-nav__soon">{s.nav.map} <small>{s.nav.soon}</small></span>
+          <a href={`/${lang}/`} aria-current={active === "learn" ? "page" : undefined}>{s.nav.learn}</a>
+          <a href={`/${lang}/lab/`} aria-current={active === "lab" ? "page" : undefined}>{s.nav.lab}</a>
           <span class="site-nav__soon">{s.nav.practice} <small>{s.nav.soon}</small></span>
-          <span class="site-nav__soon">{s.nav.lab} <small>{s.nav.soon}</small></span>
         </nav>
         <div class="site-tools">
           <nav class="langs" aria-label="language">

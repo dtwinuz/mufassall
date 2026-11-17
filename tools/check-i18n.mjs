@@ -1,6 +1,7 @@
 // Every UI string exists in every language, is not empty, and uz/en carry no Cyrillic.
 // Lesson texts are checked by content/lessons.test.ts (typed against the scene).
-import { player, site } from "../apps/web/src/i18n/ui.ts";
+import { player } from "../apps/web/src/i18n/ui.ts";
+import { lab, site } from "../apps/web/src/i18n/site.ts";
 
 const LANGS = ["uz", "ru", "en"];
 const problems = [];
@@ -12,7 +13,7 @@ function walk(value, path, out) {
   return out;
 }
 
-for (const [name, table] of Object.entries({ site, player })) {
+for (const [name, table] of Object.entries({ site, player, lab })) {
   const maps = Object.fromEntries(LANGS.map((l) => [l, walk(table[l], "", new Map())]));
   const keys = new Set(LANGS.flatMap((l) => [...maps[l].keys()]));
   for (const key of keys) {

@@ -1,4 +1,50 @@
-import type { Flow, NodeStatus, StepKind } from "@mufassall/scene-schema";
+import type { Flow, NodeKind, NodeStatus, StepKind } from "@mufassall/scene-schema";
+
+/** Lab (diagram editor) strings, per language. */
+export interface LabStrings {
+  title: string;
+  palette: string;
+  paletteHint: string;
+  kinds: Record<NodeKind, string>;
+  select: string;
+  connect: string;
+  hintSelect: string;
+  hintPlace: string; // "{kind}: click an empty cell"
+  hintConnectFrom: string;
+  hintConnectTo: string; // "{from} → click the target"
+  empty: string;
+  node: string;
+  edge: string;
+  nothing: string;
+  label: string;
+  kind: string;
+  state: string;
+  load: string;
+  noLoad: string;
+  flow: string;
+  rate: string;
+  cut: string;
+  reverse: string;
+  remove: string;
+  undo: string;
+  redo: string;
+  clear: string;
+  clearConfirm: string;
+  example: string;
+  share: string;
+  copied: string;
+  exportJson: string;
+  importJson: string;
+  code: string;
+  codeTitle: string;
+  copy: string;
+  close: string;
+  play: string;
+  pause: string;
+  keys: string;
+  stageLabel: string;
+  limit: string;
+}
 
 /** Interface strings the host app supplies per language. `{x}` placeholders are filled by the player. */
 export interface UiStrings {
@@ -22,6 +68,7 @@ export interface UiStrings {
   youLearn: string;
   modelNote: string;
   sceneLabel: string; // "Sahna: {title}"
+  openInLab: string;
   /** localised metric units, keyed by the unit written in the lesson ("/s", "ms", "/min") */
   units?: Record<string, string>;
   /** the "real request" pane under the scene */
