@@ -19,7 +19,7 @@ const text: LessonText<typeof lesson> = {
     search: "Qidiruv servisi",
     pay: "To'lov servisi",
     paydb: "To'lov bazasi",
-    queue: "Voqealar jurnali",
+    queue: "Hodisalar jurnali",
   },
   metrics: {
     deploys: "Deploylar",
@@ -62,7 +62,7 @@ const text: LessonText<typeof lesson> = {
     gateway: {
       short: "Gateway",
       title: "API gateway: bitta kirish eshigi",
-      body: "Client'lar bitta host'ni ko'radi. Gateway token'ni tekshiradi, rate limit qo'llaydi, request id qo'shadi va yo'l bo'yicha yo'naltiradi. Ortidagi servislar bu ishni takrorlamaydi.\n\nU ichki tuzilishni ham yashiradi: keyinroq servislarni bo'lish yoki birlashtirish mumkin, birorta client'ga tegmasdan.",
+      body: "Mijozlar bitta host'ni ko'radi. Gateway token'ni tekshiradi, rate limit qo'llaydi, request id qo'shadi va yo'l bo'yicha yo'naltiradi. Ortidagi servislar bu ishni takrorlamaydi.\n\nU ichki tuzilishni ham yashiradi: keyinroq servislarni bo'lish yoki birlashtirish mumkin, birorta mijozga tegmasdan.",
       watch: "Biznes mantiqni gateway'ga qo'ymang. U buyurtmalar haqida bila boshlasa, eski monolit oldida yangi monolitga aylanadi.",
       fields: {
         Host: "Yagona ommaviy manzil. Hamma servislar uning ortida.",
@@ -75,6 +75,16 @@ const text: LessonText<typeof lesson> = {
       short: "To'lov alohida",
       title: "To'lovning o'z servisi va bazasi",
       body: "To'lov jamoasi har kuni deploy qilishni va karta ma'lumotlarini qolgan hamma narsadan uzoq tutishni xohlaydi. To'lov o'z bazasi bilan servisga aylanadi. Ilova uni HTTP orqali chaqiradi.\n\nDeploylar kuniga oltitaga chiqdi. Lekin birinchi qadamdagi yagona tranzaksiya endi yo'q: buyurtma bir bazada, to'lov boshqasida.",
+      check: {
+        q: "To'lov servisi yiqildi, ilova va do'kon bazasi esa ishlayapti. Yangi buyurtmalar nima bo'ladi?",
+        options: [
+          "Monolitdagidek butun buyurtma bekor qilinadi",
+          "Buyurtma saqlanadi, lekin to'langanmi, noma'lum",
+          "Gateway to'lov qaytguncha checkout'ni to'xtatadi",
+        ],
+        answer: 1,
+        why: "Umumiy tranzaksiya endi yo'q. Chaqiruv 2 soniyadan keyin timeout bo'ladi, buyurtma do'kon bazasida to'lovi noma'lum holda qoladi, p95 2.1 s ga chiqadi, so'rovlarning 8% i yiqiladi.",
+      },
       fields: {
         order_id: "Buyurtma do'kon bazasida yashaydi. To'lov faqat uning raqamini biladi.",
         payment_id: "To'lov bazasida yaratildi. Ikki baza, ikki alohida commit.",
@@ -94,35 +104,45 @@ const text: LessonText<typeof lesson> = {
       short: "Umumiy baza",
       title: "Boshqa servisning jadvalini o'qish",
       body: "Buyurtma summasini ko'rsatish uchun to'lov jamoasi do'kon bazasini to'g'ridan o'qiydi. Do'kon jamoasi oddiy relizda ustun nomini o'zgartirguncha ishlaydi.\n\nTo'lov o'z tomonida hech narsa o'zgarmasdan buziladi. Umumiy baza ikki jamoani umumiy kod kabi qattiq bog'laydi.",
-      watch: "Har servis o'z ma'lumotiga egalik qiladi. Boshqalar uning API'si orqali so'raydi yoki voqealarini tinglaydi, jadvallarini o'qimaydi.",
+      watch: "Har servis o'z ma'lumotiga egalik qiladi. Boshqalar uning API'si orqali so'raydi yoki hodisalarini tinglaydi, jadvallarini o'qimaydi.",
+      check: {
+        q: "To'lov servisi buyurtma summasini do'kon jamoasining navbatdagi nomini o'zgartirishida sinmasdan qanday olsin?",
+        options: [
+          "Do'kon jamoasi saqlashga va'da bergan view'dan o'qish",
+          "Har kecha do'kon bazasini to'lovga nusxalash",
+          "Summani `OrderPlaced` hodisasidan olish",
+        ],
+        answer: 2,
+        why: "Ilova hodisalar jurnaliga summa bilan `OrderPlaced` yozadi, to'lov esa o'z nusxasini saqlaydi va do'kon bazasini hech qachon o'qimaydi. To'lov o'lik bo'lsa, hodisalar jurnalda kutadi; yiqilgan so'rovlar 0.4% ga tushadi.",
+      },
       fields: {
         ERROR: "To'lov kodi tayangan ustun endi yo'q.",
         HINT: "Boshqa jamoadagi oddiy qayta nomlash. Ularning testlari o'tdi, siznikilar buzildi.",
       },
     },
     events: {
-      short: "Voqealar",
-      title: "Ma'lumotga ega bo'ling, voqea e'lon qiling",
-      body: "Begona o'qish ham, to'g'ridan chaqiruv ham olib tashlandi. Buyurtma yaratilganda ilova voqealar jurnaliga `OrderPlaced` voqeasini yozadi. To'lov uni o'qiydi va kerakli narsaning nusxasini o'zida saqlaydi.\n\nTo'lov o'lik bo'lsa, voqealar jurnalda kutadi va servis qaytganda qayta ishlanadi. Hech narsa yo'qolmaydi, buyurtmalar qabul qilinishda davom etadi.",
+      short: "Hodisalar",
+      title: "Har servis o'z ma'lumotiga ega, hodisa e'lon qiladi",
+      body: "Begona o'qish ham, to'g'ridan chaqiruv ham olib tashlandi. Buyurtma yaratilganda ilova hodisalar jurnaliga `OrderPlaced` hodisasini yozadi. To'lov uni o'qiydi va kerakli narsaning nusxasini o'zida saqlaydi.\n\nTo'lov o'lik bo'lsa, hodisalar jurnalda kutadi va servis qaytganda qayta ishlanadi. Hech narsa yo'qolmaydi, buyurtmalar qabul qilinishda davom etadi.",
       fields: {
-        key: "Bir xil kalitli voqealar bitta partition'ga tushadi: bitta buyurtmaning voqealari tartibda qoladi.",
+        key: "Bir xil kalitli hodisalar bitta partition'ga tushadi: bitta buyurtmaning hodisalari tartibda qoladi.",
         type: "So'rov emas, nomlangan fakt. U bilan nima qilishni to'lov o'zi hal qiladi.",
-        amount: "Summa voqea ichida keladi, to'lovga do'kon bazasini o'qish kerak emas.",
+        amount: "Summa hodisa ichida keladi, to'lovga do'kon bazasini o'qish kerak emas.",
       },
     },
     debugging: {
       short: "Debugging",
-      title: "Hisob: bir necha servis bo'ylab debugging",
-      body: "Bitta buyurtma endi gateway, ilova, voqealar jurnali va to'lovdan o'tadi. Bug haqida xabar degani: to'rt to'plam log, o'rtada navbat va birorta umumiy stack trace yo'q.\n\nHar chaqiruv va har voqea ichida trace id bo'lmasa, hech kim bitta buyurtmani boshidan oxirigacha kuzata olmaydi. Tracing, markaziy log va har servis uchun dashboard bo'lishning narxiga kiradi.",
+      title: "Narxi: bir necha servis bo'ylab debugging",
+      body: "Bitta buyurtma endi gateway, ilova, hodisalar jurnali va to'lovdan o'tadi. Bug haqida xabar degani: to'rt to'plam log, o'rtada navbat va birorta umumiy stack trace yo'q.\n\nHar chaqiruv va har hodisa ichida trace id bo'lmasa, hech kim bitta buyurtmani boshidan oxirigacha kuzata olmaydi. Tracing, markaziy log va har servis uchun dashboard bo'lishning narxiga kiradi.",
       fields: {
-        offset: "Voqeaning jurnaldagi o'rni. Uni qayta o'ynash yoki to'lov qanchalik orqada qolganini ko'rish mumkin.",
-        traceparent: "Trace id voqea ichida ham yuradi, shuning uchun asinxron qadam o'sha trace'ga tushadi.",
+        offset: "Hodisaning jurnaldagi o'rni. Uni qayta o'ynash yoki to'lov qanchalik orqada qolganini ko'rish mumkin.",
+        traceparent: "Trace id hodisa ichida ham yuradi, shuning uchun asinxron qadam o'sha trace'ga tushadi.",
       },
     },
     recap: {
       short: "Xulosa",
       title: "Xulosa",
-      body: "Toza modulli monolitdan boshlang. Faqat nomlay oladigan sabab bilan bo'ling.\n\n1) Yaxshi sabablar: jamoalar bir-birini to'sadi, bir qismning yuki butunlay boshqacha, qismga o'z reliz sur'ati yoki izolyatsiya kerak. 2) Har bo'linish funksiya chaqiruvini tarmoq chaqiruviga aylantiradi: timeout, qisman yiqilish, umumiy tranzaksiya yo'q. 3) Har servis o'z ma'lumotiga ega; boshqalar API yoki voqea orqali. 4) Kirishda autentifikatsiya, limit va yo'naltirish uchun gateway. 5) Tracing va markaziy log'ni bo'lishdan oldin rejalashtiring, keyin emas.",
+      body: "Toza modulli monolitdan boshlang. Faqat nomlay oladigan sabab bilan bo'ling.\n\n1) Yaxshi sabablar: jamoalar bir-birini to'sadi, bir qismning yuki butunlay boshqacha, qismga o'z reliz sur'ati yoki izolyatsiya kerak. 2) Har bo'linish funksiya chaqiruvini tarmoq chaqiruviga aylantiradi: timeout, qisman yiqilish, umumiy tranzaksiya yo'q. 3) Har servis o'z ma'lumotiga ega; boshqalar API yoki hodisa orqali. 4) Kirishda autentifikatsiya, limit va yo'naltirish uchun gateway. 5) Tracing va markaziy log'ni bo'lishdan oldin rejalashtiring, keyin emas.",
     },
   },
 };

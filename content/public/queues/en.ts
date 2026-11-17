@@ -52,8 +52,18 @@ const text: LessonText<typeof lesson> = {
     queue: {
       short: "Queue",
       title: "A queue between the order and the email",
-      body: "The API now only puts a small job in a queue and answers the buyer at once. A worker takes jobs from the queue and sends them at the pace the provider accepts.\n\nThe spike does not disappear, it is spread over time: 42 000 jobs wait in the queue, and the last email leaves 8 minutes late. But no order fails and no email is lost.",
+      body: "The API now only puts a small job in a queue and answers the buyer at once. A worker takes jobs from the queue and sends them one at a time, about 50 a second.\n\nThe spike does not disappear, it is spread over time: 42 000 jobs wait in the queue, and the last email leaves 14 minutes late. But no order fails and no email is lost.",
       watch: "A queue trades errors for delay. Watch the backlog and the age of the oldest message, not only errors.",
+      check: {
+        q: "42 000 jobs wait and one worker sends about 50 a second. How far does adding workers help?",
+        options: [
+          "Without limit: each new worker adds 50 a second",
+          "Up to about two: the provider takes only 100 a second",
+          "Not at all: two workers would take the same jobs",
+        ],
+        answer: 1,
+        why: "A second worker drains the backlog twice as fast and the delay drops to about a minute and a half. A third would not help: two already come close to the provider's 100 a second, and the rest would hit `429`.",
+      },
       fields: {
         persistent: "The queue writes the job to disk. It survives a broker restart.",
         order_id: "Only the key. The worker reads the rest when it builds the email.",
@@ -75,6 +85,16 @@ const text: LessonText<typeof lesson> = {
       short: "Crash",
       title: "A worker dies holding a message",
       body: "Worker 2 takes message `m_8812` and dies before sending it. The queue did not delete the message on delivery: it only hid it for 30 seconds, the **visibility timeout**.\n\nNobody deleted it in time, so it becomes visible again and worker 1 takes it. The worker deletes a message, its ack, only after the email has gone out.",
+      check: {
+        q: "The lease is 30 s, but a 212-page receipt takes 45 s to render. What happens to that message?",
+        options: [
+          "The queue waits: worker 1 is still alive",
+          "It goes to the dead-letter queue as poisoned",
+          "Worker 2 also gets it, and the buyer gets two emails",
+        ],
+        answer: 2,
+        why: "At 30 seconds the lease runs out, the queue thinks worker 1 died and gives the message to worker 2. Both finish, so the same email goes out twice. Nothing crashed.",
+      },
       fields: {
         receive_count: "The second delivery of this message. The queue counts them.",
         visibility_timeout: "The lease: how long the message stays hidden from other workers.",
@@ -117,6 +137,16 @@ const text: LessonText<typeof lesson> = {
       title: "Exponential backoff with jitter",
       body: "After a failure the worker returns the message with a delay that doubles each time: 10 s, 20 s, 40 s, 80 s, capped at 15 minutes. A random jitter is added so thousands of messages do not come back in the same second.\n\nThe provider gets room to recover, and when it does, the queue drains gradually instead of in one blow.",
       watch: "Without jitter, all messages that failed together retry together, and the storm comes back on schedule.",
+      check: {
+        q: "One message refers to a deleted email template. What does backoff alone do with it?",
+        options: [
+          "Nothing useful: it fails forever, just more slowly",
+          "It fixes it: a later retry will succeed",
+          "It drops the message after the 15-minute cap",
+        ],
+        answer: 0,
+        why: "The template is gone, so every attempt fails and no delay will change that. Without a receive limit it circles forever; after 5 receives the queue moves it to the dead-letter queue.",
+      },
       fields: {
         NACK: "\"Did not work, return it.\" The message goes back to the queue, not away.",
         delay: "It becomes visible again only after 86 s.",

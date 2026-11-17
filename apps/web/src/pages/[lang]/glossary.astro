@@ -1,0 +1,58 @@
+---
+import { LANGS, type Lang, glossary, lessons } from "@mufassall/content";
+import Base from "../../layouts/Base.astro";
+import { site } from "../../i18n/site";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const s = site[lang];
+const collator = new Intl.Collator(lang);
+const terms = glossary
+  .filter((t) => lessons[t.lesson])
+  .map((t) => ({ ...t, name: t.term[lang], first: t.term[lang].charAt(0).toLocaleUpperCase(lang) }))
+  .sort((a, b) => collator.compare(a.name, b.name));
+const letters = [...new Set(terms.map((t) => t.first))];
+---
+
+<Base lang={lang} title={s.glossary.title} description={s.glossary.lead} active="glossary">
+  <header class="page-head">
+    <h1>{s.glossary.title}</h1>
+    <p>{s.glossary.lead}</p>
+  </header>
+  {
+    letters.length > 1 && (
+      <nav class="glossary__letters" aria-label={s.glossary.letters}>
+        {letters.map((l) => (
+          <a href={`#g-${encodeURIComponent(l)}`}>{l}</a>
+        ))}
+      </nav>
+    )
+  }
+  {
+    letters.map((l) => (
+      <section class="glossary__group" id={`g-${encodeURIComponent(l)}`} aria-label={l}>
+        <h2 class="glossary__letter" aria-hidden="true">
+          {l}
+        </h2>
+        <dl class="glossary__list">
+          {terms
+            .filter((t) => t.first === l)
+            .map((t) => (
+              <div class="glossary__item" id={t.id}>
+                <dt>{t.name}</dt>
+                <dd>
+                  <p>{t.short[lang]}</p>
+                  <a href={`/${lang}/l/${t.lesson}/`}>
+                    {s.glossary.inLesson}: {lessons[t.lesson]!.text[lang].title} →
+                  </a>
+                </dd>
+              </div>
+            ))}
+        </dl>
+      </section>
+    ))
+  }
+</Base>

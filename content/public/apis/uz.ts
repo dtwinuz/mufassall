@@ -29,8 +29,18 @@ const text: LessonText<typeof lesson> = {
       short: "REST",
       title: "REST: bitta resurs, bitta URL",
       body: "«Buyurtmalarim» ekraniga oxirgi 20 buyurtmaning har biri uchun holati va restoran nomi kerak. REST API'da buning uchun resurs bor: `GET /v1/orders`.\n\nU to'liq buyurtma obyektini qaytaradi, 40 ga yaqin maydon: manzil, taomlar, kuryer. Ekran ulardan ikkitasini ishlatadi. Hech kim ko'rsatmaydigan maydonlarni yuklab olish **over-fetching** deyiladi.",
+      check: {
+        q: "Ro'yxatda faqat `restaurant_id` bor, ekranga esa nom kerak. Oxir-oqibat ilova nima qiladi?",
+        options: [
+          "Restoran nomlari o'rniga ID'larni ko'rsatadi",
+          "Har buyurtmaga bitta qo'shimcha chaqiruv: jami 21",
+          "API'dan 20 ta restoranni bir marta so'raydi",
+        ],
+        answer: 1,
+        why: "Nom yo'q, shuning uchun ilova har restoranni alohida so'raydi: ro'yxatga bitta chaqiruv va yana yigirmata. Mobil tarmoqda ekran endi 2,6 s da chiqadi.",
+      },
       fields: {
-        GET: "Faqat o'qish. Takrorlash xavfsiz va keshlash oson.",
+        GET: "Faqat o'qish. Qayta urinish xavfsiz va keshlash oson.",
         data: "Ro'yxatning o'zi. Kalit ostida turgani yonida sahifa ma'lumotiga joy qoldiradi.",
         restaurant_id: "Faqat ID. Ekranga nom kerak, u esa bu yerda yo'q.",
         items: "Ekran hech qachon ko'rsatmaydigan og'ir maydonlar, baribir har yuklashda keladi.",
@@ -49,7 +59,7 @@ const text: LessonText<typeof lesson> = {
     },
     expand: {
       short: "Expand",
-      title: "Maydonlarni mijoz tanlasin",
+      title: "Maydonlarni klient tanlasin",
       body: "REST API ikki parametrni o'rganadi: `fields` nima qaytarishni sanaydi, `expand` bog'liq obyektni ichiga joylaydi. Endi bitta chaqiruv ekran chizadigan ro'yxatni aynan qaytaradi.\n\nYechim ishlaydi, lekin har yangi ekran yangi kombinatsiya so'raydi va API jamoasi ularni qo'shib boraveradi. GraphQL aynan shu bosimdan paydo bo'lgan.",
       fields: {
         fields: "Faqat shu maydonlar qaytadi. Javob 40 maydondan 2 taga kichrayadi.",
@@ -59,9 +69,19 @@ const text: LessonText<typeof lesson> = {
     },
     graphql: {
       short: "GraphQL",
-      title: "GraphQL: so'rovni mijoz yozadi",
+      title: "GraphQL: so'rovni klient yozadi",
       body: "GraphQL server barcha ma'lumotni bitta tiplangan sxema sifatida tasvirlaydi. Ilova bitta URL orqali so'rov yuboradi, unda aynan kerakli maydonlar, ekranga kerakli chuqurlikda.\n\nBitta chaqiruv, ortiqcha maydon yo'q. Narxi: har so'rov har xil, shuning uchun oddiy HTTP kesh yordam bermaydi, server esa juda og'ir so'rovlardan himoyalanishi kerak.",
-      watch: "So'rov chuqurligi va narxini cheklang, aks holda bitta mijoz bitta so'rovda butun bazani so'rashi mumkin.",
+      watch: "So'rov chuqurligi va narxini cheklang, aks holda bitta klient bitta so'rovda butun bazani so'rashi mumkin.",
+      check: {
+        q: "Telefon endi bitta GraphQL so'rov yuboradi. Server tomonda uning ortida nima bo'ladi?",
+        options: [
+          "Bitta join so'rov buyurtmalarni restoranlari bilan qaytaradi",
+          "Server uni REST'ga uzatadi: jami bitta chaqiruv",
+          "Bazaga 21 so'rov, har buyurtma restoraniga bittadan",
+        ],
+        answer: 2,
+        why: "Server `restaurant`'ni har buyurtma uchun alohida topadi, shuning uchun bitta so'rov ortida bazaga 21 so'rov yashiringan. Baza yuki 75% ga sakraydi va ekran yana sekinlashadi.",
+      },
       fields: {
         query: "O'qish. O'zgartirishlar `mutation` orqali boradi.",
         orders: "Javob so'rov bilan bir xil shaklda.",
@@ -115,15 +135,25 @@ const text: LessonText<typeof lesson> = {
       watch: "Maydon qo'shish xavfsiz. Nomini o'zgartirish, olib tashlash yoki ma'nosini o'zgartirish yangi versiya talab qiladi.",
       fields: {
         v2: "Yangi kontrakt uchun yangi versiya. O'rnatilgan ilovalar `/v1` dan foydalanishda davom etadi.",
-        after: "Shu buyurtmadan keyin davom et. Qiymat shaffof emas: mijoz uni tahlil qilmaydi.",
+        after: "Shu buyurtmadan keyin davom et. Qiymat shaffof emas: klient uni tahlil qilmaydi.",
         next_cursor: "Keyingi sahifa qayerdan boshlanadi. Boshqa narsa qolmasa, yo'q bo'ladi.",
       },
     },
     "double-post": {
       short: "Ikki POST",
       title: "Qayta urinish ikkinchi buyurtma beradi",
-      body: "Foydalanuvchi «Buyurtma berish»ni bosadi. So'rov serverga yetadi va buyurtma yaratiladi, lekin tarmoq javobni yo'qotadi. Ilova xato ko'radi va `POST`'ni takrorlaydi.\n\nServer takrorni yangi buyurtmadan ajrata olmaydi. Foydalanuvchida ikkita buyurtma va ikki marta to'lov.",
-      watch: "`POST` sukut bo'yicha takrorlashga xavfsiz emas. Mobil tarmoq esa takrorni kafolatlaydi.",
+      body: "Foydalanuvchi «Buyurtma berish»ni bosadi. So'rov serverga yetadi va buyurtma yaratiladi, lekin tarmoq javobni yo'qotadi. Ilova xato ko'radi va `POST`'ga qayta urinadi.\n\nServer takrorni yangi buyurtmadan ajrata olmaydi. Foydalanuvchida ikkita buyurtma va ikki marta to'lov.",
+      watch: "`POST` sukut bo'yicha qayta urinishga xavfsiz emas. Mobil tarmoq esa qayta urinishni kafolatlaydi.",
+      check: {
+        q: "Server qayta urinilgan buyurtmani yangisidan qanday ajrata oladi?",
+        options: [
+          "Ilova har qayta urinishda o'sha tasodifiy kalitni yuboradi",
+          "Server o'sha `cart_id` bilan ikkinchi buyurtmani rad etadi",
+          "Ilova qayta urinishdan oldin javobni uzoqroq kutadi",
+        ],
+        answer: 0,
+        why: "`Idempotency-Key` bilan server kalitni javobi bilan birga saqlaydi. Ma'lum kalitli takror hech narsa yaratmaydi va saqlangan javobni oladi, ikki marta buyurtma nolga tushadi.",
+      },
       fields: {
         POST: "Har chaqiruvda yangi narsa yaratadi.",
         cart_id: "Ikkala safar bir xil savat. Server undan takrorni aniqlash uchun foydalanmaydi.",
@@ -143,7 +173,7 @@ const text: LessonText<typeof lesson> = {
     recap: {
       short: "Xulosa",
       title: "Xulosa",
-      body: "API uchun besh odat.\n\n1) REST sodda va yaxshi keshlanadi, lekin N+1 va semiz javoblarga qarang. 2) GraphQL tanlovni mijozga beradi, lekin resolver'larni guruhlang va so'rov narxini cheklang. 3) gRPC o'z servislaringiz orasidagi chaqiruvlarga mos. 4) Cursor bilan sahifalang, buzadigan o'zgarishni yangi versiya qilib chiqaring. 5) Biror narsa yaratadigan har `POST` `Idempotency-Key` qabul qiladi.",
+      body: "API uchun besh odat.\n\n1) REST sodda va yaxshi keshlanadi, lekin N+1 va semiz javoblarga qarang. 2) GraphQL tanlovni klientga beradi, lekin resolver'larni guruhlang va so'rov narxini cheklang. 3) gRPC o'z servislaringiz orasidagi chaqiruvlarga mos. 4) Cursor bilan sahifalang, buzadigan o'zgarishni yangi versiya qilib chiqaring. 5) Biror narsa yaratadigan har `POST` `Idempotency-Key` qabul qiladi.",
     },
   },
 };

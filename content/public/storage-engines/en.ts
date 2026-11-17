@@ -33,6 +33,16 @@ const text: LessonText<typeof lesson> = {
       short: "B-tree",
       title: "A write lands in a B-tree page",
       body: "Every sensor sends a reading every few seconds. The ingest service inserts each one into a `readings` table with a B-tree primary key `(sensor_id, ts)`.\n\nThe database finds the leaf page where the key belongs, changes it in memory and logs the change to the WAL. Later the whole 8 KB page goes to disk, even though the row was 40 bytes.",
+      check: {
+        q: "The fleet grows to 50 000 writes a second, each to a different page. What gives out first?",
+        options: [
+          "The WAL: appends cannot keep up",
+          "The CPU: parsing that many INSERTs",
+          "The disk: random page writes keep it 100% busy",
+        ],
+        answer: 2,
+        why: "Each write dirties a different 8 KB page and full pages split, so the disk does random writes all over the table. It is 100% busy and the table accepts only 12 000 writes a second; the WAL append is the cheap part.",
+      },
       fields: {
         sensor_id: "The first key column. Readings from 10 000 sensors land on 10 000 different pages.",
         wal: "The write-ahead log entry: small and sequential. This part is cheap.",
@@ -42,7 +52,7 @@ const text: LessonText<typeof lesson> = {
     "random-io": {
       short: "Random IO",
       title: "At 50 000 writes a second the disk gives up",
-      body: "The fleet grows. Each write touches a different page, so the disk does random writes all over the table. Full pages split in two, and every split is more pages to write.\n\nThe disk is 100% busy and the table accepts only 12 000 writes a second. Sensors get errors and lose data.",
+      body: "The fleet grows to 50 000 writes a second. Each write touches a different page, so the disk does random writes all over the table. Full pages split in two, and every split is more pages to write.\n\nThe disk is 100% busy and the table accepts only 12 000 writes a second. Sensors get errors and lose data.",
       watch: "Write amplification: 40 bytes of data turn into kilobytes of disk writes.",
       fields: {
         checkpoint: "The database flushes every dirty page to disk. Here it takes almost 30 seconds.",
@@ -66,6 +76,16 @@ const text: LessonText<typeof lesson> = {
       short: "Flush",
       title: "A full memtable becomes an SSTable",
       body: "When the memtable reaches 64 MB it is frozen, a new empty one takes writes, and the frozen one is written to disk as an SSTable: a sorted file that is never changed again.\n\nAfter the flush its WAL segment is no longer needed and is deleted. New files land in level 0.",
+      check: {
+        q: "Every L0 file covers almost all sensors. How many places does a read of one sensor's latest value check?",
+        options: [
+          "Many: the memtable and every overlapping L0 file",
+          "One: SSTables are sorted, so one file holds the key",
+          "None on disk: the memtable always has the latest value",
+        ],
+        answer: 0,
+        why: "L0 key ranges overlap, so the newest value can be in any file. The engine checks the memtable and then 30 files, newest first: 31 places, and read p99 rises to 85 ms.",
+      },
       fields: {
         flush: "Writing the sorted memtable out in one sequential pass.",
         level: "`0` — fresh files from flushes. Their key ranges overlap each other.",
@@ -98,6 +118,16 @@ const text: LessonText<typeof lesson> = {
       short: "Compaction",
       title: "Compaction merges files into level 1",
       body: "L0 keeps growing with a new file every few seconds. A background compaction job merges L0 files into L1: sorted, non-overlapping files, so each key lives in exactly one L1 file.\n\nOld versions and deleted keys are thrown away. The price: the same data is written to disk again, once per level.",
+      check: {
+        q: "A storm pushes writes to 80 000 a second, faster than compaction can merge L0. What happens?",
+        options: [
+          "Writes keep flowing; only disk usage grows",
+          "The engine slows writes down on purpose",
+          "Reads fail until compaction catches up",
+        ],
+        answer: 1,
+        why: "Flushes create L0 files faster than compaction merges them. At the L0 limit of 36 files the engine throttles writers to protect reads, and accepted writes fall to 16 000 a second.",
+      },
       fields: {
         compact: "Read several sorted files, merge them, write new ones. A large sequential job.",
         "old versions": "Sensors overwrite the same `latest` key. Only the newest version survives.",

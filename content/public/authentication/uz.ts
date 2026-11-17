@@ -32,6 +32,16 @@ const text: LessonText<typeof lesson> = {
       title: "Foydalanuvchilar jadvali sizib chiqdi",
       body: "Foydalanuvchilar jadvalining zaxira nusxasi ochiq joyga tushib qoldi. Parollar tuzsiz (salt'siz) oddiy SHA-256 sifatida saqlangan edi.\n\nSHA-256 tez bo'lishi uchun yaratilgan: bitta GPU soniyasiga milliardlab taxmin qiladi. Bir kunda hash'larning 62% buziladi, odamlar esa bu parollarni boshqa joylarda ham ishlatadi.",
       watch: "Sizib chiqishga qarshi emas, sizib chiqish uchun rejalang. Hujumchi faylni olgandan keyin ham saqlash xavfsiz qolishi kerak.",
+      check: {
+        q: "Parollar endi argon2id va har foydalanuvchiga tasodifiy salt bilan saqlanadi. Nima o'zgaradi?",
+        options: [
+          "Deyarli hech narsa: GPU argon2'ni ham shunday tez ochadi",
+          "Kirish soniyalab cho'ziladi, foydalanuvchilar norozi",
+          "Kirish ~250 ms sekinlashadi, buzish deyarli to'xtaydi",
+        ],
+        answer: 2,
+        why: "Har taxmin endi taxminan 250 ms va 64 MB turadi, taxmin qilish millionlab marta sekinlashadi: buzilgan hash'lar 62% dan 0,5% ga tushadi. Kirishdagi chorak soniyani hech kim sezmaydi.",
+      },
       fields: {
         password_sha256: "Parolning tez hash'i. Bu yerda yashirilgan; sizgan faylda esa taxmin qilish uchun tayyor nishon.",
         salt: "Yo'q. Bir xil parollar bir xil hash beradi, bitta taxmin `123456` tanlagan hammani ochadi.",
@@ -52,6 +62,16 @@ const text: LessonText<typeof lesson> = {
       short: "Sessiya",
       title: "Sessiya: cookie'dagi tasodifiy ID",
       body: "Parol to'g'ri chiqqach, API omborda sessiya yaratadi (`u_42`, 7 kunda tugaydi) va brauzerga cookie'da tasodifiy ID beradi.\n\nKeyingi har so'rov cookie'ni olib keladi, API ID'ni qidiradi. Chiqish oddiy: sessiyani o'chirish.",
+      check: {
+        q: "Yangi buyurtmalar servisi ham kim murojaat qilayotganini bilishi kerak. Sessiyalarda buning narxi qanday?",
+        options: [
+          "Har servisdagi har so'rov bitta omborda qidiruvga aylanadi",
+          "Hech qanday: cookie'ning o'zi foydalanuvchini aytadi",
+          "Har servis sessiyalarning o'z nusxasini saqlashi kerak",
+        ],
+        answer: 0,
+        why: "Cookie'da faqat tasodifiy ID bor, shuning uchun buyurtmalar ham har so'rovni sessiyalar omborida qidiradi. Ombor 92% ga chiqadi va hammasini sekinlashtiradigan yagona nuqtaga aylanadi.",
+      },
       fields: {
         password: "Faqat HTTPS orqali va faqat login endpoint'iga yuboriladi. Hech qachon log'ga yozilmaydi.",
         "Set-Cookie": "`sid=...; HttpOnly; Secure; SameSite=Lax`. HttpOnly uni JavaScript'dan va XSS'dan yashiradi. Qiymat yashirilgan.",
@@ -71,6 +91,16 @@ const text: LessonText<typeof lesson> = {
       title: "JWT: istalgan servis tekshira oladigan imzoli token",
       body: "Auth API endi **access token** beradi: foydalanuvchi ID'si va tugash vaqti yozilgan, API'ning maxfiy kaliti bilan imzolangan JWT.\n\nBuyurtmalar imzoni ochiq kalit bilan tekshiradi va claim'larni o'qiydi. Qidiruv yo'q, umumiy ombor yo'q: sessiyalar ombori 25% ga tushdi.",
       watch: "JWT imzolangan, lekin shifrlanmagan. Unga ega har kim payload'ni o'qiy oladi, ichiga sir qo'ymang.",
+      check: {
+        q: "Foydalanuvchi chiqdi, lekin uning JWT'i log'ga yozilgan URL orqali allaqachon sizgan. Nima bo'ladi?",
+        options: [
+          "Buyurtmalar uni rad etadi: chiqish tokenni bekor qilgan",
+          "U `exp` gacha ishlayveradi, bu yerda 30 kun",
+          "U faqat foydalanuvchining o'z IP manzilidan ishlaydi",
+        ],
+        answer: 1,
+        why: "Chiqish faqat brauzerdagi nusxani o'chirgan. Buyurtmalar markaziy ro'yxatni emas, imzoni tekshiradi, shuning uchun token tugaguncha — `iat` dan 30 kun — amal qiladi.",
+      },
       fields: {
         Authorization: "`Bearer` va token. Kimda token bo'lsa, o'sha foydalanuvchi. Bu yerda yashirilgan.",
         kid: "Qaysi imzo kaliti ishlatilgan, kalitlarni almashtirish uchun.",
@@ -137,7 +167,7 @@ const text: LessonText<typeof lesson> = {
     recap: {
       short: "Xulosa",
       title: "Xulosa",
-      body: "Autentifikatsiya uchun to'rt qoida.\n\n1) Parollarni sekin, tuzli hash bilan saqlang (argon2id, bcrypt). 2) Sessiyani bekor qilish oson; JWT'ni hamma joyda tekshirish oson, shuning uchun uni qisqa qiling. 3) 15 daqiqalik access token'ni almashinadigan refresh token bilan juftlang va refresh token'larni o'chirib bekor qiling. 4) Login uchun identity provider'ni afzal ko'ring, MFA qo'shing; log'larda har bir sirni yashiring.",
+      body: "Autentifikatsiya uchun to'rt qoida.\n\n1) Parollarni sekin, tuzli hash bilan saqlang (argon2id, bcrypt). 2) Sessiyani bekor qilish oson; JWT'ni hamma joyda tekshirish oson, shuning uchun uni qisqa qiling. 3) 15 daqiqalik access token'ni almashinadigan refresh token bilan juftlang va refresh token'larni o'chirib bekor qiling. 4) Login uchun identity provider'ni afzal ko'ring, MFA qo'shing; token'larni hech qachon URL'ga qo'ymang, log'lar uni saqlab qoladi.",
     },
   },
 };

@@ -62,6 +62,16 @@ const text: LessonText<typeof lesson> = {
       short: "Saqlash",
       title: "Foydalanuvchi bo'yicha emas, suhbat bo'yicha saqlash",
       body: "Har xabar yetkazilishidan oldin yoziladi. Partition kaliti **suhbat**: `c_a1b2` ning barcha xabarlari bitta shard'da, ichida saralangan. Chatni ochish bitta oraliq o'qish: bitta partition'ning oxirgi 50 qatori.\n\nFoydalanuvchi bo'yicha bo'lish 1:1 chatda har xabarni ikki marta, guruhda esa 300 marta yozish degani. Suhbat bo'yicha u bir marta yoziladi, 64 ta shard esa yukni taqsimlaydi.",
+      check: {
+        q: "Alisa ikki xabarni ketma-ket yuboradi, ularni soatlari 50 ms farq qiladigan ikki nusxa qabul qiladi. Bob nimani ko'radi?",
+        options: [
+          "Ikkalasini Alisa yuborgan tartibda",
+          "Faqat birinchisini; ikkinchisi kech deb rad etiladi",
+          "Ba'zan avval ikkinchi xabarni",
+        ],
+        answer: 2,
+        why: "Xabarlar `sent_at` bo'yicha saralanadi, har nusxa esa o'z soatini qo'yadi. Ikkinchi xabar oldingi vaqt belgisini olishi mumkin va Bob uni birinchi ko'radi. Kuniga ~140 marta shunday bo'ladi.",
+      },
       fields: {
         conv_id: "Partition kaliti. Shard'ni u hal qiladi, shuning uchun bitta chat hech qachon mashinalarga bo'linmaydi.",
         sent_at: "Hozircha xabarlar server soati bo'yicha saralanadi. Keyingi qadam buning nega muammo ekanini ko'rsatadi.",
@@ -91,6 +101,16 @@ const text: LessonText<typeof lesson> = {
       short: "Belgilar",
       title: "Yetkazildi va o'qildi",
       body: "Bobning qurilmasi xabarni olganda uni tasdiqlaydi: Alisada bitta belgi. Bob chatni ochganda ilova o'qildi belgisini yuboradi.\n\nBu har xabarga alohida belgi emas, har suhbatda har a'zoga bitta raqam: \"1043 gacha o'qildi\". Undan oldingi hammasi o'qilgan. Har xabarga bitta yozish o'rniga bitta kichik yozish.",
+      check: {
+        q: "Telefon ilovani fonga o'tkazadi va OS uning socket'ini yopadi. Yangi xabar nima bo'ladi?",
+        options: [
+          "Omborda kutadi; Bobga hech narsa aytilmaydi",
+          "Gateway uni ushlab, qayta ulanganda yuboradi",
+          "Yo'qoladi: socket yo'q, demak yetkazish yo'q",
+        ],
+        answer: 0,
+        why: "Reyestrda Bob uchun ulanish yo'q, chat servisi xabarni hech qayerga yubora olmaydi. Xabar omborda xavfsiz, lekin kuniga 900 xabar bir soatdan ko'p ko'rilmay yotadi.",
+      },
       fields: {
         type: "Qurilmadan `delivered`, chat ekranda bo'lganda `read`.",
         up_to_seq: "Shu raqamgacha hammasi o'qilgan. Alisadagi belgilar ularning hammasi uchun ko'k bo'ladi.",
@@ -100,6 +120,16 @@ const text: LessonText<typeof lesson> = {
       short: "Oflayn",
       title: "Bobning telefoni uxlab qoldi",
       body: "Telefon ilovani fonga o'tkazadi va operatsion tizim uning socket'ini yopadi. Reyestrda Bob uchun ulanish yo'q, chat servisi xabarni hech qayerga yubora olmaydi.\n\nXabar omborda xavfsiz, lekin Bob u borligini bilmaydi. Kuniga 900 xabar bir soatdan ko'p ko'rilmay yotadi.",
+      check: {
+        q: "Socket yopiq paytda kelgan xabarlardan Bob qanday xabar topishi kerak?",
+        options: [
+          "To'liq xabarlar push bildirishnoma ichida boradi",
+          "Push ilovani uyg'otadi; u `seq` bo'yicha yetib oladi",
+          "Ilova fonda har 2 soniyada so'rab turadi",
+        ],
+        answer: 1,
+        why: "Chat servisi navbatga event qo'yadi, push worker telefonni uyg'otadi, ilova oxirgi `seq` bilan qayta ulanadi. Push faqat uyg'otadi; o'tkazib yuborilganini ombor qaytaradi va ko'rilmagan xabarlar kuniga 900 dan 15 ga tushadi.",
+      },
       fields: {
         "empty array": "Ochiq ulanish yo'q. Boshqa kanal bo'lmasa xabar shunchaki kutadi.",
       },

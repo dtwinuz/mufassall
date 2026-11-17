@@ -12,7 +12,7 @@ const text: LessonText<typeof lesson> = {
     "Sticky sessiyalar yukni nega buzadi va stateless muqobil",
   ],
   nodes: {
-    clients: "Mijozlar",
+    clients: "Klientlar",
     lb: "Load balancer",
     a: "Server A",
     b: "Server B",
@@ -31,6 +31,16 @@ const text: LessonText<typeof lesson> = {
       short: "L4",
       title: "L4 balancer ulanishlarni taqsimlaydi",
       body: "Balancer transport qatlamida (L4) ishlaydi. U IP manzil va portlarni ko'radi, TCP ulanish ochilganda serverni tanlaydi, keyin baytlarni ikki tomonga shunchaki ko'chiradi.\n\nBu tez va oddiy, u hech narsani deshifrlamaydi. Lekin HTTP so'rov nima ekanini bilmaydi.",
+      check: {
+        q: "Hamkor bitta keep-alive ulanish orqali soniyasiga 400 so'rov yuboradi. L4 balancer nima qiladi?",
+        options: [
+          "So'rovlarni A, B va C ga teng taqsimlaydi",
+          "Hammasini o'zi tanlagan bitta serverda qoldiradi",
+          "Ulanish juda band bo'lganda uni yopadi",
+        ],
+        answer: 1,
+        why: "L4 har ulanishga bir marta qaror qiladi. Hamkor ulanishi A da qoladi: A 96% ga chiqadi, B va C 22% da turadi, p99 900 ms ga o'sadi.",
+      },
       fields: {
         TCP: "Balancer ko'radigan hamma narsa: kim qaysi portga ulanyapti.",
         TLS: "Trafik boshidan oxirigacha shifrlangan. Balancer yo'l (path) ham, header ham ko'rmaydi.",
@@ -44,17 +54,17 @@ const text: LessonText<typeof lesson> = {
       watch: "L4 ishni emas, ulanishlarni taqsimlaydi. Uzoq yashaydigan ulanishlar (HTTP/2, gRPC, WebSocket) buni ancha yomonlashtiradi.",
       fields: {
         "conn 7": "Trafikning ko'p qismini tashiyotgan bitta ulanish. U yashagan sari A da qoladi.",
-        "keep-alive": "Mijoz yangi ulanish ochmasdan eskisini qayta ishlatadi, shuning uchun balancer boshqa tanlay olmaydi.",
+        "keep-alive": "Klient yangi ulanish ochmasdan eskisini qayta ishlatadi, shuning uchun balancer boshqa tanlay olmaydi.",
       },
     },
     l7: {
       short: "L7",
       title: "L7 balancer so'rovlarni taqsimlaydi",
       body: "Balancer endi TLS'ni o'zida yechadi va HTTP tilida gaplashadi (L7). U har bir so'rovni o'qiydi va hammasi bitta ulanishda kelsa ham, har so'rov uchun alohida server tanlaydi.\n\nHamkorning soniyasiga 400 so'rovi uchala serverga tarqaladi. Har biri 52% da, p99 150 ms ga qaytdi.",
-      watch: "L7 balancer'da ko'proq CPU oladi (deshifrlash, parsing), TLS sertifikati va kaliti ham endi unda saqlanadi.",
+      watch: "L7 balancer'da ko'proq CPU talab qiladi (deshifrlash, parsing), TLS sertifikati va kaliti ham endi unda saqlanadi.",
       fields: {
-        "X-Forwarded-For": "Mijozning manzili. L7 balancer ortida app faqat balancer IP'sini ko'radi.",
-        "X-Forwarded-Proto": "Mijoz HTTPS ishlatgan. App'gacha bo'lgan ichki qism oddiy HTTP bo'lishi mumkin.",
+        "X-Forwarded-For": "Klientning manzili. L7 balancer ortida app faqat balancer IP'sini ko'radi.",
+        "X-Forwarded-Proto": "Klient HTTPS ishlatgan. App'gacha bo'lgan ichki qism oddiy HTTP bo'lishi mumkin.",
         "X-Request-Id": "Balancer qo'shadi: bitta so'rovni uning log'i va app log'i bo'ylab kuzatish uchun.",
       },
     },
@@ -70,6 +80,16 @@ const text: LessonText<typeof lesson> = {
       short: "Og'ir",
       title: "Soni bir xil, ishi juda har xil",
       body: "Yangi hisobot eksporti har so'rovga 4 soniya oladi, oddiy so'rov esa 13 ms. Omad kelmay, bir nechta eksport ketma-ket C ga tushadi, round robin esa C ga qolgan hamma narsadan ham teng ulushini yuboraveradi.\n\nC 98% da va uzun navbat bilan, A va B da esa joy bor. p99 2,6 s ga sakraydi.",
+      check: {
+        q: "Eksport 4 s, oddiy so'rov 13 ms oladi. Qaysi qoida band serverdan bosimni oladi?",
+        options: [
+          "Har so'rovni eng kam faol so'rovli serverga yuborish",
+          "Round robin qoldirib, to'rtinchi server qo'shish",
+          "Har foydalanuvchini cookie bilan bitta serverga bog'lash",
+        ],
+        answer: 0,
+        why: "Least connections ishlanayotgan so'rovlarni kuzatadi, shuning uchun eksportlar bilan band C kamroq yangi so'rov oladi. Eng band server 98% dan 72% ga, p99 2.6 s dan 380 ms ga tushadi.",
+      },
       fields: {
         export: "Bunday bitta so'rov taxminan 300 ta oddiy so'rovcha ish.",
         "Server-Timing": "4,1 s ish. Round robin uni boshqalar kabi bitta so'rov deb sanaydi.",
@@ -96,7 +116,7 @@ const text: LessonText<typeof lesson> = {
       body: "B serverning xotirasi tugaydi va u yiqiladi. Balancer buni bilmaydi: B ga uning chorak trafigini yuborishda davom etadi.\n\nB ga yo'naltirilgan har bir so'rov xato bilan tugaydi. A va C sog'lom bo'lsa ham, barcha so'rovlarning 25% i xato qaytaradi.",
       fields: {
         "Connection refused": "B da endi hech kim tinglamayapti.",
-        "502": "Balancer o'zi tanlagan serverdan javob ololmadi, mijoz «bad gateway» oladi.",
+        "502": "Balancer o'zi tanlagan serverdan javob ololmadi, klient «bad gateway» oladi.",
       },
     },
     health: {
@@ -104,6 +124,16 @@ const text: LessonText<typeof lesson> = {
       title: "Health check o'lik serverni chiqaradi",
       body: "Har 2 soniyada balancer har bir serverning `/healthz` manzilini chaqiradi. Ketma-ket 3 ta muvaffaqiyatsizlikdan keyin B pool'dan chiqariladi, uning trafigi A va C ga o'tadi.\n\nXatolar 25% dan deyarli nolga tushadi: faqat aniqlashdan oldingi bir necha soniyadagi so'rovlar yiqiladi. B yana javob bera boshlasa, qaytib qo'shiladi.",
       watch: "`/healthz` arzon va halol bo'lsin. U bazani tekshirsa, bazadagi qisqa uzilish barcha serverlarni birdaniga o'lik deb belgilashi mumkin.",
+      check: {
+        q: "B qaytdi, lekin savat server xotirasida, shuning uchun foydalanuvchilar cookie bilan bog'langan. Yuk qanday?",
+        options: [
+          "Teng: balancer baribir eng bo'sh serverni tanlaydi",
+          "Teng, lekin har so'rov cookie tekshiruviga vaqt yo'qotadi",
+          "Notekis: B 15% da bo'sh turadi, A 85% da ishlaydi",
+        ],
+        answer: 2,
+        why: "Sticky algoritmni bosib ketadi: A ga bog'langanlar o'sha yerda qoladi, qaytgan B ga deyarli hech kim bog'lanmagan. A 85% da, B 15% da, p99 700 ms ga o'sadi.",
+      },
       fields: {
         healthz: "Kichik endpoint: «men ishlayapman va so'rovga javob bera olaman».",
         "3 of 3": "Ketma-ket bir necha muvaffaqiyatsizlik: bitta sekin javob serverni chiqarib yubormasin.",
@@ -132,7 +162,7 @@ const text: LessonText<typeof lesson> = {
     recap: {
       short: "Xulosa",
       title: "Xulosa",
-      body: "Balancer o'z tanlovlari qanchalik yaxshi bo'lsa, shunchalik yaxshi.\n\n1) L4 ulanishlarni, L7 so'rovlarni taqsimlaydi: uzoq yashaydigan ulanishlarga L7 kerak. 2) Teng ish uchun round robin, notekis ish uchun least connections, teng bo'lmagan serverlar uchun og'irliklar. 3) Health check o'lik serverlarni soniyalar ichida chiqaradi. 4) Sticky sessiyalar qulaylik uchun muvozanat va chidamlilikni qurbon qiladi, umumiy holat — yaxshiroq yechim.",
+      body: "Balancer tanlovi qanchalik to'g'ri bo'lsa, shunchalik foydali.\n\n1) L4 ulanishlarni, L7 so'rovlarni taqsimlaydi: uzoq yashaydigan ulanishlarga L7 kerak. 2) Teng ish uchun round robin, notekis ish uchun least connections, teng bo'lmagan serverlar uchun og'irliklar. 3) Health check o'lik serverlarni soniyalar ichida chiqaradi. 4) Sticky sessiyalar qulaylik uchun muvozanat va chidamlilikni qurbon qiladi, umumiy holat — yaxshiroq yechim.",
     },
   },
 };

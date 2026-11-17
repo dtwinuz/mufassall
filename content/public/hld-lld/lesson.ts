@@ -130,7 +130,7 @@ export default defineLesson({
         request: {
           format: "text",
           head: "consumer group eta-workers",
-          body: "partitions   12\nconsumers     1\nlag          3200 messages, about 40 s\neta calc     p95 290 ms per message",
+          body: "partitions   12\nconsumers     1\nlag          3200 messages, about 40 s\neta calc     p95 15 ms per message",
         },
         marks: ["consumers", "lag", "eta calc"],
       },

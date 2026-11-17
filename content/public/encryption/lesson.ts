@@ -67,7 +67,7 @@ export default defineLesson({
         response: {
           format: "text",
           head: "ServerHello + Certificate",
-          body: "key_share x25519 (public half)\nsubject CN=api.example.com\nissuer Example Public CA\nvalid until 2026-11-17\nFinished: everything after this is encrypted",
+          body: "key_share x25519 (public half)\nsubject CN=api.example.com\nissuer Example Public CA\nvalid until 2026-11-17\nFinished: handshake complete, data now uses the session keys",
         },
         marks: ["SNI", "key_share", "subject", "issuer", "valid until", "Finished"],
       },
@@ -88,7 +88,7 @@ export default defineLesson({
         response: {
           format: "text",
           head: "ServerHello + Certificate",
-          body: "subject CN=api.example.com\nvalid until 2026-11-17T00:00:00Z\nclient clock 2026-11-18T08:02:11Z\nclient: certificate has expired, closing",
+          body: "subject CN=api.example.com\nvalid until 2026-11-17T00:00:00Z\nclient clock 2026-11-17T00:02:11Z\nclient: certificate has expired, closing",
         },
         marks: ["valid until", "client clock", "expired"],
       },

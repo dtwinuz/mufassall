@@ -33,6 +33,16 @@ const text: LessonText<typeof lesson> = {
       title: "Every byte goes through the API",
       body: "A user uploads a 180 MB video from a phone. The app posts it to the API, the API reads the whole stream and writes it to its local disk.\n\nFor a minute and a half one API worker does nothing but copy bytes. With a few dozen uploads at once there are no workers left for ordinary requests.",
       watch: "An app server is built for many short requests. A long upload holds a connection, memory and a worker the whole time.",
+      check: {
+        q: "Videos keep piling up on the API's own disk, and there are two API servers. What breaks?",
+        options: [
+          "Only uploads slow down; views keep working",
+          "Nothing: the balancer spreads files over both servers",
+          "Writes fail when the disk fills, and half the views 404",
+        ],
+        answer: 2,
+        why: "The local disk fills until every write fails, and failed uploads jump to 18%. A file saved on `api-1` does not exist on `api-2`, so half the views return 404.",
+      },
       fields: {
         Authorization: "The user's token. A secret, hidden here.",
         "Content-Length": "180 MB in one request body. A drop at 99% means starting again.",
@@ -63,7 +73,17 @@ const text: LessonText<typeof lesson> = {
     flaky: {
       short: "Flaky net",
       title: "Mobile network: 80% done, start again",
-      body: "One `PUT` carries the whole 180 MB. On a phone in a moving bus the connection drops at 151 MB.\n\nThe app has to start from the first byte. On a weak network a large file may never finish, and every attempt burns the user's mobile data.",
+      body: "One `PUT` carries the whole 180 MB. On a phone in a moving bus the connection drops at 144 MB.\n\nThe app has to start from the first byte. On a weak network a large file may never finish, and every attempt burns the user's mobile data.",
+      check: {
+        q: "How do you stop a dropped connection from costing the whole 180 MB?",
+        options: [
+          "Split it into 8 MB parts and resend only the failed one",
+          "Make the signed URL valid for longer",
+          "Send the upload through the API again",
+        ],
+        answer: 0,
+        why: "With multipart upload a drop costs at most one 8 MB part, and only that part is resent. Failed uploads fall from 11% to 0.4%.",
+      },
       fields: {
         "Content-Length": "The whole file in one request: all or nothing.",
         "connection reset": "The network dropped mid-upload. Everything sent so far is lost.",
@@ -114,7 +134,17 @@ const text: LessonText<typeof lesson> = {
     viral: {
       short: "Viral",
       title: "A video goes viral",
-      body: "Thousands of viewers open the same video, each fetching it from storage in one region. Viewers far away wait 3 seconds before playback starts.\n\nEvery byte leaving storage is paid traffic. The monthly bill doubles in a week.",
+      body: "Thousands of viewers open the same video, each fetching it from storage in one region. Viewers far away wait 3 seconds before playback starts.\n\nEvery byte leaving storage is paid traffic. The monthly bill grows sevenfold in a week.",
+      check: {
+        q: "Thousands watch one video from one storage region. What cuts both the wait and the bill?",
+        options: [
+          "A faster storage tier in the same region",
+          "A CDN that keeps copies in cities near viewers",
+          "More API servers to proxy the downloads",
+        ],
+        answer: 1,
+        why: "Only the first request in a region reaches storage; the rest are served from the edge. Monthly cost drops from $4200 to $900, and playback starts after the first megabyte.",
+      },
       fields: {
         "Content-Length": "40 MB per view. Thousands of views of one file are thousands of identical downloads.",
         "X-Response-Time": "Far from the storage region the first bytes are slow to arrive.",

@@ -5,9 +5,10 @@ export interface SiteStrings {
   langName: string;
   tagline: string;
   description: string;
-  nav: { learn: string; map: string; practice: string; lab: string; soon: string };
+  nav: { learn: string; map: string; practice: string; lab: string; soon: string; glossary: string };
   theme: string;
   skip: string;
+  search: { open: string; label: string; placeholder: string; hint: string; empty: string; lesson: string; step: string; term: string };
   home: {
     title: string;
     lead: string;
@@ -21,11 +22,13 @@ export interface SiteStrings {
     startCourse: string;
     openLab: string;
     upcoming: string;
+    offline: { save: string; busy: string; done: string; fail: string };
     upcomingList: string[];
   };
   sections: Record<string, { title: string; text: string }>;
-  course: { title: string; prev: string; next: string };
+  course: { title: string; prev: string; next: string; pager: string; done: string; started: string };
   labPage: { title: string; lead: string };
+  glossary: { title: string; lead: string; inLesson: string; letters: string };
   footer: string;
 }
 
@@ -35,9 +38,10 @@ export const site: Record<Lang, SiteStrings> = {
     tagline: "Jarayonlarni mufassal, qadamma-qadam",
     description:
       "Tizimlar va biznes jarayonlarini jonli sahnada qadamma-qadam o'rgatadigan platforma: xabar qayerga boradi, qayerda yo'qoladi va qanday tuzatiladi.",
-    nav: { learn: "Darslar", map: "Xarita", practice: "Mashq", lab: "Lab", soon: "tez kunda" },
+    nav: { learn: "Darslar", map: "Xarita", practice: "Mashq", lab: "Lab", soon: "tez kunda", glossary: "Lug'at" },
     theme: "Mavzuni almashtirish",
     skip: "Asosiy qismga o'tish",
+    search: { open: "Qidirish", label: "Kurs bo'yicha qidiruv", placeholder: "Dars, qadam yoki atama…", hint: "Yozing: kesh, navbat, replika…", empty: "Hech narsa topilmadi", lesson: "Dars", step: "Qadam", term: "Atama" },
     home: {
       title: "Tizim qanday ishlashini ko'ring, yodlamang",
       lead: "Har bir dars — bitta muammo va uning yechimi. Sahnada so'rovlar harakatlanadi, tugunlar yiqiladi, raqamlar o'zgaradi. Siz esa har qadamda nima o'zgarganini va simdan aynan qanday so'rov o'tganini ko'rasiz.",
@@ -51,6 +55,7 @@ export const site: Record<Lang, SiteStrings> = {
       startCourse: "Birinchi darsdan boshlash",
       openLab: "Lab'da o'z diagrammangizni chizing",
       upcoming: "Navbatdagi darslar",
+      offline: { save: "Kursni oflayn saqlash", busy: "Saqlanmoqda…", done: "Saqlandi: {n} ta fayl. Darslar internetsiz ham ochiladi.", fail: "Saqlab bo'lmadi. Internetni tekshirib, qayta urinib ko'ring." },
       upcomingList: [
         "Elektron imzo: hujjat qanday imzolanadi va tekshiriladi",
         "Hujjat holatlari: ko'p tomonli holat mashinasi",
@@ -68,7 +73,8 @@ export const site: Record<Lang, SiteStrings> = {
       systems: { title: "Butun tizimlar", text: "Hamma bilimni yig'ib, real tizimni boshidan loyihalash." },
       business: { title: "Biznes jarayonlar", text: "Real to'lov va hujjat oqimlari: pul va mol qayerda yo'qoladi." },
     },
-    course: { title: "Kurs", prev: "Oldingi dars", next: "Keyingi dars" },
+    glossary: { title: "Atamalar lug'ati", lead: "Kursdagi asosiy atamalar: har biri bir-ikki gapda va uni tushuntiradigan dars bilan.", inLesson: "Darsda", letters: "Harflar" },
+    course: { title: "Kurs", prev: "Oldingi dars", next: "Keyingi dars", pager: "Oldingi va keyingi dars", done: "tugatilgan", started: "boshlangan" },
     labPage: {
       title: "Lab",
       lead: "O'z tizimingizni chizing: element qo'shing, ulang, yukini va holatini o'zgartiring. Diagramma brauzerda saqlanadi va havola bilan ulashiladi.",
@@ -80,9 +86,10 @@ export const site: Record<Lang, SiteStrings> = {
     tagline: "Процессы подробно, шаг за шагом",
     description:
       "Платформа, которая показывает системы и бизнес-процессы в живой сцене шаг за шагом: куда идёт сообщение, где оно теряется и как это исправить.",
-    nav: { learn: "Уроки", map: "Карта", practice: "Практика", lab: "Лаборатория", soon: "скоро" },
+    nav: { learn: "Уроки", map: "Карта", practice: "Практика", lab: "Лаборатория", soon: "скоро", glossary: "Словарь" },
     theme: "Сменить тему",
     skip: "Перейти к содержимому",
+    search: { open: "Поиск", label: "Поиск по курсу", placeholder: "Урок, шаг или термин…", hint: "Например: кэш, очередь, реплика…", empty: "Ничего не найдено", lesson: "Урок", step: "Шаг", term: "Термин" },
     home: {
       title: "Смотрите, как работает система, а не заучивайте",
       lead: "Каждый урок — одна проблема и её решение. В сцене движутся запросы, падают узлы, меняются цифры, а вы на каждом шаге видите, что изменилось и какой именно запрос прошёл по проводу.",
@@ -96,6 +103,7 @@ export const site: Record<Lang, SiteStrings> = {
       startCourse: "Начать с первого урока",
       openLab: "Нарисовать свою схему в Лаборатории",
       upcoming: "Следующие уроки",
+      offline: { save: "Сохранить курс офлайн", busy: "Сохраняем…", done: "Сохранено файлов: {n}. Уроки откроются и без интернета.", fail: "Не удалось сохранить. Проверьте интернет и попробуйте снова." },
       upcomingList: [
         "Электронная подпись: как документ подписывается и проверяется",
         "Статусы документа: машина состояний с несколькими сторонами",
@@ -113,7 +121,8 @@ export const site: Record<Lang, SiteStrings> = {
       systems: { title: "Целые системы", text: "Собираем всё вместе и проектируем реальную систему с нуля." },
       business: { title: "Бизнес-процессы", text: "Реальные платёжные и документные потоки: где теряются деньги и товар." },
     },
-    course: { title: "Курс", prev: "Предыдущий урок", next: "Следующий урок" },
+    glossary: { title: "Словарь терминов", lead: "Главные термины курса: каждый в одной-двух фразах и со ссылкой на урок, где он объясняется.", inLesson: "В уроке", letters: "Буквы" },
+    course: { title: "Курс", prev: "Предыдущий урок", next: "Следующий урок", pager: "Предыдущий и следующий урок", done: "пройден", started: "начат" },
     labPage: {
       title: "Лаборатория",
       lead: "Нарисуйте свою систему: добавляйте элементы, соединяйте их, меняйте нагрузку и состояние. Схема сохраняется в браузере и открывается по ссылке.",
@@ -125,9 +134,10 @@ export const site: Record<Lang, SiteStrings> = {
     tagline: "Processes, step by step, in detail",
     description:
       "A platform that shows systems and business processes in a live scene, step by step: where a message goes, where it gets lost and how to fix it.",
-    nav: { learn: "Lessons", map: "Map", practice: "Practice", lab: "Lab", soon: "soon" },
+    nav: { learn: "Lessons", map: "Map", practice: "Practice", lab: "Lab", soon: "soon", glossary: "Glossary" },
     theme: "Switch theme",
     skip: "Skip to content",
+    search: { open: "Search", label: "Search the course", placeholder: "Lesson, step or term…", hint: "Try: cache, queue, replica…", empty: "Nothing found", lesson: "Lesson", step: "Step", term: "Term" },
     home: {
       title: "See how the system works instead of memorising it",
       lead: "Every lesson is one problem and its fix. Requests move across the scene, nodes fail, numbers change, and at every step you see exactly what changed and the real request that crossed the wire.",
@@ -141,6 +151,7 @@ export const site: Record<Lang, SiteStrings> = {
       startCourse: "Start with the first lesson",
       openLab: "Draw your own diagram in the Lab",
       upcoming: "Coming next",
+      offline: { save: "Save the course offline", busy: "Saving…", done: "Saved {n} files. Lessons now open without internet.", fail: "Could not save. Check the connection and try again." },
       upcomingList: ["Digital signatures: how a document is signed and verified", "Document statuses: a multi-party state machine"],
     },
     sections: {
@@ -155,7 +166,8 @@ export const site: Record<Lang, SiteStrings> = {
       systems: { title: "Whole systems", text: "Put it all together and design a real system from scratch." },
       business: { title: "Business processes", text: "Real payment and document flows: where money and goods get lost." },
     },
-    course: { title: "Course", prev: "Previous lesson", next: "Next lesson" },
+    glossary: { title: "Glossary", lead: "The key terms of the course, each in a sentence or two, with the lesson that explains it.", inLesson: "In the lesson", letters: "Letters" },
+    course: { title: "Course", prev: "Previous lesson", next: "Next lesson", pager: "Previous and next lesson", done: "done", started: "started" },
     labPage: {
       title: "Lab",
       lead: "Draw your own system: add elements, connect them, change their load and state. The diagram is saved in your browser and shared with a link.",
@@ -217,9 +229,39 @@ export const lab: Record<Lang, LabStrings> = {
     close: "Yopish",
     play: "Davom",
     pause: "Pauza",
-    keys: "C ulash · Del o'chirish · Ctrl+Z bekor · Esc tanlash · Space pauza",
+    keys: "C ulash · Del o'chirish · Ctrl+Z bekor · Esc tanlash · Space pauza · S simulyatsiya · Tab element · strelkalar siljitadi",
     stageLabel: "Diagramma",
     limit: "Chegara: ko'pi bilan 40 element va 80 chiziq.",
+    linkLoaded: "Havoladagi diagramma ochildi.",
+    restore: "O'zimnikini qaytarish",
+    importBad: "Faylda diagramma topilmadi.",
+    shareTitle: "Havolani nusxalang",
+    exportPng: "PNG",
+    exportSvg: "SVG",
+    simulate: "Simulyatsiya",
+    traffic: "Trafik: {n} so'rov/s",
+    spike: "×10 to'lqin",
+    simOk: "Javob berildi",
+    simErrors: "Xatolar",
+    simLatency: "Kechikish",
+    simHot: "Haddan tashqari yuklangan: {list}",
+    simNode: "{rps} so'rov/s · yuklama {rho}% · ~{ms} ms",
+    simNote: "Taxminiy model: har bir tugun sig'imi turiga qarab olinadi, kesh o'qishlarning 90% ini o'zi qaytaradi. Raqamlar yo'nalish va miqyosni ko'rsatadi.",
+    challenges: "Topshiriqlar",
+    challengeFree: "Erkin chizish",
+    challengeDone: "Bajarildi! Diagramma barcha shartlarga javob beradi.",
+    challengeRestart: "Boshidan",
+    ruleLoad: "{rps} so'rov/s da xatolar {err}% dan kam",
+    ruleLoadMs: "{rps} so'rov/s da xatolar {err}% dan kam, kechikish {ms} ms dan kam",
+    ruleCount: "Kamida {n} ta: {kind}",
+    ruleVia: "{from} → {to} har bir yo'li {via} orqali o'tadi",
+    ruleSurvive: "Istalgan bitta {kind} o'chsa ham, {rps} so'rov/s da xatolar {err}% dan kam",
+    challengeText: {
+      "scale-out": { title: "Bitta server yetmay qoldi", brief: "Trafik 750 so'rov/s ga yetdi, bitta servis esa ~600 tasini ko'taradi. Yukni bir nechta serverga bo'ling." },
+      "spare-the-db": { title: "Bazani asrang", brief: "1500 so'rov/s, baza esa ~800 tasini ko'taradi. Baza oldiga kesh qo'ying va servislar bazaga faqat u orqali borsin." },
+      "lose-one": { title: "Server o'lsa ham", brief: "Har qanday server istalgan payt o'chishi mumkin. 700 so'rov/s da bitta servis o'chsa ham foydalanuvchilar xato ko'rmasin." },
+      "fast-at-scale": { title: "Tez va ko'p", brief: "4000 so'rov/s va o'rtacha javob 60 ms dan tez. Serverlarni ko'paytirish qimmat: so'rovlarning ko'pini ularga yetib bormasdan qaytaring." },
+    },
   },
   ru: {
     title: "Лаборатория",
@@ -273,9 +315,39 @@ export const lab: Record<Lang, LabStrings> = {
     close: "Закрыть",
     play: "Продолжить",
     pause: "Пауза",
-    keys: "C соединить · Del удалить · Ctrl+Z отменить · Esc выбор · Space пауза",
+    keys: "C соединить · Del удалить · Ctrl+Z отменить · Esc выбор · Space пауза · S симуляция · Tab элемент · стрелки двигают",
     stageLabel: "Схема",
     limit: "Лимит: не больше 40 элементов и 80 связей.",
+    linkLoaded: "Открыта диаграмма из ссылки.",
+    restore: "Вернуть мою",
+    importBad: "В файле нет диаграммы.",
+    shareTitle: "Скопируйте ссылку",
+    exportPng: "PNG",
+    exportSvg: "SVG",
+    simulate: "Симуляция",
+    traffic: "Трафик: {n} запр./с",
+    spike: "Всплеск ×10",
+    simOk: "Обслужено",
+    simErrors: "Ошибки",
+    simLatency: "Задержка",
+    simHot: "Перегружены: {list}",
+    simNode: "{rps} запр./с · нагрузка {rho}% · ~{ms} мс",
+    simNote: "Упрощённая модель: ёмкость узла зависит от его типа, кеш сам отвечает на 90% чтений. Цифры показывают направление и масштаб.",
+    challenges: "Задания",
+    challengeFree: "Свободное рисование",
+    challengeDone: "Готово! Схема выполняет все условия.",
+    challengeRestart: "Сначала",
+    ruleLoad: "При {rps} запр./с ошибок меньше {err}%",
+    ruleLoadMs: "При {rps} запр./с ошибок меньше {err}%, задержка меньше {ms} мс",
+    ruleCount: "Не меньше {n}: {kind}",
+    ruleVia: "Каждый путь {from} → {to} проходит через {via}",
+    ruleSurvive: "Если упадёт любой один {kind}, при {rps} запр./с ошибок меньше {err}%",
+    challengeText: {
+      "scale-out": { title: "Одного сервера мало", brief: "Трафик дошёл до 750 запр./с, а один сервис держит ~600. Разделите нагрузку на несколько серверов." },
+      "spare-the-db": { title: "Берегите базу", brief: "1500 запр./с, а база держит ~800. Поставьте перед ней кеш, и пусть сервисы ходят в базу только через него." },
+      "lose-one": { title: "Даже если сервер упал", brief: "Любой сервер может упасть в любой момент. При 700 запр./с падение одного сервиса не должно давать ошибок пользователям." },
+      "fast-at-scale": { title: "Быстро и много", brief: "4000 запр./с и средний ответ быстрее 60 мс. Добавлять серверы дорого: ответьте на большую часть запросов раньше, чем они до них дойдут." },
+    },
   },
   en: {
     title: "Lab",
@@ -329,8 +401,38 @@ export const lab: Record<Lang, LabStrings> = {
     close: "Close",
     play: "Resume",
     pause: "Pause",
-    keys: "C connect · Del delete · Ctrl+Z undo · Esc select · Space pause",
+    keys: "C connect · Del delete · Ctrl+Z undo · Esc select · Space pause · S simulate · Tab to a node · arrows move it",
     stageLabel: "Diagram",
     limit: "Limit: at most 40 elements and 80 connections.",
+    linkLoaded: "Opened the diagram from the link.",
+    restore: "Restore mine",
+    importBad: "No diagram found in the file.",
+    shareTitle: "Copy the link",
+    exportPng: "PNG",
+    exportSvg: "SVG",
+    simulate: "Simulate",
+    traffic: "Traffic: {n} req/s",
+    spike: "×10 spike",
+    simOk: "Served",
+    simErrors: "Errors",
+    simLatency: "Latency",
+    simHot: "Overloaded: {list}",
+    simNode: "{rps} req/s · load {rho}% · ~{ms} ms",
+    simNote: "A rough model: each node's capacity comes from its type, and a cache answers 90% of reads itself. The numbers show direction and scale.",
+    challenges: "Challenges",
+    challengeFree: "Free drawing",
+    challengeDone: "Done! The diagram meets every condition.",
+    challengeRestart: "Start over",
+    ruleLoad: "At {rps} req/s, errors under {err}%",
+    ruleLoadMs: "At {rps} req/s, errors under {err}% and latency under {ms} ms",
+    ruleCount: "At least {n}: {kind}",
+    ruleVia: "Every {from} → {to} path goes through {via}",
+    ruleSurvive: "Any one {kind} down: errors under {err}% at {rps} req/s",
+    challengeText: {
+      "scale-out": { title: "One server is not enough", brief: "Traffic reached 750 req/s and one service handles about 600. Spread the load over several servers." },
+      "spare-the-db": { title: "Spare the database", brief: "1500 req/s, and the database handles about 800. Put a cache in front of it and make the services reach the database only through it." },
+      "lose-one": { title: "Even when a server dies", brief: "Any server can die at any moment. At 700 req/s, losing one service must not show users a single error." },
+      "fast-at-scale": { title: "Fast at scale", brief: "4000 req/s with answers faster than 60 ms on average. More servers are expensive: answer most requests before they ever reach them." },
+    },
   },
 };

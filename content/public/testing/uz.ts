@@ -42,6 +42,16 @@ const text: LessonText<typeof lesson> = {
       short: "Unit",
       title: "Unit testlar: bitta funksiya, millisekundlar",
       body: "Narx hisobiga endi unit testlar bor: oddiy kirish qiymatlari, kutilgan son. Tarmoq ham, baza ham yo'q. O'n to'rtta test har push'da bir soniyadan kamroqda o'tadi.\n\nChegirma xatosi hech kim deploy qilmasdan shu yerda qizil bo'lardi. Unit testlar piramidaning keng asosi: arzon, tez, ko'p.",
+      check: {
+        q: "Unit testlar xotiradagi soxta bazani ishlatadi. Haqiqiy saqlash `ON CONFLICT` bilan. Production'da nima bo'ladi?",
+        options: [
+          "Hammasi joyida: unit testlar saqlashni tekshirgan",
+          "Har buyurtma yiqiladi, testlar esa yashil qoladi",
+          "Faqat takroriy buyurtma yiqiladi, yangisi saqlanadi",
+        ],
+        answer: 1,
+        why: "`ON CONFLICT` `order_no` ustida unique indeks talab qiladi, haqiqiy bazada esa u yo'q, shuning uchun baza butun so'rovni rad etadi. Soxta baza hamma narsani qabul qilgan edi, shuning uchun har buyurtma yiqiladi, testlar esa yashil.",
+      },
       fields: {
         FAIL: "Faylda yiqilgan test bor. Push qizil deb belgilanadi.",
         expected: "Test aytgan to'g'ri javob, kod qaytargan javob yonida.",
@@ -63,6 +73,16 @@ const text: LessonText<typeof lesson> = {
       short: "Integration",
       title: "Container'dagi haqiqiy baza bilan integration testlar",
       body: "CI endi bir martalik container'da haqiqiy bazani ishga tushiradi, production'dagi migratsiyalarni qo'llaydi va repository kodini unga qarshi yurgizadi.\n\nYetishmagan indeks birinchi yurishdayoq chiqadi, tuzatish migratsiya bo'lib ketadi. Narxi: CI 20 soniyadan bir yarim daqiqadan oshiqqa o'sadi. Shuning uchun bunday testlar kamroq.",
+      check: {
+        q: "Narxlar jamoasi `price`'ni `unit_amount` deb qayta nomlaydi. Ikkala jamoaning testlari o'tadi. Deploy'dan keyin nima bo'ladi?",
+        options: [
+          "Integration testlar buni deploy'dan oldin ushlaydi",
+          "Hech narsa: JSON client notanish maydonga qaramaydi",
+          "Har checkout yiqiladi: buyurtmalar yo'q maydonni o'qiydi",
+        ],
+        answer: 2,
+        why: "Narxlar testlari faqat o'z kodini tekshiradi, buyurtmalar testlari esa eski javobning stub'idan foydalanadi. Production'da buyurtmalar endi yo'q `price`'ni o'qiydi va har checkout yiqiladi.",
+      },
       fields: {
         container: "Production'dagi baza dvigateli va versiyasi, shu yurish uchun yangidan yaratilgan.",
         migrations: "Haqiqiy sxema, production qanday qursa, xuddi shunday qurilgan.",
@@ -94,6 +114,16 @@ const text: LessonText<typeof lesson> = {
       short: "End-to-end",
       title: "Bir nechta end-to-end test haqiqiy brauzerni boshqaradi",
       body: "CI brauzerni ochadi va checkout'dan odamdek o'tadi: savatni ochadi, Pay'ni bosadi, tasdiqni kutadi. Bu barcha servislardan birdaniga o'tadi.\n\nBu piramidaning cho'qqisi. Bitta test ko'p narsani tekshiradi, lekin sekin va qismlari ko'p, shuning uchun faqat asosiy foydalanuvchi yo'llari test oladi. CI endi deyarli to'rt daqiqa.",
+      check: {
+        q: "Ikki e2e test bitta test foydalanuvchisini ishlatadi va sahifani qat'iy 5 soniya kutadi. Nima boshlanadi?",
+        options: [
+          "Tasodifiy yiqilishlar, qayta urinishda o'tadi",
+          "Kod tuzatilguncha doimiy yiqilishlar",
+          "Hech narsa: har yurish toza brauzerdan boshlanadi",
+        ],
+        answer: 0,
+        why: "Bir test ikkinchisi qoldirgan savatni topadi, ba'zan esa sahifa qat'iy kutishdan sekinroq. Checkout taxminan o'n ikki yurishdan birida yiqilib, qayta urinishda o'tadi va odamlar retry bosishga o'rganadi.",
+      },
       fields: {
         open: "Brauzer do'konning test nusxasidan haqiqiy sahifani yuklaydi.",
         click: "Xaridor bosadigan o'sha tugma.",

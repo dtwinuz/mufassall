@@ -1,0 +1,935 @@
+import type { Lang } from "./types";
+
+/**
+ * Course glossary: one short, plain definition per term in every language, and the lesson
+ * that teaches it. Rendered at /<lang>/glossary/ and included in search.
+ */
+export interface Term {
+  /** stable anchor id, kebab-case */
+  id: string;
+  term: Record<Lang, string>;
+  /** one or two sentences, no markdown */
+  short: Record<Lang, string>;
+  /** slug of the lesson that explains it */
+  lesson: string;
+}
+
+export const glossary: Term[] = [
+  // ---- foundations ----
+  {
+    id: "latency",
+    term: { uz: "Kechikish (latency)", ru: "Задержка (latency)", en: "Latency" },
+    short: {
+      uz: "Bitta so'rov boshidan oxirigacha qancha vaqt olishi. Yuk oshganda unga ishning o'zidan tashqari navbatda kutish ham qo'shiladi.",
+      ru: "Сколько времени занимает один запрос от начала до конца. Под нагрузкой к самой работе добавляется ожидание в очереди.",
+      en: "How long one request takes from start to finish. Under load, time spent waiting in line is added to the work itself.",
+    },
+    lesson: "latency-throughput",
+  },
+  {
+    id: "throughput",
+    term: { uz: "O'tkazuvchanlik (throughput)", ru: "Пропускная способность (throughput)", en: "Throughput" },
+    short: {
+      uz: "Tizim soniyasiga nechta so'rovni tugatishi. Kechikish bilan bir vaqtda ishlanayotgan so'rovlar soni orqali bog'langan.",
+      ru: "Сколько запросов система завершает за секунду. С задержкой её связывает число запросов, которые обрабатываются одновременно.",
+      en: "How many requests a system finishes per second. It is linked to latency through the number of requests in flight.",
+    },
+    lesson: "latency-throughput",
+  },
+  {
+    id: "percentile",
+    term: { uz: "Persentil (p50, p95, p99)", ru: "Перцентиль (p50, p95, p99)", en: "Percentile (p50, p95, p99)" },
+    short: {
+      uz: "p95 — so'rovlarning 95% i shu vaqtdan tezroq tugaydi, ya'ni har yigirmatadan bittasi sekinroq. O'rtacha qiymat sekin dumni yashiradi, shuning uchun p95 va p99 kuzatiladi.",
+      ru: "p95 означает, что 95% запросов быстрее этого значения, то есть каждый двадцатый медленнее. Среднее прячет медленный хвост, поэтому смотрят на p95 и p99.",
+      en: "p95 means 95% of requests are faster than this value, so one in twenty is slower. The average hides the slow tail, so you watch p95 and p99.",
+    },
+    lesson: "latency-throughput",
+  },
+  {
+    id: "load-shedding",
+    term: { uz: "Ortiqcha yukni rad etish (load shedding)", ru: "Сброс нагрузки (load shedding)", en: "Load shedding" },
+    short: {
+      uz: "Server to'lib qolganda ortiqcha so'rovlarga kutdirmasdan darhol 503 qaytarish. Hammaga sekin xato bergandan ko'ra bir qismiga tez \"keyinroq urining\" deyish yaxshi.",
+      ru: "При перегрузке лишние запросы сразу получают 503, а не стоят в очереди. Лучше быстро сказать части клиентов «попробуйте позже», чем медленно отказать всем.",
+      en: "When a server is full, extra requests get an instant 503 instead of waiting. A fast \"try again\" for a few beats a slow failure for everyone.",
+    },
+    lesson: "latency-throughput",
+  },
+  {
+    id: "napkin-math",
+    term: { uz: "Qog'oz ustidagi hisob (napkin math)", ru: "Оценка на салфетке", en: "Napkin math" },
+    short: {
+      uz: "Tizim hajmini oddiy ko'paytirishlar zanjiri bilan taxmin qilish: foydalanuvchilar, soniyasiga so'rovlar, kunlik baytlar, keyin disk, tarmoq va serverlar. Har bir faraz yoziladi, o'rtachaga emas, cho'qqiga rejalashtiriladi.",
+      ru: "Грубая оценка размера системы цепочкой простых умножений: пользователи, запросы в секунду, байты в день, затем диски, сеть и серверы. Каждое допущение записывают и считают по пику, а не по среднему.",
+      en: "Sizing a system with a chain of simple multiplications: users, requests per second, bytes per day, then disks, bandwidth and servers. Write each assumption down and plan for the peak, not the average.",
+    },
+    lesson: "napkin-math",
+  },
+
+  // ---- scaling ----
+  {
+    id: "vertical-scaling",
+    term: { uz: "Vertikal masshtablash", ru: "Вертикальное масштабирование", en: "Vertical scaling" },
+    short: {
+      uz: "Serverni kattaroq va kuchliroq serverga almashtirish. Oddiy, lekin bir kun undan kattasi qolmaydi va u baribir yagona nosozlik nuqtasi.",
+      ru: "Замена сервера на более мощный. Это просто, но однажды больше сервера не найти, и он всё равно остаётся единой точкой отказа.",
+      en: "Replacing a server with a bigger, stronger one. It is simple, but one day there is no bigger box, and it is still a single point of failure.",
+    },
+    lesson: "vertical-horizontal",
+  },
+  {
+    id: "horizontal-scaling",
+    term: { uz: "Gorizontal masshtablash", ru: "Горизонтальное масштабирование", en: "Horizontal scaling" },
+    short: {
+      uz: "Bitta katta server o'rniga ko'p serverlar qo'yish. Buning uchun oldida load balancer va stateless app serverlar kerak.",
+      ru: "Добавление серверов вместо одного большого. Для этого нужен балансировщик впереди и stateless-серверы приложения.",
+      en: "Adding more servers instead of one bigger one. It needs a load balancer in front and stateless app servers.",
+    },
+    lesson: "vertical-horizontal",
+  },
+  {
+    id: "single-point-of-failure",
+    term: { uz: "Yagona nosozlik nuqtasi (SPOF)", ru: "Единая точка отказа (SPOF)", en: "Single point of failure (SPOF)" },
+    short: {
+      uz: "Yo'qolsa butun tizimni to'xtatadigan qism. Unga odamsiz o'rnini egallaydigan zaxira beriladi.",
+      ru: "Часть, без которой останавливается вся система. Ей дают резерв, который подменяет её без участия человека.",
+      en: "A part whose loss stops the whole system. The fix is a spare that takes over without a human.",
+    },
+    lesson: "redundancy",
+  },
+  {
+    id: "load-balancer",
+    term: { uz: "Load balancer", ru: "Балансировщик нагрузки", en: "Load balancer" },
+    short: {
+      uz: "Kiruvchi trafikni bir nechta server orasida taqsimlaydigan qism. L4 ulanishlarni, L7 alohida so'rovlarni taqsimlaydi; round robin, least connections yoki og'irliklar bilan tanlaydi.",
+      ru: "Компонент, который распределяет входящий трафик между серверами. L4 раздаёт соединения, L7 — отдельные запросы; выбирает по round robin, least connections или весам.",
+      en: "A component that spreads incoming traffic across several servers. L4 balances connections, L7 balances requests; it picks by round robin, least connections or weights.",
+    },
+    lesson: "load-balancing",
+  },
+  {
+    id: "health-check",
+    term: { uz: "Health check", ru: "Health check (проверка здоровья)", en: "Health check" },
+    short: {
+      uz: "Balancer serverni muntazam tekshirib turadi va javob bermaganini bir necha soniyada pool'dan chiqaradi. Server tuzalgach u yana qaytariladi.",
+      ru: "Балансировщик регулярно опрашивает сервер и за несколько секунд выводит из пула тот, что не отвечает. Когда сервер оживает, его возвращают.",
+      en: "The balancer probes each server regularly and takes one that stops answering out of the pool within seconds. It comes back once it recovers.",
+    },
+    lesson: "load-balancing",
+  },
+  {
+    id: "stateless",
+    term: { uz: "Stateless (holatsiz) server", ru: "Stateless-сервер", en: "Stateless server" },
+    short: {
+      uz: "So'rovlar orasida jarayon xotirasida hech narsa saqlamaydigan server. Sessiya va fayllar umumiy omborda, shuning uchun istalgan server istalgan vaqtda o'chishi yoki qo'shilishi mumkin.",
+      ru: "Сервер, который ничего не хранит в памяти процесса между запросами. Сессии и файлы лежат в общем хранилище, поэтому любой сервер можно убрать или добавить в любой момент.",
+      en: "A server that keeps nothing in process memory between requests. Sessions and files live in a shared store, so any server can die or be added at any time.",
+    },
+    lesson: "stateless",
+  },
+  {
+    id: "sticky-session",
+    term: { uz: "Sticky sessiya", ru: "Sticky-сессия", en: "Sticky session" },
+    short: {
+      uz: "Balancer bir foydalanuvchini doim o'sha serverga yuboradi. Bu muammoni yashiradi, hal qilmaydi: server qayta ishga tushsa sessiya yo'qoladi, yuk esa notekis bo'ladi.",
+      ru: "Балансировщик всегда отправляет пользователя на тот же сервер. Это прячет проблему, а не решает её: при перезапуске сервера сессия теряется, а нагрузка перекашивается.",
+      en: "The balancer always sends a user to the same server. It hides the problem rather than solving it: a restart loses the session and load becomes uneven.",
+    },
+    lesson: "stateless",
+  },
+  {
+    id: "cache-aside",
+    term: { uz: "Cache-aside", ru: "Cache-aside", en: "Cache-aside" },
+    short: {
+      uz: "Eng keng tarqalgan kesh usuli: ilova avval keshga qaraydi, miss bo'lsa bazadan o'qiydi va javobni keshga qo'yadi. Keyingi so'rovlar hit bo'lib, xotiradan javob oladi.",
+      ru: "Самая распространённая схема кеша: приложение сначала смотрит в кеш, при промахе читает базу и кладёт ответ в кеш. Следующие запросы попадают в кеш и отвечаются из памяти.",
+      en: "The most common cache pattern: the app looks in the cache first, on a miss reads the database and puts the answer in the cache. Later requests hit and are served from memory.",
+    },
+    lesson: "caching",
+  },
+  {
+    id: "ttl",
+    term: { uz: "TTL (yashash muddati)", ru: "TTL (время жизни)", en: "TTL (time to live)" },
+    short: {
+      uz: "Keshdagi kalit qancha vaqtdan keyin o'zi o'chishi. Invalidatsiya unutilsa ham eskirgan ma'lumot abadiy qolmasligi uchun zaxira himoya.",
+      ru: "Через сколько времени ключ в кеше исчезает сам. Страховка на случай, если инвалидацию забыли: устаревшие данные не живут вечно.",
+      en: "How long a cached key lives before it expires by itself. A safety net so stale data cannot stay forever if invalidation is missed.",
+    },
+    lesson: "caching",
+  },
+  {
+    id: "cache-invalidation",
+    term: { uz: "Kesh invalidatsiyasi", ru: "Инвалидация кеша", en: "Cache invalidation" },
+    short: {
+      uz: "Ma'lumot o'zgarganda keshdagi eski nusxani o'chirish. Yozuv commit bo'lgandan keyin kalit o'chiriladi va keyingi o'qish yangi qiymatni oladi.",
+      ru: "Удаление старой копии из кеша, когда данные изменились. Ключ удаляют после коммита, и следующее чтение берёт свежее значение.",
+      en: "Removing the old cached copy when the data changes. The key is deleted after the commit, so the next read fetches the fresh value.",
+    },
+    lesson: "caching",
+  },
+  {
+    id: "cache-stampede",
+    term: { uz: "Keshga yopirilish (stampede)", ru: "Набег на кеш (stampede)", en: "Cache stampede" },
+    short: {
+      uz: "Issiq kalit tugagan lahzada minglab so'rov bir vaqtda miss qilib, bazaga bir xil so'rov bilan boradi. Coalescing va tasodifiy TTL bunga qarshi ishlaydi.",
+      ru: "В момент истечения горячего ключа тысячи запросов одновременно промахиваются и идут в базу с одним и тем же запросом. Против этого работают coalescing и случайный TTL.",
+      en: "When a hot key expires, thousands of requests miss at once and hit the database with the same query. Request coalescing and jittered TTLs prevent it.",
+    },
+    lesson: "caching",
+  },
+  {
+    id: "request-coalescing",
+    term: { uz: "Request coalescing", ru: "Request coalescing (склейка запросов)", en: "Request coalescing" },
+    short: {
+      uz: "Miss bo'lganda faqat bitta so'rov qisqa lock olib bazadan o'qiydi va keshni to'ldiradi, qolganlari bir necha millisekund kutib tayyor kalitni o'qiydi. Minglab bir xil so'rov bittaga aylanadi.",
+      ru: "При промахе только один запрос берёт короткую блокировку, читает базу и заполняет кеш, остальные ждут несколько миллисекунд и читают готовый ключ. Тысячи одинаковых запросов становятся одним.",
+      en: "On a miss, only one request takes a short lock, reads the database and refills the cache; the rest wait a few milliseconds and read the fresh key. Thousands of identical queries become one.",
+    },
+    lesson: "caching",
+  },
+  {
+    id: "write-through-write-back",
+    term: { uz: "Write-through va write-back", ru: "Write-through и write-back", en: "Write-through and write-back" },
+    short: {
+      uz: "Write-through bitta so'rovda keshga ham, bazaga ham yozadi: kesh doim yangi, lekin yozuv ikki marta to'laydi. Write-back faqat keshga yozadi va worker keyinroq bazaga o'tkazadi: juda tez, lekin kesh o'lsa o'tkazilmagan qism yo'qoladi.",
+      ru: "Write-through пишет и в кеш, и в базу в одном запросе: кеш всегда свежий, но запись платит дважды. Write-back пишет только в кеш, а воркер позже сбрасывает в базу: очень быстро, но если кеш упал, несброшенное теряется.",
+      en: "Write-through writes the cache and the database in the same request: always fresh, but every write pays twice. Write-back writes only the cache and a worker flushes later: very fast, but unflushed data is lost if the cache dies.",
+    },
+    lesson: "caching",
+  },
+  {
+    id: "cdn",
+    term: { uz: "CDN va edge", ru: "CDN и edge", en: "CDN and edge" },
+    short: {
+      uz: "Statik fayllarni foydalanuvchiga yaqin edge serverlardagi keshdan beradigan tarmoq. Origin faqat miss'larni to'ldiradi, nima va qancha keshlanishini Cache-Control hal qiladi.",
+      ru: "Сеть кешей на edge-серверах рядом с пользователями, которая отдаёт статику. Origin только заполняет промахи, а что и на сколько кешировать, решает Cache-Control.",
+      en: "A network of caches on edge servers near users that serves static files. The origin only fills misses, and Cache-Control decides what is cached and for how long.",
+    },
+    lesson: "cdn",
+  },
+  {
+    id: "origin-shield",
+    term: { uz: "Origin shield", ru: "Origin shield", en: "Origin shield" },
+    short: {
+      uz: "Edge'lar va origin orasidagi oraliq kesh qatlami. Har edge alohida so'rash o'rniga ko'p edge miss'i origin'ga bitta so'rov bo'lib boradi.",
+      ru: "Промежуточный слой кеша между edge-серверами и origin. Вместо того чтобы каждый edge спрашивал сам, много промахов превращаются в один запрос к origin.",
+      en: "A middle cache layer between the edges and the origin. Instead of every edge asking on its own, many edge misses turn into one request to the origin.",
+    },
+    lesson: "cdn",
+  },
+
+  // ---- data ----
+  {
+    id: "nosql",
+    term: { uz: "NoSQL (hujjat, wide-column, key-value)", ru: "NoSQL (документ, wide-column, key-value)", en: "NoSQL (document, wide-column, key-value)" },
+    short: {
+      uz: "Relatsion bo'lmagan omborlar: hujjat ombori butun obyektni bitta o'qishda beradi, wide-column juda ko'p yozuvni ko'taradi, key-value faqat kalit bo'yicha qidiradi. Ular oldindan ma'lum foydalanish usuliga moslanadi, relatsion baza esa yangi savollarga ochiq.",
+      ru: "Нереляционные хранилища: документное отдаёт весь объект за одно чтение, wide-column держит огромный поток записей, key-value ищет только по ключу. Они заточены под заранее известный сценарий, а реляционная база открыта новым вопросам.",
+      en: "Non-relational stores: a document store returns a whole object in one read, a wide-column store takes huge write rates, a key-value store looks up by key only. Each is shaped for a known access pattern, while a relational database stays open to new questions.",
+    },
+    lesson: "sql-nosql",
+  },
+  {
+    id: "index",
+    term: { uz: "Indeks", ru: "Индекс", en: "Index" },
+    short: {
+      uz: "Baza qatorlarni butun jadvalni o'qimasdan topishi uchun alohida saralangan tuzilma, odatda B-tree. Composite indeksda ustunlar tartibi muhim, har indeks esa har yozuvni sekinlashtiradi.",
+      ru: "Отдельная отсортированная структура, обычно B-tree, чтобы база находила строки без полного сканирования таблицы. В составном индексе важен порядок колонок, а каждый индекс замедляет каждую запись.",
+      en: "A separate sorted structure, usually a B-tree, that lets the database find rows without scanning the whole table. In a composite index the column order matters, and every index slows down every write.",
+    },
+    lesson: "indexes",
+  },
+  {
+    id: "b-tree",
+    term: { uz: "B-tree", ru: "B-дерево (B-tree)", en: "B-tree" },
+    short: {
+      uz: "Ma'lumotni saralangan sahifalarda saqlab, joyida yangilaydigan tuzilma. O'qish va oraliq so'rovlar tez, lekin har kichik yozuv tasodifiy joydagi butun sahifani qayta yozadi.",
+      ru: "Структура, которая хранит данные в отсортированных страницах и обновляет их на месте. Чтения и диапазоны быстрые, но каждая мелкая запись переписывает целую страницу в случайном месте.",
+      en: "A structure that keeps data in sorted pages and updates them in place. Reads and range scans are fast, but every small write rewrites a whole page at a random spot.",
+    },
+    lesson: "storage-engines",
+  },
+  {
+    id: "lsm-tree",
+    term: { uz: "LSM-tree", ru: "LSM-дерево", en: "LSM-tree" },
+    short: {
+      uz: "Yozuvni WAL'ga qo'shib yozib, xotiradagi memtable'da saralaydigan va keyin diskka SSTable fayl qilib tushiradigan ombor. Yozish juda tez, evaziga o'qish kuchayishi va compaction keladi.",
+      ru: "Хранилище, которое дописывает запись в WAL, сортирует её в memtable в памяти и потом сбрасывает на диск файлом SSTable. Запись очень быстрая, плата — усиление чтения и compaction.",
+      en: "A store that appends each write to the WAL, sorts it in an in-memory memtable and later flushes it to disk as an SSTable file. Writes are very fast; the price is read amplification and compaction.",
+    },
+    lesson: "storage-engines",
+  },
+  {
+    id: "write-ahead-log",
+    term: { uz: "WAL (write-ahead log)", ru: "WAL (журнал предзаписи)", en: "WAL (write-ahead log)" },
+    short: {
+      uz: "Har o'zgarish avval faqat oxiriga qo'shib yoziladigan log faylga tushadi, keyin asosiy tuzilmaga. Server yiqilsa, ma'lumot shu logdan tiklanadi.",
+      ru: "Каждое изменение сначала дописывается в конец журнала и только потом попадает в основную структуру. Если сервер упал, данные восстанавливаются из этого журнала.",
+      en: "Every change is first appended to a log file that only grows at the end, then applied to the main structure. If the server crashes, data is recovered from this log.",
+    },
+    lesson: "storage-engines",
+  },
+  {
+    id: "replication",
+    term: { uz: "Replikatsiya (lider va follower)", ru: "Репликация (лидер и фолловеры)", en: "Replication (leader and followers)" },
+    short: {
+      uz: "Lider barcha yozuvlarni qabul qiladi va o'z logini follower'larga uzatadi, ular uni qayta bajarib nusxa saqlaydi. Replikalar o'qish quvvatini va failover uchun zaxirani beradi.",
+      ru: "Лидер принимает все записи и передаёт свой журнал фолловерам, которые проигрывают его и держат копию. Реплики дают ёмкость на чтение и резерв для failover.",
+      en: "The leader takes every write and streams its log to followers, which replay it and keep a copy. Replicas give read capacity and a spare for failover.",
+    },
+    lesson: "replication",
+  },
+  {
+    id: "replication-lag",
+    term: { uz: "Replikatsiya kechikishi", ru: "Отставание репликации", en: "Replication lag" },
+    short: {
+      uz: "Asinxron replika liderdan qancha orqada ekani. Yuk ostida u o'sadi va replikadan o'qilgan ma'lumot eskirgan bo'lishi mumkin.",
+      ru: "Насколько асинхронная реплика отстаёт от лидера. Под нагрузкой отставание растёт, и чтение с реплики может вернуть устаревшие данные.",
+      en: "How far an asynchronous replica is behind the leader. It grows under load, so a read from a replica can return stale data.",
+    },
+    lesson: "replication",
+  },
+  {
+    id: "read-your-writes",
+    term: { uz: "Read-your-writes", ru: "Read-your-writes", en: "Read-your-writes" },
+    short: {
+      uz: "Foydalanuvchi o'zi yozgan narsani doim ko'rishi kafolati. Yozuvdan keyin uning o'qishlari replika yetib olguncha liderga yo'naltiriladi.",
+      ru: "Гарантия, что пользователь всегда видит то, что сам записал. После записи его чтения идут на лидера, пока реплика не догонит.",
+      en: "A guarantee that users always see their own writes. After a write, that user's reads go to the leader until the replica has caught up.",
+    },
+    lesson: "replication",
+  },
+  {
+    id: "sharding",
+    term: { uz: "Sharding", ru: "Шардирование", en: "Sharding" },
+    short: {
+      uz: "Bitta serverga sig'may qolgan jadvalni qatorlar bo'yicha bir nechta serverga (shard'ga) bo'lish. Har qator qayerda turishini shard kaliti hal qiladi.",
+      ru: "Разделение таблицы, которая не помещается на один сервер, по строкам между несколькими серверами (шардами). Где лежит каждая строка, решает ключ шардирования.",
+      en: "Splitting a table that no longer fits on one server across several servers (shards) by rows. The shard key decides where each row lives.",
+    },
+    lesson: "sharding",
+  },
+  {
+    id: "shard-key",
+    term: { uz: "Shard kaliti", ru: "Ключ шардирования", en: "Shard key" },
+    short: {
+      uz: "Qator qaysi shard'da turishini hal qiladigan qiymat. Eng ko'p so'rov filtrlaydigan ustun tanlanadi, vaqt bilan o'sadigan kalit esa hash qilinadi, aks holda bitta shard qiziydi.",
+      ru: "Значение, которое решает, на каком шарде лежит строка. Берут колонку, по которой фильтрует самый частый запрос, а растущий со временем ключ хешируют, иначе греется один шард.",
+      en: "The value that decides which shard holds a row. Pick the column your most common query filters on, and hash keys that grow over time or one shard runs hot.",
+    },
+    lesson: "sharding",
+  },
+  {
+    id: "hot-key",
+    term: { uz: "Qizigan kalit (hot key)", ru: "Горячий ключ", en: "Hot key" },
+    short: {
+      uz: "Yuki boshqalardan juda katta bo'lgan bitta kalit, masalan ulkan kanal yoki aksiyadagi mahsulot. U bitta shard yoki kesh node'ini qizdiradi, shuning uchun bucket'larga bo'linadi.",
+      ru: "Один ключ, на который приходится несоразмерно много нагрузки, например огромный канал или товар на распродаже. Он перегревает один шард или узел кеша, поэтому его режут на бакеты.",
+      en: "A single key with far more load than the rest, such as a huge channel or a product on sale. It overheats one shard or cache node, so it is split into buckets.",
+    },
+    lesson: "sharding",
+  },
+  {
+    id: "consistent-hashing",
+    term: { uz: "Consistent hashing", ru: "Консистентное хеширование", en: "Consistent hashing" },
+    short: {
+      uz: "Node'lar va kalitlar bitta halqaga qo'yiladi, kalit soat strelkasi bo'yicha keyingi node'ga tegishli. Node qo'shilsa yoki chiqsa kalitlarning faqat ~1/N qismi ko'chadi; virtual node'lar yukni tenglashtiradi.",
+      ru: "Узлы и ключи размещают на одном кольце, ключ принадлежит следующему узлу по часовой стрелке. При добавлении или уходе узла переезжает лишь ~1/N ключей, а виртуальные узлы выравнивают нагрузку.",
+      en: "Nodes and keys sit on one ring, and a key belongs to the next node clockwise. When a node joins or leaves only about 1/N of the keys move; virtual nodes even out the load.",
+    },
+    lesson: "consistent-hashing",
+  },
+  {
+    id: "uuidv7",
+    term: { uz: "UUIDv7", ru: "UUIDv7", en: "UUIDv7" },
+    short: {
+      uz: "Birinchi 48 biti millisekunddagi vaqt, qolgani tasodifiy bo'lgan 128 bitli ID. Yangi ID'lar indeks oxiriga tushadi, shuning uchun tasodifiy UUIDv4 kabi B-tree'ni titib tashlamaydi.",
+      ru: "128-битный id, у которого первые 48 бит — время в миллисекундах, а остальное случайно. Новые id попадают в конец индекса и не разрывают B-tree, как случайный UUIDv4.",
+      en: "A 128-bit id whose first 48 bits are the time in milliseconds and the rest is random. New ids land at the end of the index, so it does not tear a B-tree apart like random UUIDv4.",
+    },
+    lesson: "unique-ids",
+  },
+  {
+    id: "snowflake-id",
+    term: { uz: "Snowflake ID (vaqt + mashina + ketma-ketlik)", ru: "Snowflake ID (время + машина + счётчик)", en: "Snowflake ID (time + machine + sequence)" },
+    short: {
+      uz: "64 bitli ID: tanlangan davrdan beri o'tgan millisekundlar, mashina raqami va shu millisekund ichidagi hisoblagich. Har server ID'ni o'zi yaratadi, soat orqaga ketsa kutadi yoki rad etadi.",
+      ru: "64-битный id из миллисекунд с выбранной эпохи, номера машины и счётчика внутри миллисекунды. Каждый сервер делает id сам, а если часы пошли назад, ждёт или отказывает.",
+      en: "A 64-bit id made of milliseconds since a chosen epoch, a machine number and a counter within that millisecond. Each server makes ids alone, and waits or refuses if its clock moves back.",
+    },
+    lesson: "unique-ids",
+  },
+  {
+    id: "cap-theorem",
+    term: { uz: "CAP", ru: "CAP", en: "CAP" },
+    short: {
+      uz: "Tarmoq bo'linganda tizim tanlashi kerak: izchil qolib (CP) uzilgan tomonda yozuvni rad etish yoki ochiq qolib (AP) ikkala tomonda qabul qilish. Uzilish paytida ikkalasi birga bo'lmaydi.",
+      ru: "При сетевом разделе система должна выбрать: остаться согласованной (CP) и отказать в записи на отрезанной стороне или остаться доступной (AP) и принимать записи с обеих сторон. Во время разрыва нельзя получить и то и другое.",
+      en: "When the network splits, a system must choose: stay consistent (CP) and refuse writes on the cut-off side, or stay available (AP) and accept writes on both sides. During the cut you cannot have both.",
+    },
+    lesson: "cap",
+  },
+  {
+    id: "network-partition",
+    term: { uz: "Tarmoq bo'linishi (partition)", ru: "Сетевой раздел (partition)", en: "Network partition" },
+    short: {
+      uz: "Tizim qismlari orasidagi aloqa uzilib, ular bir-birini ko'rmay qolishi. Har ikki tomon ishlayveradi, lekin kelisha olmaydi.",
+      ru: "Обрыв связи между частями системы, после которого они не видят друг друга. Обе стороны продолжают работать, но согласоваться не могут.",
+      en: "A broken link between parts of a system so they can no longer see each other. Both sides keep running but cannot agree.",
+    },
+    lesson: "cap",
+  },
+  {
+    id: "eventual-consistency",
+    term: { uz: "Eventual consistency", ru: "Eventual consistency (согласованность в конечном счёте)", en: "Eventual consistency" },
+    short: {
+      uz: "Yozish to'xtasa, barcha nusxalar oxir-oqibat bir xil bo'ladi, lekin har lahzada emas. Asinxron replikatsiyada qisqa vaqt eskirgan o'qish bo'lishi mumkin.",
+      ru: "Если записи прекратились, все копии в итоге совпадут, но не в каждый момент. При асинхронной репликации ненадолго возможны устаревшие чтения.",
+      en: "If writes stop, all copies end up the same, but not at every instant. With asynchronous replication some reads are briefly stale.",
+    },
+    lesson: "cap",
+  },
+  {
+    id: "quorum",
+    term: { uz: "Quorum (R + W > N)", ru: "Кворум (R + W > N)", en: "Quorum (R + W > N)" },
+    short: {
+      uz: "Har yozuv N ta replikadan W tasida tasdiqlansa hisoblanadi, o'qish R ta replikadan so'raydi. R + W > N bo'lsa har o'qish oxirgi yozuv bilan kamida bitta replikada kesishadi va faqat ko'pchilik tomon yoza oladi.",
+      ru: "Запись считается выполненной, когда её подтвердили W из N реплик, а чтение опрашивает R реплик. Если R + W > N, каждое чтение пересекается с последней записью хотя бы на одной реплике, и писать может только большинство.",
+      en: "A write counts once W of N replicas confirm it, and a read asks R replicas. If R + W > N, every read overlaps the latest write on at least one replica, and only the majority side can write.",
+    },
+    lesson: "cap",
+  },
+  {
+    id: "consensus",
+    term: { uz: "Konsensus (Raft)", ru: "Консенсус (Raft)", en: "Consensus (Raft)" },
+    short: {
+      uz: "Bir nechta node lider va umumiy log bo'yicha ko'pchilik ovozi bilan kelishadi. O'zgarish ko'pchilik saqlaganda commit bo'ladi, term va ovozlar har term'da ko'pi bilan bitta lider beradi.",
+      ru: "Несколько узлов договариваются о лидере и общем журнале голосованием большинства. Изменение закоммичено, когда его сохранило большинство, а термы и голоса дают не больше одного лидера на терм.",
+      en: "Several nodes agree on a leader and a shared log by majority vote. A change is committed once a majority stored it, and terms and votes allow at most one leader per term.",
+    },
+    lesson: "consensus",
+  },
+  {
+    id: "fencing-token",
+    term: { uz: "Fencing token", ru: "Fencing-токен", en: "Fencing token" },
+    short: {
+      uz: "Har yangi lock bilan beriladigan o'suvchi raqam. Himoyalangan resurs ko'rgan eng katta raqamni eslab qoladi va eski lock bilan uyg'ongan worker'ning yozuvini rad etadi.",
+      ru: "Растущий номер, который выдаётся с каждой новой блокировкой. Защищаемый ресурс помнит самый большой номер и отклоняет запись воркера, проснувшегося со старой блокировкой.",
+      en: "An increasing number handed out with every new lock. The protected resource remembers the highest number it has seen and rejects writes from a worker that wakes up with an old lock.",
+    },
+    lesson: "consensus",
+  },
+  {
+    id: "transaction",
+    term: { uz: "Tranzaksiya", ru: "Транзакция", en: "Transaction" },
+    short: {
+      uz: "Bir-biriga tegishli bir nechta yozuvni BEGIN ... COMMIT ichida bajarish: yo hammasi saqlanadi, yo hech biri. Server o'rtada o'lsa ham yarim yozuv qolmaydi.",
+      ru: "Несколько связанных записей внутри BEGIN ... COMMIT: сохраняются либо все, либо ни одна. Даже если сервер умрёт посередине, половины записи не останется.",
+      en: "Several related writes inside BEGIN ... COMMIT: either all are saved or none are. Even if the server dies halfway, no half-done change remains.",
+    },
+    lesson: "transactions",
+  },
+  {
+    id: "isolation-level",
+    term: { uz: "Izolyatsiya darajasi", ru: "Уровень изоляции", en: "Isolation level" },
+    short: {
+      uz: "Parallel tranzaksiyalar bir-birining o'zgarishini qanchalik ko'rishini belgilaydi: READ COMMITTED, REPEATABLE READ, SERIALIZABLE. Daraja qanchalik yuqori bo'lsa, shuncha ko'p anomaliya yopiladi, lekin qayta urinish ko'payadi.",
+      ru: "Определяет, насколько параллельные транзакции видят изменения друг друга: READ COMMITTED, REPEATABLE READ, SERIALIZABLE. Чем выше уровень, тем больше аномалий закрыто, но тем больше повторов.",
+      en: "Sets how much concurrent transactions see of each other's changes: READ COMMITTED, REPEATABLE READ, SERIALIZABLE. A higher level closes more anomalies but causes more retries.",
+    },
+    lesson: "transactions",
+  },
+  {
+    id: "dirty-read",
+    term: { uz: "Dirty read", ru: "Грязное чтение (dirty read)", en: "Dirty read" },
+    short: {
+      uz: "Boshqa tranzaksiyaning hali commit qilinmagan qoralamasini o'qish. Agar u rollback bo'lsa, o'qigan tomon hech qachon bo'lmagan ma'lumotdan foydalangan bo'ladi.",
+      ru: "Чтение черновика другой транзакции, которая ещё не закоммичена. Если она откатится, читатель использовал данные, которых никогда не было.",
+      en: "Reading another transaction's uncommitted draft. If that transaction rolls back, the reader used data that never existed.",
+    },
+    lesson: "transactions",
+  },
+  {
+    id: "optimistic-locking",
+    term: { uz: "Optimistik qulf (version)", ru: "Оптимистичная блокировка (version)", en: "Optimistic locking (version)" },
+    short: {
+      uz: "Qatorni oldindan qulflash o'rniga yozish paytida version ustuni o'zgarmaganini tekshirish. Agar boshqa yozuv oldinroq o'tgan bo'lsa, update hech narsani o'zgartirmaydi va amal qayta urinadi.",
+      ru: "Вместо блокировки строки заранее при записи проверяется, что столбец version не изменился. Если кто-то успел раньше, update ничего не меняет, и операция повторяется.",
+      en: "Instead of locking the row up front, the write checks that a version column has not changed. If someone else wrote first, the update changes nothing and the operation retries.",
+    },
+    lesson: "transactions",
+  },
+  {
+    id: "presigned-url",
+    term: { uz: "Presigned URL", ru: "Presigned URL", en: "Presigned URL" },
+    short: {
+      uz: "API imzolab beradigan qisqa muddatli havola, klient faylni u orqali to'g'ridan-to'g'ri object storage'ga yuklaydi. Baytlar API orqali o'tmaydi, API faqat kim va qancha hajm ekanini tekshiradi.",
+      ru: "Короткоживущая ссылка, подписанная API, по которой клиент грузит файл прямо в объектное хранилище. Байты не идут через API, он только проверяет, кто грузит и какого размера файл.",
+      en: "A short-lived link signed by the API that lets the client upload a file straight to object storage. Bytes skip the API, which only checks who the user is and how big the file may be.",
+    },
+    lesson: "files",
+  },
+
+  // ---- communication ----
+  {
+    id: "rest",
+    term: { uz: "REST", ru: "REST", en: "REST" },
+    short: {
+      uz: "Har resursga bitta URL va standart HTTP metodlari. Sodda va yaxshi keshlanadi, lekin over-fetching, under-fetching va N+1 chaqiruvlarga olib kelishi mumkin.",
+      ru: "У каждого ресурса один URL и стандартные HTTP-методы. Просто и хорошо кешируется, но легко приводит к over-fetching, under-fetching и N+1 запросам.",
+      en: "One URL per resource and standard HTTP methods. Simple and cache-friendly, but it can lead to over-fetching, under-fetching and N+1 calls.",
+    },
+    lesson: "apis",
+  },
+  {
+    id: "graphql",
+    term: { uz: "GraphQL", ru: "GraphQL", en: "GraphQL" },
+    short: {
+      uz: "Klient qaysi maydonlar kerakligini so'rovning o'zida yozadi va bitta chaqiruvda oladi. N+1 serverga ko'chadi, shuning uchun resolver'lar guruhlanadi va so'rov narxi cheklanadi.",
+      ru: "Клиент сам пишет в запросе, какие поля ему нужны, и получает их одним вызовом. N+1 переезжает на сервер, поэтому резолверы группируют, а стоимость запроса ограничивают.",
+      en: "The client writes which fields it needs in the query and gets them in one call. The N+1 moves to the server, so resolvers are batched and query cost is limited.",
+    },
+    lesson: "apis",
+  },
+  {
+    id: "grpc",
+    term: { uz: "gRPC", ru: "gRPC", en: "gRPC" },
+    short: {
+      uz: "Qat'iy sxemali, ikkilik formatdagi tez RPC protokoli. O'z servislaringiz orasidagi ichki chaqiruvlarga mos.",
+      ru: "Быстрый RPC-протокол со строгой схемой и бинарным форматом. Подходит для внутренних вызовов между своими сервисами.",
+      en: "A fast RPC protocol with a strict schema and a binary format. It fits internal calls between your own services.",
+    },
+    lesson: "apis",
+  },
+  {
+    id: "cursor-pagination",
+    term: { uz: "Cursor bilan sahifalash", ru: "Курсорная пагинация", en: "Cursor pagination" },
+    short: {
+      uz: "Keyingi sahifa OFFSET bilan emas, oxirgi ko'rilgan yozuvni bildiruvchi cursor bilan so'raladi. Yangi yozuvlar qo'shilsa ham sahifalar takrorlanmaydi va o'tkazib yuborilmaydi.",
+      ru: "Следующую страницу просят не через OFFSET, а курсором, указывающим на последнюю показанную запись. Новые записи не вызывают повторов и пропусков.",
+      en: "The next page is requested with a cursor pointing at the last item seen, not with OFFSET. New items no longer cause repeats or gaps.",
+    },
+    lesson: "apis",
+  },
+  {
+    id: "idempotency-key",
+    term: { uz: "Idempotency-Key", ru: "Idempotency-Key", en: "Idempotency key" },
+    short: {
+      uz: "Klient har yaratish so'roviga qo'shadigan noyob kalit. Server kalitni saqlaydi va takroriy so'rovga yangi buyurtma yaratmasdan o'sha javobni qaytaradi.",
+      ru: "Уникальный ключ, который клиент добавляет к каждому запросу на создание. Сервер запоминает ключ и на повтор возвращает тот же ответ, не создавая второй заказ.",
+      en: "A unique key the client sends with every create request. The server stores it and answers a repeat with the same response instead of creating a second order.",
+    },
+    lesson: "apis",
+  },
+  {
+    id: "idempotency",
+    term: { uz: "Idempotentlik", ru: "Идемпотентность", en: "Idempotency" },
+    short: {
+      uz: "Amalni bir marta yoki bir necha marta bajarish bir xil natija beradi. Xabarlar qayta yetkazilishi mumkin, shuning uchun har handler idempotent bo'lishi kerak.",
+      ru: "Выполнить операцию один раз или несколько — результат одинаковый. Сообщения могут доставляться повторно, поэтому каждый обработчик должен быть идемпотентным.",
+      en: "Running an operation once or several times gives the same result. Messages can be delivered again, so every handler must be idempotent.",
+    },
+    lesson: "callbacks",
+  },
+  {
+    id: "message-queue",
+    term: { uz: "Navbat (queue)", ru: "Очередь (queue)", en: "Message queue" },
+    short: {
+      uz: "Producer va worker'lar orasidagi bufer: sekin yoki cheklangan ish so'rov yo'lidan chiqib navbatga tushadi va worker'lar uni o'z tezligida bajaradi. Navbat to'lqinni yutadi, ack ish tugagach beriladi.",
+      ru: "Буфер между продюсером и воркерами: медленная или ограниченная работа уходит с пути запроса в очередь, и воркеры выполняют её в своём темпе. Очередь гасит пик, а ack дают после работы.",
+      en: "A buffer between a producer and workers: slow or limited work leaves the request path and goes into the queue, and workers process it at their own pace. The queue absorbs spikes; ack comes after the work.",
+    },
+    lesson: "queues",
+  },
+  {
+    id: "dead-letter-queue",
+    term: { uz: "Dead-letter navbat", ru: "Dead-letter очередь", en: "Dead-letter queue" },
+    short: {
+      uz: "Bir necha urinishdan keyin ham ishlanmaydigan zaharli xabar ko'chiriladigan alohida navbat. U asosiy navbatni to'smaydi va kuzatib turiladi.",
+      ru: "Отдельная очередь, куда уходит ядовитое сообщение, которое не обработалось после нескольких попыток. Оно не блокирует основную очередь, а за ней следят.",
+      en: "A separate queue that receives a poison message after it fails several attempts. It stops blocking the main queue and is watched by people.",
+    },
+    lesson: "queues",
+  },
+  {
+    id: "backpressure",
+    term: { uz: "Backpressure", ru: "Backpressure (обратное давление)", en: "Backpressure" },
+    short: {
+      uz: "Iste'molchi ulgurmay qolganda producer'ni sekinlatish. Navbat chegaralanadi va cheksiz o'sish o'rniga producer kutadi.",
+      ru: "Торможение продюсера, когда потребители не успевают. Очередь ограничена, и вместо бесконечного роста продюсер ждёт.",
+      en: "Slowing the producer down when consumers cannot keep up. The queue is bounded, and the producer waits instead of the queue growing without limit.",
+    },
+    lesson: "queues",
+  },
+  {
+    id: "pub-sub",
+    term: { uz: "Pub/sub", ru: "Pub/sub", en: "Pub/sub" },
+    short: {
+      uz: "Producer hodisani topic'ga bir marta yozadi, har obunachi guruhi uni o'z offset'i bilan o'z tezligida o'qiydi. Sekin yoki o'lik obunachi faqat orqada qoladi, producer'ni to'xtatmaydi.",
+      ru: "Продюсер один раз пишет событие в топик, а каждая группа подписчиков читает его в своём темпе по своему офсету. Медленный или упавший подписчик просто отстаёт и не тормозит продюсера.",
+      en: "A producer writes an event to a topic once, and each subscriber group reads it at its own pace through its own offset. A slow or dead subscriber only falls behind; it does not stop the producer.",
+    },
+    lesson: "pubsub",
+  },
+  {
+    id: "consumer-group",
+    term: { uz: "Consumer group", ru: "Группа консьюмеров", en: "Consumer group" },
+    short: {
+      uz: "Bitta obunachining bir nechta nusxasi topic partition'larini bo'lishib oladi, har partition'ni faqat bitta a'zo o'qiydi. Kengaytirish partition sonigacha ishlaydi, tartib esa faqat kalit ichida saqlanadi.",
+      ru: "Несколько экземпляров одного подписчика делят партиции топика, и каждую партицию читает ровно один участник. Масштабирование работает до числа партиций, а порядок сохраняется только внутри ключа.",
+      en: "Several instances of one subscriber split the topic's partitions, and each partition is read by exactly one member. It scales up to the partition count, and order holds only per key.",
+    },
+    lesson: "pubsub",
+  },
+  {
+    id: "long-polling",
+    term: { uz: "Long polling", ru: "Long polling", en: "Long polling" },
+    short: {
+      uz: "Klient so'rov yuboradi, server esa yangi narsa paydo bo'lguncha yoki vaqt tugaguncha uni ushlab turadi. Har ikki soniyada so'rashdan arzonroq, lekin har javobdan keyin yangi so'rov kerak.",
+      ru: "Клиент шлёт запрос, а сервер держит его, пока не появится новое или не истечёт время. Дешевле, чем спрашивать каждые две секунды, но после каждого ответа нужен новый запрос.",
+      en: "The client sends a request and the server holds it until something new appears or a timeout passes. Cheaper than asking every two seconds, but each answer needs a new request.",
+    },
+    lesson: "realtime",
+  },
+  {
+    id: "websocket",
+    term: { uz: "WebSocket", ru: "WebSocket", en: "WebSocket" },
+    short: {
+      uz: "Klient va server orasidagi bitta doimiy ulanish, ikkala tomon ham istalgan vaqtda xabar yuboradi. Ko'p ochiq ulanishlar alohida gateway qatlamida ushlanadi.",
+      ru: "Одно постоянное соединение между клиентом и сервером, по которому обе стороны пишут в любой момент. Множество открытых соединений держит отдельный слой шлюзов.",
+      en: "One long-lived connection between client and server where both sides can send at any time. Many open connections are held by a separate gateway layer.",
+    },
+    lesson: "realtime",
+  },
+
+  // ---- reliability ----
+  {
+    id: "failover",
+    term: { uz: "Failover", ru: "Failover", en: "Failover" },
+    short: {
+      uz: "Asosiy baza o'lganda zaxira replikani primary qilib ko'tarish va ilovani unga yo'naltirish. Avtomatik failover buni odamsiz, soniyalar ichida qiladi.",
+      ru: "Когда основная база умирает, резервную реплику повышают до primary и переключают на неё приложение. Автоматический failover делает это без человека за секунды.",
+      en: "When the primary database dies, a standby replica is promoted to primary and the app is pointed at it. Automatic failover does this without a human, in seconds.",
+    },
+    lesson: "redundancy",
+  },
+  {
+    id: "split-brain",
+    term: { uz: "Split brain", ru: "Split brain", en: "Split brain" },
+    short: {
+      uz: "Ikki node bir vaqtda o'zini primary deb hisoblab, ikkalasi ham yozishi. Ma'lumot ikki tomonga ajraladi, shuning uchun eski primary fencing bilan o'rab qo'yiladi.",
+      ru: "Два узла одновременно считают себя primary и оба принимают записи. Данные расходятся, поэтому старый primary отсекают через fencing.",
+      en: "Two nodes both believe they are the primary and both accept writes. The data drifts apart, so the old primary must be fenced off.",
+    },
+    lesson: "redundancy",
+  },
+  {
+    id: "rate-limiting",
+    term: { uz: "Rate limiting", ru: "Rate limiting (ограничение частоты)", en: "Rate limiting" },
+    short: {
+      uz: "Bitta klient vaqt birligida qancha so'rov yuborishini cheklash, qolganlarni undan himoya qilish uchun. Limitdan oshganda Retry-After bilan 429 qaytariladi, hisoblagich esa barcha serverlar uchun umumiy bo'ladi.",
+      ru: "Ограничение числа запросов одного клиента за единицу времени, чтобы защитить от него остальных. Сверх лимита отвечают 429 с Retry-After, а счётчик общий для всех серверов.",
+      en: "Capping how many requests one client may send per unit of time, to protect everyone else. Over the limit the answer is 429 with Retry-After, and the counter is shared by all servers.",
+    },
+    lesson: "rate-limiting",
+  },
+  {
+    id: "token-bucket",
+    term: { uz: "Token bucket", ru: "Token bucket", en: "Token bucket" },
+    short: {
+      uz: "Har klientda bir xil tezlikda to'ladigan, sig'imi cheklangan token chelagi bor, har so'rov bitta token oladi. Halol to'lqinga ruxsat beradi, o'rtacha tezlikni esa qat'iy ushlaydi.",
+      ru: "У каждого клиента есть ведро токенов ограниченной ёмкости, которое пополняется с постоянной скоростью, и каждый запрос берёт один токен. Честные всплески проходят, а средняя скорость держится.",
+      en: "Each client has a bucket of limited size refilled at a steady rate, and each request takes one token. Honest bursts fit, while the average rate stays fixed.",
+    },
+    lesson: "rate-limiting",
+  },
+  {
+    id: "timeout",
+    term: { uz: "Timeout", ru: "Таймаут", en: "Timeout" },
+    short: {
+      uz: "Javobni qancha kutib, keyin voz kechish chegarasi. Timeout'siz bitta sekin servis barcha thread'larni band qilib, hammasini muzlatishi mumkin; qiymat haqiqiy kechikishdan tanlanadi.",
+      ru: "Предел ожидания ответа, после которого вызов сдаётся. Без таймаута одна медленная зависимость занимает все потоки и замораживает всё; значение выбирают по реальной задержке.",
+      en: "How long to wait for an answer before giving up. Without one, a single slow dependency can tie up every thread and freeze everything; set it from real latency.",
+    },
+    lesson: "timeouts-retries",
+  },
+  {
+    id: "exponential-backoff",
+    term: { uz: "Eksponensial backoff", ru: "Экспоненциальный backoff", en: "Exponential backoff" },
+    short: {
+      uz: "Har qayta urinishdan oldin kutish vaqti ikki baravar oshadi. Darhol qayta urinishlar yiqilgan servisni bo'ronga ko'mib tashlamaydi.",
+      ru: "Перед каждой повторной попыткой пауза удваивается. Мгновенные ретраи не превращаются в шторм, который добивает упавший сервис.",
+      en: "The wait before each retry doubles. Instant retries no longer grow into a storm that buries a struggling service.",
+    },
+    lesson: "timeouts-retries",
+  },
+  {
+    id: "jitter",
+    term: { uz: "Jitter", ru: "Jitter (джиттер)", en: "Jitter" },
+    short: {
+      uz: "Kutish vaqtiga tasodifiy qism qo'shish, shunda ko'p klient bir lahzada qayta urinmaydi. Kesh TTL'lariga ham qo'shiladi, kalitlar birga tugamasligi uchun.",
+      ru: "Случайная добавка к паузе, чтобы множество клиентов не повторяли запрос в одно мгновение. Её же добавляют к TTL в кеше, чтобы ключи не истекали разом.",
+      en: "A random part added to a wait so that many clients do not retry at the same instant. It is also added to cache TTLs so keys do not expire together.",
+    },
+    lesson: "timeouts-retries",
+  },
+  {
+    id: "circuit-breaker",
+    term: { uz: "Circuit breaker", ru: "Circuit breaker", en: "Circuit breaker" },
+    short: {
+      uz: "Xatolar ulushi chegaradan oshsa, breaker ochiladi va bir muddat o'lik servisga umuman qo'ng'iroq qilmasdan zaxira javob qaytaradi. Keyin half-open holatda bitta sinov chaqiruvi uni yopish yoki qayta ochishni hal qiladi.",
+      ru: "Когда доля ошибок превышает порог, breaker размыкается и на время вообще не вызывает мёртвый сервис, отдавая запасной ответ. Затем в состоянии half-open одна пробная попытка решает, замкнуть его или снова разомкнуть.",
+      en: "When the failure rate passes a threshold, the breaker opens and for a while does not call the dead service at all, returning a fallback. Then, half-open, one probe call decides whether it closes or opens again.",
+    },
+    lesson: "timeouts-retries",
+  },
+  {
+    id: "observability",
+    term: { uz: "Observability (log, metrika, trace)", ru: "Observability (логи, метрики, трейсы)", en: "Observability (logs, metrics, traces)" },
+    short: {
+      uz: "Log nima bo'lganini, metrika qancha va qanchalik tez-tez bo'lganini, trace vaqt qayerga ketganini aytadi. Servislar uchun RED, resurslar uchun USE metrikalari, alert esa o'rtachaga emas, p95 ga.",
+      ru: "Логи говорят, что произошло, метрики — сколько и как часто, трейсы — куда ушло время. Для сервисов метрики RED, для ресурсов USE, а алерт ставят на p95, а не на среднее.",
+      en: "Logs say what happened, metrics say how much and how often, traces say where the time went. Use RED metrics for services, USE for resources, and alert on p95, not on averages.",
+    },
+    lesson: "observability",
+  },
+  {
+    id: "distributed-trace",
+    term: { uz: "Trace va span", ru: "Трейс и span", en: "Trace and span" },
+    short: {
+      uz: "Har servis bitta so'rov uchun span yozadi: nima qilgan, qachon boshlagan va qancha davom etgan. Span'lar umumiy trace id orqali bitta daraxtga yig'iladi va sekin qadam ko'rinadi.",
+      ru: "Каждый сервис пишет span для запроса: что делал, когда начал и сколько длилось. Span'ы по общему trace id собираются в одно дерево, и медленный шаг становится виден.",
+      en: "Each service records a span for a request: what it did, when it started and how long it took. Spans share a trace id and are assembled into one tree, so the slow hop stands out.",
+    },
+    lesson: "observability",
+  },
+
+  // ---- architecture ----
+  {
+    id: "microservice",
+    term: { uz: "Mikroservis", ru: "Микросервис", en: "Microservice" },
+    short: {
+      uz: "Alohida deploy qilinadigan va o'z ma'lumotiga ega bo'lgan kichik servis; boshqalar unga faqat API yoki hodisa orqali murojaat qiladi. Narxi: tarmoq chaqiruvlari, qisman yiqilish va umumiy tranzaksiyaning yo'qligi, shuning uchun toza monolitdan boshlanadi.",
+      ru: "Небольшой сервис со своим деплоем и своими данными; остальные обращаются к нему только через API или события. Цена — сетевые вызовы, частичные отказы и отсутствие общей транзакции, поэтому начинают с чистого монолита.",
+      en: "A small service with its own deploys and its own data; others reach it only through its API or events. The cost is network calls, partial failure and no shared transaction, so you start with a clean monolith.",
+    },
+    lesson: "microservices",
+  },
+  {
+    id: "api-gateway",
+    term: { uz: "API gateway", ru: "API gateway", en: "API gateway" },
+    short: {
+      uz: "Barcha servislar oldidagi bitta kirish eshigi: tokenni tekshiradi, rate limit qo'llaydi, request id qo'shadi va yo'l bo'yicha yo'naltiradi. Ichki tuzilmani klientlardan yashiradi.",
+      ru: "Единая входная дверь перед всеми сервисами: проверяет токен, применяет rate limit, добавляет request id и маршрутизирует по пути. Скрывает внутреннее устройство от клиентов.",
+      en: "One front door in front of all services: it checks the token, applies rate limits, adds a request id and routes by path. It hides the inside from clients.",
+    },
+    lesson: "microservices",
+  },
+  {
+    id: "service-discovery",
+    term: { uz: "Service discovery", ru: "Service discovery (обнаружение сервисов)", en: "Service discovery" },
+    short: {
+      uz: "Nusxalar ishga tushganda nomi va manzilini registry'ga yozadi, heartbeat to'xtasa o'chiriladi. Chaqiruvchi manzilni qo'lda emas, registry'dan oladi: o'zi (client-side), load balancer orqali (server-side) yoki DNS orqali.",
+      ru: "Экземпляры при старте записывают имя и адрес в реестр и удаляются, когда пропадает heartbeat. Вызывающий берёт адрес не из конфига, а из реестра: сам (client-side), через балансировщик (server-side) или через DNS.",
+      en: "Instances write their name and address to a registry on start and are removed when their heartbeat stops. Callers get addresses from the registry, not from config: themselves (client-side), via a load balancer (server-side) or via DNS.",
+    },
+    lesson: "service-discovery",
+  },
+  {
+    id: "two-phase-commit",
+    term: { uz: "Ikki fazali commit (2PC)", ru: "Двухфазный коммит (2PC)", en: "Two-phase commit (2PC)" },
+    short: {
+      uz: "Koordinator avval hamma ishtirokchidan prepare va ovoz so'raydi, hamma \"ha\" desa commit yuboradi. Ishtirokchilar butun davomida qulf ushlaydi va koordinator yiqilsa osilib qoladi, shuning uchun undan qochishadi.",
+      ru: "Координатор сначала просит всех участников подготовиться и проголосовать, и только если все «за», рассылает commit. Участники всё это время держат блокировки и зависают, если координатор упал, поэтому 2PC избегают.",
+      en: "A coordinator first asks every participant to prepare and vote, and sends commit only if all vote yes. Participants hold locks the whole time and get stuck if the coordinator dies, so teams avoid it.",
+    },
+    lesson: "sagas",
+  },
+  {
+    id: "saga",
+    term: { uz: "Saga", ru: "Сага", en: "Saga" },
+    short: {
+      uz: "Bir nechta servisdagi ish lokal tranzaksiyalar zanjiri sifatida bajariladi, har qadamning kompensatsiyasi bor. Biror qadam yiqilsa, oldingi qadamlar kompensatsiya bilan qaytariladi; zanjirni orkestrator yoki hodisalar (xoreografiya) boshqaradi.",
+      ru: "Работа через несколько сервисов идёт цепочкой локальных транзакций, у каждого шага есть компенсация. Если шаг упал, предыдущие отменяются компенсирующими действиями; цепочкой управляет оркестратор или события (хореография).",
+      en: "Work across several services runs as a chain of local transactions, each with a compensating action. If a step fails, earlier steps are undone by their compensations; an orchestrator or events (choreography) drive the chain.",
+    },
+    lesson: "sagas",
+  },
+  {
+    id: "outbox",
+    term: { uz: "Outbox", ru: "Outbox", en: "Outbox" },
+    short: {
+      uz: "Servis ma'lumotni ham, hodisani ham bitta lokal tranzaksiyada outbox jadvaliga yozadi, alohida relay esa hodisani broker'ga yuboradi. Hodisa kechikishi mumkin, lekin endi yo'qolmaydi.",
+      ru: "Сервис пишет данные и событие в таблицу outbox одной локальной транзакцией, а отдельный relay публикует событие в брокер. Событие может опоздать, но больше не потеряется.",
+      en: "A service writes the data and the event into an outbox table in one local transaction, and a separate relay publishes the event to the broker. The event can be late, but it can no longer be lost.",
+    },
+    lesson: "sagas",
+  },
+  {
+    id: "at-least-once",
+    term: { uz: "At-least-once yetkazish", ru: "Доставка at-least-once", en: "At-least-once delivery" },
+    short: {
+      uz: "Xabar kamida bir marta yetkaziladi, ba'zan esa ikki marta. Shuning uchun iste'molchi takrorni event_id bo'yicha tashlaydi yoki idempotent yozadi.",
+      ru: "Сообщение доставляется минимум один раз, а иногда дважды. Поэтому потребитель отбрасывает дубли по event_id или пишет идемпотентно.",
+      en: "A message is delivered at least once, and sometimes twice. So consumers drop duplicates by event_id or write idempotently.",
+    },
+    lesson: "sagas",
+  },
+  {
+    id: "stream-processing",
+    term: { uz: "Batch va stream", ru: "Batch и stream", en: "Batch vs stream" },
+    short: {
+      uz: "Batch job ma'lumotni davriy, masalan har kecha bir yo'la ishlaydi: oddiy va qayta yurgizsa bo'ladi, lekin kechikadi. Stream hodisalarni kelishi bilan oynalar bo'yicha sanaydi: yangi, lekin murakkabroq.",
+      ru: "Batch-джоб обрабатывает данные пачкой по расписанию, например каждую ночь: просто и перезапускаемо, но с опозданием. Стрим считает события по мере прихода в окнах: свежо, но сложнее.",
+      en: "A batch job processes data in bulk on a schedule, such as nightly: simple and rerunnable, but late. A stream counts events in windows as they arrive: fresh, but harder.",
+    },
+    lesson: "batch-stream",
+  },
+  {
+    id: "watermark",
+    term: { uz: "Watermark", ru: "Watermark", en: "Watermark" },
+    short: {
+      uz: "Stream processor kech kelgan hodisalarni qancha kutishini hal qiladigan belgi: ko'rilgan eng yangi event time minus ruxsat etilgan kechikish. Oyna watermark uning oxiridan o'tgandagina yakuniy bo'ladi, undan kechroqlari side output'ga ketadi.",
+      ru: "Метка, которая решает, сколько стрим-процессор ждёт опоздавшие события: самое новое увиденное event time минус допустимое опоздание. Окно становится окончательным, когда watermark проходит его конец, а ещё более поздние идут в side output.",
+      en: "A marker that decides how long a stream processor waits for late events: the newest event time seen minus the allowed lateness. A window is final only once the watermark passes its end; later events go to a side output.",
+    },
+    lesson: "batch-stream",
+  },
+
+  // ---- security ----
+  {
+    id: "password-hashing",
+    term: { uz: "Parol hash'i (tuz bilan)", ru: "Хеш пароля с солью", en: "Password hashing (salted)" },
+    short: {
+      uz: "Parol o'zi emas, har foydalanuvchi uchun tasodifiy tuz qo'shilgan sekin hash (argon2id yoki bcrypt) saqlanadi. Login sezilmas darajada sekinlashadi, sizib chiqqan bazani buzish esa millionlab marta qiyinlashadi.",
+      ru: "Хранят не сам пароль, а медленный хеш (argon2id или bcrypt) со случайной солью для каждого пользователя. Вход замедляется незаметно, а взлом утёкшей базы становится в миллионы раз дороже.",
+      en: "Store a slow hash (argon2id or bcrypt) with a random salt per user, never the password itself. Login gets slower by an unnoticeable amount, while cracking a leaked table becomes millions of times harder.",
+    },
+    lesson: "authentication",
+  },
+  {
+    id: "jwt",
+    term: { uz: "JWT", ru: "JWT", en: "JWT" },
+    short: {
+      uz: "Istalgan servis bazaga so'ramasdan tekshira oladigan imzolangan token. Uni darhol bekor qilib bo'lmaydi, shuning uchun access token qisqa muddatli bo'ladi va refresh token bilan juftlanadi.",
+      ru: "Подписанный токен, который любой сервис проверит без похода в базу. Мгновенно отозвать его нельзя, поэтому access-токен делают коротким и дополняют refresh-токеном.",
+      en: "A signed token that any service can verify without a database lookup. It cannot be revoked instantly, so the access token is kept short-lived and paired with a refresh token.",
+    },
+    lesson: "authentication",
+  },
+  {
+    id: "oauth-oidc",
+    term: { uz: "OAuth2 / OIDC", ru: "OAuth2 / OIDC", en: "OAuth2 / OIDC" },
+    short: {
+      uz: "Foydalanuvchi identity provider'da kiradi va bir martalik code bilan qaytadi, API uni serverdan serverga id token'ga almashtiradi. Ilova parolni umuman ko'rmaydi.",
+      ru: "Пользователь входит у провайдера идентификации и возвращается с одноразовым code, который API обменивает сервер-сервер на id token. Приложение вообще не видит пароль.",
+      en: "The user logs in at an identity provider and comes back with a one-time code, which the API exchanges server-to-server for an id token. The app never sees the password.",
+    },
+    lesson: "authentication",
+  },
+  {
+    id: "rbac",
+    term: { uz: "RBAC va ABAC", ru: "RBAC и ABAC", en: "RBAC and ABAC" },
+    short: {
+      uz: "RBAC ruxsatni rolga qarab beradi, ABAC esa foydalanuvchi, resurs va kontekst atributlari haqidagi qoidalar bilan. Ikkalasi ham bitta joydagi bitta siyosatda, standart javob — rad.",
+      ru: "RBAC выдаёт права по ролям, ABAC — по правилам об атрибутах пользователя, ресурса и контекста. Оба живут в одной политике в одном месте, по умолчанию — отказ.",
+      en: "RBAC grants permissions by role, ABAC by rules about attributes of the user, the resource and the context. Both live in one policy in one place, denying by default.",
+    },
+    lesson: "authorization",
+  },
+  {
+    id: "tls",
+    term: { uz: "TLS", ru: "TLS", en: "TLS" },
+    short: {
+      uz: "Ulanishni shifrlaydigan protokol: handshake'da tomonlar umumiy kalit kelishadi, server esa sertifikat bilan shaxsini isbotlaydi. Sertifikat o'zi yangilanib turishi kerak, aks holda yarim tunda eskiradi.",
+      ru: "Протокол шифрования соединения: при рукопожатии стороны договариваются об общем ключе, а сервер доказывает личность сертификатом. Сертификаты должны продлеваться сами, иначе истекут в полночь.",
+      en: "The protocol that encrypts a connection: in the handshake both sides agree on a shared key and the server proves its identity with a certificate. Certificates must renew themselves or they expire at midnight.",
+    },
+    lesson: "encryption",
+  },
+  {
+    id: "encryption-at-rest",
+    term: { uz: "Diskda shifrlash (at rest)", ru: "Шифрование на диске (at rest)", en: "Encryption at rest" },
+    short: {
+      uz: "Ma'lumot bazaga yozilishdan oldin shifrlanadi, shunda disk va backup'larda faqat shifrlangan matn qoladi. Kalit ma'lumot yonida tursa, bu hech narsani himoya qilmaydi.",
+      ru: "Данные шифруют до записи в базу, и на дисках и в бэкапах остаётся только шифртекст. Если ключ лежит рядом с данными, это ничего не защищает.",
+      en: "Data is encrypted before it is written, so disks and backups hold only ciphertext. If the key sits next to the data, this protects nothing.",
+    },
+    lesson: "encryption",
+  },
+  {
+    id: "envelope-encryption",
+    term: { uz: "Envelope shifrlash (KMS)", ru: "Envelope-шифрование (KMS)", en: "Envelope encryption (KMS)" },
+    short: {
+      uz: "Har yozuv o'z data key'i bilan shifrlanadi, data key esa KMS'dan chiqmaydigan master key bilan o'raladi. Bazada faqat o'ralgan kalit saqlanadi; kalitni almashtirish ma'lumotni emas, kalitlarni qayta o'rashni talab qiladi.",
+      ru: "Каждую запись шифруют своим data key, а data key заворачивают master key, который не покидает KMS. В базе лежит только завёрнутый ключ, а ротация требует перезавернуть ключи, а не перешифровать данные.",
+      en: "Each record is encrypted with its own data key, and the data key is wrapped by a master key that never leaves the KMS. Only the wrapped key is stored, and rotation re-wraps keys instead of re-encrypting data.",
+    },
+    lesson: "encryption",
+  },
+
+  // ---- shipping ----
+  {
+    id: "continuous-integration",
+    term: { uz: "CI/CD", ru: "CI/CD", en: "CI/CD" },
+    short: {
+      uz: "CI har commit'ni bir marta build va test qilib, bitta o'zgarmas artefakt chiqaradi; faqat yashil build deploy bo'ladi. Deploy kichik, avtomatik va oson qaytariladigan bo'ladi.",
+      ru: "CI собирает и тестирует каждый коммит один раз и выпускает один неизменяемый артефакт; деплоится только зелёная сборка. Деплой становится маленьким, автоматическим и легко откатываемым.",
+      en: "CI builds and tests every commit once and produces one immutable artifact; only green builds deploy. Deploys become small, automatic and easy to undo.",
+    },
+    lesson: "cicd",
+  },
+  {
+    id: "blue-green",
+    term: { uz: "Blue-green deploy", ru: "Blue-green деплой", en: "Blue-green deploy" },
+    short: {
+      uz: "Ikki to'liq server to'plami: yangi versiya bo'sh to'plamga chiqadi va balancer trafikni bir qadamda o'tkazadi. Orqaga qaytish soniyadan kam, narxi esa ikki baravar server.",
+      ru: "Два полных набора серверов: новая версия ставится на свободный, и балансировщик переключает трафик одним шагом. Откат занимает меньше секунды, цена — вдвое больше серверов.",
+      en: "Two full sets of servers: the new version goes to the idle set and the load balancer moves all traffic in one step. Rollback takes under a second; the cost is twice the servers.",
+    },
+    lesson: "cicd",
+  },
+  {
+    id: "canary",
+    term: { uz: "Canary deploy", ru: "Canary-деплой", en: "Canary deploy" },
+    short: {
+      uz: "Yangi versiya avval trafikning kichik qismiga, masalan 5% iga beriladi va xato darajasi eski versiya bilan solishtiriladi. Yomon release ozchilikka tegadi va qoida uni o'zi orqaga qaytaradi.",
+      ru: "Новая версия сначала получает малую долю трафика, например 5%, и её уровень ошибок сравнивают со старой. Плохой релиз задевает немногих, и правило откатывает его само.",
+      en: "The new version first gets a small share of traffic, such as 5%, and its error rate is compared with the old one. A bad release reaches few users, and a rule rolls it back by itself.",
+    },
+    lesson: "cicd",
+  },
+  {
+    id: "feature-flag",
+    term: { uz: "Feature flag", ru: "Feature flag", en: "Feature flag" },
+    short: {
+      uz: "Kod prod'ga o'chirilgan holda chiqadi va flag orqali avval xodimlarga, keyin foydalanuvchilarning bir qismiga yoqiladi. Muammo bo'lsa flag bir soniyada o'chiriladi: deploy bu hali release emas.",
+      ru: "Код уходит в прод выключенным и через флаг включается сначала для сотрудников, затем для части пользователей. При проблеме флаг гасят за секунду: деплой — это ещё не релиз.",
+      en: "Code ships to production switched off and a flag turns it on for staff, then for a share of users. If it misbehaves, the flag goes off in a second: deploy is not release.",
+    },
+    lesson: "cicd",
+  },
+
+  // ---- systems ----
+  {
+    id: "base62",
+    term: { uz: "Base62 kod", ru: "Base62-код", en: "Base62 code" },
+    short: {
+      uz: "Har havolaga noyob raqam berib, uni harf va raqamlardan iborat qisqa kodga aylantirish. Har xil raqam doim har xil kod beradi, shuning uchun hash kabi to'qnashuv bo'lmaydi.",
+      ru: "Каждой ссылке дают уникальный номер и кодируют его в короткую строку из букв и цифр. Разные номера всегда дают разные коды, поэтому коллизий, как у хеша, не бывает.",
+      en: "Give every link a unique number and encode it as a short string of letters and digits. Different numbers always give different codes, so there are no collisions as with hashing.",
+    },
+    lesson: "design-url-shortener",
+  },
+  {
+    id: "fan-out",
+    term: { uz: "Fan-out (on write / on read)", ru: "Fan-out (on write / on read)", en: "Fan-out (on write / on read)" },
+    short: {
+      uz: "Fan-out on write post yozilganda uning id'sini har obunachining lenta keshiga qo'yadi, fan-out on read esa lentani ochilganda yig'adi. Ko'pchilikka push, juda mashhur akkauntlarga pull ishlatiladigan gibrid eng yaxshi ishlaydi.",
+      ru: "Fan-out on write при публикации кладёт id поста в кеш ленты каждого подписчика, а fan-out on read собирает ленту при открытии. Лучше всего работает гибрид: push для большинства, pull для звёзд.",
+      en: "Fan-out on write pushes a new post's id into every follower's feed cache at posting time; fan-out on read builds the feed when it is opened. A hybrid works best: push for most, pull for huge accounts.",
+    },
+    lesson: "design-news-feed",
+  },
+];

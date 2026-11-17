@@ -53,13 +53,23 @@ const text: LessonText<typeof lesson> = {
       watch: "No `Cache-Control` means each CDN guesses on its own. Always set it explicitly.",
       fields: {
         "Cache-Control": "`public`: any cache may store it. `max-age=86400`: for one day.",
-        ETag: "A fingerprint of this file version. The edge can later ask «has it changed?» cheaply.",
+        ETag: "A fingerprint of this file version. The edge can later ask “has it changed?” cheaply.",
       },
     },
     hit: {
       short: "Hit",
       title: "A hit: the origin is not involved",
       body: "Every following buyer in this region gets the photo straight from the edge. 95% of requests never reach the origin.\n\nPages load in about 100 ms and the origin is almost idle.",
+      check: {
+        q: "The shop uploads a better photo under the same file name. What do buyers see?",
+        options: [
+          "The new photo at once: the origin has it",
+          "A broken image until the edges refetch it",
+          "The old photo, for up to a day",
+        ],
+        answer: 2,
+        why: "The edges keep their copy until `max-age=86400` runs out. Depending on which edge they hit, some buyers see the old picture for up to a day.",
+      },
       fields: {
         "X-Cache": "Answered from the edge's cache.",
         Age: "This copy has been in the cache for 5312 seconds, about an hour and a half.",
@@ -78,6 +88,16 @@ const text: LessonText<typeof lesson> = {
       short: "Purge",
       title: "Purge: tell every edge to drop the file",
       body: "The engineer calls the CDN's purge API. Within seconds every edge throws away its copy, and the next request fetches the new photo.\n\nIt works, but it is a manual step after each change, and right after a purge every edge misses at once.",
+      check: {
+        q: "How can files be replaced without a manual purge after every change?",
+        options: [
+          "Set `max-age` to a few seconds on every file",
+          "Put a hash of the content into each file name",
+          "Purge everything with a wildcard after each release",
+        ],
+        answer: 1,
+        why: "A new photo gets a new URL, and the old URL is simply never asked for again. Files can be cached for a year with nothing to purge, and the hit ratio rises to 97%.",
+      },
       fields: {
         Authorization: "The CDN account key. Hidden here.",
         paths: "Which files to drop. A wildcard purge empties far more and hits the origin harder.",
@@ -98,6 +118,16 @@ const text: LessonText<typeof lesson> = {
       short: "Many edges",
       title: "Each edge asks the origin on its own",
       body: "Buyers in a second region get their own edge. There are 41 edges worldwide, and after a release each one misses the new script separately.\n\nThe origin receives the same file request 41 times in a minute, on top of all the other new files. It slows down.",
+      check: {
+        q: "41 edges each miss the new script and go to the origin. What turns that back into one fetch?",
+        options: [
+          "One middle cache that edges ask instead of the origin",
+          "Edges reading each other's caches directly",
+          "A longer `max-age` on the new script",
+        ],
+        answer: 0,
+        why: "The edges now ask one origin shield. If 41 edges miss the same file, the shield fetches it once and serves the rest: origin requests fall from 1500/s to 45/s.",
+      },
       fields: {
         MISS: "Every edge misses for itself. Edges do not share their caches.",
         "41 edges": "41 identical fetches for one file, multiplied by every new file in the release.",

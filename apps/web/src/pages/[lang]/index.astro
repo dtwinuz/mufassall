@@ -1,6 +1,6 @@
 ---
 import { LANGS, type Lang, lessons, order, sections } from "@mufassall/content";
-import { Scene, lessonBounds } from "@mufassall/scene-engine";
+import { Scene, SceneDefs, lessonBounds } from "@mufassall/scene-engine";
 import { resolve } from "@mufassall/scene-schema";
 import "@mufassall/scene-engine/player.css";
 import Base from "../../layouts/Base.astro";
@@ -19,13 +19,18 @@ const minutesOf = (slugs: string[]) => slugs.reduce((sum, sl) => sum + lessons[s
 ---
 
 <Base lang={lang}>
+  <svg class="scene-defs" aria-hidden="true" focusable="false"><SceneDefs /></svg>
   <section class="home-hero">
     <h1>{s.home.title}</h1>
     <p>{s.home.lead}</p>
     <div class="home-hero__actions">
       {first && <a class="mf-btn mf-btn--primary" href={`/${lang}/l/${first}/`}>{s.home.startCourse} →</a>}
       <a class="mf-btn" href={`/${lang}/lab/`}>{s.home.openLab}</a>
+      <button type="button" class="mf-btn" data-offline hidden data-busy={s.home.offline.busy} data-done={s.home.offline.done} data-fail={s.home.offline.fail}>
+        {s.home.offline.save}
+      </button>
     </div>
+    <p class="home-hero__status" data-offline-status role="status"></p>
   </section>
 
   <section class="course-map" aria-labelledby="course-map">
@@ -76,6 +81,7 @@ const minutesOf = (slugs: string[]) => slugs.reduce((sum, sl) => sum + lessons[s
                       paused
                       reduced
                       runKey={0}
+                      defs={false}
                     />
                   </div>
                   <h3>{text.title}</h3>

@@ -31,6 +31,16 @@ const text: LessonText<typeof lesson> = {
       short: "Kirgan",
       title: "To'g'ri token va boshqa hech narsa",
       body: "`c_7` kompaniyasidan Alisa `inv_1042` hisob-fakturasini ochadi. API uning tokeni to'g'ri va imzolanganini tekshiradi, keyin hisob-fakturani ID bo'yicha yuklaydi.\n\nBu **autentifikatsiya**: «bu kim?» degan savolga javob. «Bu odam shu hisob-fakturani ko'ra oladimi?» degan savolni, ya'ni **avtorizatsiya**ni hali hech kim bermagan.",
+      check: {
+        q: "`c_9` kompaniyasidan Bobur tizimga kirgan va URL'da `1042` ni `1043` ga o'zgartiradi. U nima oladi?",
+        options: [
+          "`c_7` kompaniyasining `inv_1043` hisob-fakturasini",
+          "`403 Forbidden`: hisob-faktura uniki emas",
+          "`401`: uning tokeni faqat o'z ma'lumotiga amal qiladi",
+        ],
+        answer: 0,
+        why: "API faqat token to'g'riligini tekshiradi, keyin hisob-fakturani ID bo'yicha yuklaydi. Kompaniyani hech kim solishtirmaydi, Bobur begona kompaniya hisob-fakturasini o'qiydi: IDOR xatosi.",
+      },
       fields: {
         Authorization: "Alisaning access token'i. U kim ekanini isbotlaydi, boshqa hech narsani emas. Bu yerda yashirilgan.",
         company_id: "Hisob-faktura `c_7` kompaniyasiga tegishli. API buni Alisaning kompaniyasi bilan hech solishtirmagan.",
@@ -41,6 +51,16 @@ const text: LessonText<typeof lesson> = {
       title: "URL'dagi ID'ni o'zgartir — begona hisob-fakturani ol",
       body: "Bobur boshqa kompaniyada, `c_9` da ishlaydi. U ham tizimga kirgan. Manzil satrida `1042` ni `1043` ga o'zgartiradi va `c_7` kompaniyasining hisob-fakturasini oladi.\n\nBu xatoning nomi bor: **IDOR**, obyektga xavfsiz bo'lmagan to'g'ridan-to'g'ri murojaat. ID'larni taxmin qilish oson, skript ularning hammasini aylanib chiqadi: kuniga 140 begona hisob-faktura.",
       watch: "Tasodifiy ID taxmin qilishni qiyinlashtiradi, lekin tekshiruv emas. Har so'rovda server qaror qilishi kerak.",
+      check: {
+        q: "API endi hisob-fakturani faqat tokendagi kompaniya bilan yuklaydi. Bobur `1043` uchun nima oladi?",
+        options: [
+          "`403 Forbidden`: u boshqa kompaniyaniki",
+          "Hisob-fakturani, lekin summa maydoni yashirilgan",
+          "`404 Not Found`, go'yo u umuman yo'qdek",
+        ],
+        answer: 2,
+        why: "So'rovga Boburning tokenidan `company_id = 'c_9'` qo'shiladi va 0 qator topiladi. API `404` qaytaradi, Bobur `1043` hisob-faktura mavjudligini ham bilmaydi.",
+      },
       fields: {
         inv_1043: "Bobur shunchaki taxmin qilgan ID: keyingi raqam.",
         Authorization: "Boburning to'g'ri tokeni. API'ga shuning o'zi yetarli bo'ldi.",

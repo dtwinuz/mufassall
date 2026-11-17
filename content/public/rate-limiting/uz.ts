@@ -24,7 +24,7 @@ const text: LessonText<typeof lesson> = {
   },
   metrics: {
     p95: "Hamkor p95",
-    errors: "Halol xatolar",
+    errors: "Oddiy klientlar xatosi",
     over: "Limitdan oshish",
   },
   steps: {
@@ -44,6 +44,12 @@ const text: LessonText<typeof lesson> = {
       title: "So'rovlarni soniya bo'yicha sanash",
       body: "API endi har IP uchun joriy soniyaga hisoblagich yuritadi. Birinchi 10 ta so'rov o'tadi; 11-sidan soniya tugaguncha bazaga tegmasdan darhol `429` qaytaradi.\n\nSkript hamon soniyasiga 900 yuboradi, lekin ulardan 890 tasi deyarli tekin. Yuk tushadi, hamkor yana tez.",
       watch: "Rad etish arzon bo'lishi kerak. Limitni auth tekshiruvi, baza chaqiruvi va har qanday og'ir ishdan oldin tekshiring.",
+      check: {
+        q: "Skript bir soniyaning oxirida 10 ta, keyingisining boshida yana 10 ta so'rov yuboradi. Qanchasi o'tadi?",
+        options: ["10 ta: limit soniyasiga 10 ta", "20 tasi ham, 200 ms ichida", "10 ta, ikkinchi to'da `429` oladi"],
+        answer: 1,
+        why: "Har oyna noldan sanaydi, shuning uchun ikkalasi ham «10 dan 10» deydi. Baza 200 ms ichida 20 ta so'rov oladi, mo'ljaldagidan ikki barobar, va har tekshiruv o'tdi.",
+      },
       fields: {
         "429": "Too Many Requests: «sekinlashing» degan standart javob, «siz buzuqsiz» emas.",
         "Retry-After": "Qachon qayta urinish, soniyada. Odobli klient aynan shuncha kutadi.",
@@ -64,6 +70,16 @@ const text: LessonText<typeof lesson> = {
       short: "Sliding",
       title: "Sliding window orqaga qaraydi",
       body: "**Sliding window** kalendar soniyasini emas, istalgan paytdagi oxirgi bir soniyani sanaydi. Arzon varianti ikkita hisoblagich saqlaydi va oldingi soniyani hali qancha qismi ustma-ust tushishiga qarab tortadi.\n\nChetdagi hiyla endi ishlamaydi: 12:00:01.250 da skript o'z byudjetini allaqachon sarflagan.",
+      check: {
+        q: "Hamkor ilovasi ochilganda birdaniga 25 ta so'rov yuboradi, keyin bir daqiqa jim turadi. Sliding window nima qiladi?",
+        options: [
+          "25 tasini ham o'tkazadi: o'rtachasi limitdan ancha past",
+          "Ortiqcha 15 tasini ushlab, keyingi soniyada yuboradi",
+          "Ulardan 15 tasini `429` bilan rad etadi",
+        ],
+        answer: 2,
+        why: "Sliding window faqat bir soniyadagi 25 ta so'rovni ko'radi: 10 tasini o'tkazadi, 15 tasini rad etadi. Odobli klient so'rovlarini yo'qotadi, foydalanuvchi yarmi bo'sh ekranni ko'radi.",
+      },
       fields: {
         "previous second": "Ikki hisoblagich: oxirgi to'liq soniya va hozirgisi shu paytgacha.",
         estimate: "Joriy soniyaning choragi o'tdi, demak oldingisining to'rtdan uch qismi hali hisobda.",
@@ -72,9 +88,9 @@ const text: LessonText<typeof lesson> = {
     },
     burst: {
       short: "Burst",
-      title: "Halol portlash rad etiladi",
+      title: "Halol to'lqin (burst) rad etiladi",
       body: "Hamkor ilovasi ochilganda bosh ekranni birdaniga 25 ta so'rov bilan yuklaydi, keyin bir daqiqa jim turadi. O'rtacha hisobda bu limitdan ancha past.\n\nSliding window bir soniyada 25 tani ko'radi va 15 tasini rad etadi. Foydalanuvchi yarmi bo'sh ekranni ko'radi.",
-      watch: "Haqiqiy klientlar portlab-portlab (bursty) ishlaydi. Faqat tekis tezlikka ruxsat beradigan limit oddiy xulqni jazolaydi.",
+      watch: "Haqiqiy klientlar to'lqin-to'lqin (bursty) ishlaydi. Faqat tekis tezlikka ruxsat beradigan limit oddiy xulqni jazolaydi.",
       fields: {
         rejected: "Odobli klientning o'n beshta so'rovi yo'qoldi.",
         "next 60 s": "Portlashdan keyin ilova hech narsa yubormaydi. O'rtachasi soniyasiga bittadan kam.",
@@ -82,11 +98,11 @@ const text: LessonText<typeof lesson> = {
     },
     "token-bucket": {
       short: "Token bucket",
-      title: "Token bucket: portlash mumkin, o'rtacha qat'iy",
-      body: "Har klientga 30 tagacha token sig'adigan **chelak** (bucket) beriladi, u soniyasiga 10 tadan to'ladi. Har so'rov bitta token oladi; token qolmasa javob `429`.\n\nHamkorning 25 talik portlashi chelakka sig'adi. Skript uni bir zumda bo'shatadi va keyin soniyasiga 10 ta bilan cheklanadi. Har klient uchun faqat ikkita son saqlanadi.",
-      watch: "Sig'im eng katta portlashni, to'lish tezligi uzoq muddatli tezlikni belgilaydi. Ularni alohida sozlang.",
+      title: "Token bucket: to'lqinga ruxsat, o'rtacha qat'iy",
+      body: "Har klientga 30 tagacha token sig'adigan **chelak** (bucket) beriladi, u soniyasiga 10 tadan to'ladi. Har so'rov bitta token oladi; token qolmasa javob `429`.\n\nHamkorning 25 talik to'lqini chelakka sig'adi. Skript uni bir zumda bo'shatadi va keyin soniyasiga 10 ta bilan cheklanadi. Har klient uchun faqat ikkita son saqlanadi.",
+      watch: "Sig'im eng katta to'lqinni, to'lish tezligi uzoq muddatli tezlikni belgilaydi. Ularni alohida sozlang.",
       fields: {
-        capacity: "Klient birdaniga yubora oladigan eng katta portlash.",
+        capacity: "Klient birdaniga yubora oladigan eng katta to'lqin.",
         refill: "Barqaror tezlik: tokenlar shu tezlikda qaytadi.",
         tokens: "Qolgani. Portlashdan keyin 5, bir soniyadan keyin yana 15.",
       },
@@ -94,7 +110,7 @@ const text: LessonText<typeof lesson> = {
     "shared-ip": {
       short: "Umumiy IP",
       title: "Bitta IP ortida 300 kishi",
-      body: "Mijozning 300 kishilik ofisi internetga bitta manzil orqali chiqadi. Limiter uchun ular bitta juda faol klientdek ko'rinadi.\n\nUlar soniyasiga 10 ta so'rovni bo'lishadi va ishlarining ko'pi `429` bilan yiqiladi. Ayni paytda yuzta arzon IP'si bor skript limitdan o'n barobar ko'p oladi.",
+      body: "Mijozning 300 kishilik ofisi internetga bitta manzil orqali chiqadi. Limiter uchun ular bitta juda faol klientdek ko'rinadi.\n\nUlar soniyasiga 10 ta so'rovni bo'lishadi va ishlarining ko'pi `429` bilan yiqiladi. Ayni paytda yuzta arzon IP'si bor skript limitdan yuz barobar ko'p oladi.",
       watch: "IP — bu odam emas: NAT, mobil operatorlar va proksilar ko'p foydalanuvchini bitta manzil ortiga qo'yadi.",
       fields: {
         "X-Forwarded-For": "Ofisning ommaviy manzili, 300 kishining hammasida bir xil.",
@@ -106,6 +122,16 @@ const text: LessonText<typeof lesson> = {
       title: "Manzil bo'yicha emas, kalit bo'yicha cheklash",
       body: "Autentifikatsiyali chaqiruvlar endi har **API kalit** (yoki har foydalanuvchi) bo'yicha cheklanadi; IP limiti faqat login kabi anonim endpoint'larda qoladi va ancha yumshoq.\n\nOfisdagi har foydalanuvchining o'z byudjeti bor. Ko'p IP'li, lekin bitta kalitli skript bitta kalit ulushini oladi.",
       watch: "Bepul kalit yaratish oson. Ro'yxatdan o'tishni ham cheklang, aks holda skript shunchaki yuzta kalit ochadi.",
+      check: {
+        q: "API uchta serverga o'tdi, har biri o'z xotirasida sanaydi. Bitta kalit qancha oladi?",
+        options: [
+          "Soniyasiga 30 ta: har server 10 tadan o'tkazadi",
+          "Soniyasiga 10 ta: kalit baribir bitta",
+          "Soniyasiga 3 tacha: limit uchga bo'linadi",
+        ],
+        answer: 0,
+        why: "Load balancer bitta kalitning so'rovlarini uchala serverga tarqatadi, har biri 10 taga ruxsat beradi. Skript soniyasiga 30 ta oladi, birorta server xato ko'rsatmaydi.",
+      },
       fields: {
         "X-Api-Key": "Limit endi shu identifikator uchun sanaladi. Log'da u sir bo'lib qoladi.",
         "X-RateLimit-Scope": "Klientga qaysi limit unga tegishli ekanini aytadi: bu yerda kalit bo'yicha.",
@@ -147,7 +173,7 @@ const text: LessonText<typeof lesson> = {
     recap: {
       short: "Xulosa",
       title: "Xulosa",
-      body: "Rate limit qolgan hammani bitta klientdan himoya qiladi, «yo'q» deyish esa arzon bo'lishi shart.\n\n1) Fixed window chetlarda teshik beradi; sliding window va token bucket bermaydi. 2) Token bucket halol portlashga ruxsat beradi va o'rtachani ushlaydi. 3) `429` ni `Retry-After` bilan qaytaring. 4) Kalit yoki foydalanuvchi bo'yicha cheklang, IP faqat anonim chaqiruvlarga. 5) Server ko'p bo'lsa, hisoblagichni bitta umumiy joyda saqlang va usiz qanday ishlashni oldindan hal qiling.",
+      body: "Rate limit qolgan hammani bitta klientdan himoya qiladi, «yo'q» deyish esa arzon bo'lishi shart.\n\n1) Fixed window chetlarda teshik beradi; sliding window va token bucket bermaydi. 2) Token bucket halol to'lqinga ruxsat beradi va o'rtachani ushlaydi. 3) `429` ni `Retry-After` bilan qaytaring. 4) Kalit yoki foydalanuvchi bo'yicha cheklang, IP faqat anonim chaqiruvlarga. 5) Server ko'p bo'lsa, hisoblagichni bitta umumiy joyda saqlang va usiz qanday ishlashni oldindan hal qiling.",
     },
   },
 };

@@ -53,7 +53,7 @@ export default defineLesson({
       kind: "fix",
       nodes: {
         app1: { state: "ok" },
-        lb: { kind: "lb", at: [2, 5] },
+        lb: { kind: "lb", at: [3, 5] },
         app2: { kind: "service", at: [5, 7] },
       },
       edges: {
@@ -113,7 +113,7 @@ export default defineLesson({
       focus: ["db1", "db2"],
       exchange: {
         edge: "repl",
-        request: { format: "text", head: "START_REPLICATION SLOT db2 LSN 0/5A3F1C0" },
+        request: { format: "text", head: "START_REPLICATION SLOT db2 PHYSICAL 0/5A3F1C0" },
         response: {
           format: "text",
           head: "streaming WAL to db2",

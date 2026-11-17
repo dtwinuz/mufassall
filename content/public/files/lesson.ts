@@ -139,7 +139,7 @@ export default defineLesson({
         },
         response: {
           format: "text",
-          head: "connection reset after 151 MB (80%)",
+          head: "connection reset after 144 MB (80%)",
           body: "app: retrying from byte 0",
         },
         marks: ["Content-Length", "connection reset", "byte 0"],

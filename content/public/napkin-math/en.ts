@@ -51,6 +51,16 @@ const text: LessonText<typeof lesson> = {
       short: "Row size",
       title: "How big is one ping?",
       body: "Do not guess the row size, ask the database. On a sample table, one ping is 61 bytes of data plus 38 bytes of index: about 100 bytes.\n\n2 000 per second × 86 400 seconds ≈ 173 million rows a day. × 100 bytes ≈ **17 GB a day**.",
+      check: {
+        q: "At 17 GB a day, what does keeping every ping for a year mean for the database?",
+        options: [
+          "About 600 GB: one ordinary server holds it",
+          "About 6.3 TB: the indexes spill out of memory",
+          "About 60 TB: it needs a cluster from day one",
+        ],
+        answer: 1,
+        why: "17 GB × 365 ≈ 6.3 TB and 63 billion rows. The indexes no longer fit in memory, every query touches disk, and a backup takes most of a day.",
+      },
       fields: {
         row_bytes: "Average stored size of one row, including the row header the database adds.",
         TABLESAMPLE: "Reads a 1% sample instead of the whole table. Plenty for an estimate.",
@@ -81,6 +91,16 @@ const text: LessonText<typeof lesson> = {
       title: "The map is the heavy part",
       body: "The tracking screen shows a map, and the API serves the map tiles itself. One tile is about 200 KB. 300 views a second × 200 KB = **60 MB/s**, about 480 Mbit/s.\n\nThe pings, by comparison, are 2 000 × ~400 bytes ≈ 0.8 MB/s. The feature nobody thought about uses 75 times more bandwidth than the core of the product.",
       watch: "Bytes per response × responses per second. Do this for every endpoint, especially the ones that return images.",
+      check: {
+        q: "Map tiles cost the API 60 MB/s and look the same for every viewer. What cuts API egress the most?",
+        options: [
+          "Serve them from a CDN that caches near users",
+          "Compress the small JSON tracking responses",
+          "Add API servers with bigger network links",
+        ],
+        answer: 0,
+        why: "Tiles are identical and rarely change, so a CDN caches them and the API serves only small JSON. API egress falls from 60 MB/s to 0.3 MB/s.",
+      },
       fields: {
         tiles: "Map images, the same for everyone who looks at the same street.",
         "Content-Length": "204 800 bytes per tile, served from the API's own network link.",
@@ -99,7 +119,7 @@ const text: LessonText<typeof lesson> = {
     numbers: {
       short: "Numbers",
       title: "Latency numbers worth remembering",
-      body: "Memory: ~100 ns. SSD read: ~100 µs. Round trip inside one data centre: ~0.5 ms. Disk seek: ~10 ms. Round trip between continents: 70–150 ms.\n\nEach step is roughly a hundred to a thousand times the last. So one network call costs as much as thousands of memory reads, and one call to another region costs as much as a hundred calls next door.",
+      body: "Memory: ~100 ns. SSD read: ~100 µs. Round trip inside one data centre: ~0.5 ms. Disk seek: ~10 ms. Round trip between continents: 70–150 ms.\n\nThe jumps are uneven: an SSD read is a thousand times slower than memory, a round trip inside the data centre a few times slower than an SSD read, and a round trip between continents a few hundred times slower than one inside the data centre. So one network call costs as much as thousands of memory reads, and one call to another region as much as hundreds of calls next door.",
       watch: "Exact values change with hardware; the ratios between them barely do. Remember the ratios.",
     },
     servers: {

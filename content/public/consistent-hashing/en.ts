@@ -30,6 +30,16 @@ const text: LessonText<typeof lesson> = {
       short: "hash % 3",
       title: "Three caches, one rule: `hash % 3`",
       body: "The API serves about 5 000 profile reads a second. Each key goes to one of three caches: take the hash of the key, divide by 3, the remainder is the cache number.\n\n95% of reads are hits. Only 250 a second reach the database.",
+      check: {
+        q: "A fourth cache is added and the rule becomes `hash % 4`. What happens to the hit rate?",
+        options: [
+          "It rises: more memory holds more keys",
+          "It falls to about 24%: most keys move",
+          "It dips by a quarter: only cache D is empty",
+        ],
+        answer: 1,
+        why: "With 3 → 4 nodes only one key in four keeps its remainder, so three quarters of reads now look in the wrong cache. The hit rate drops from 95% to 24%.",
+      },
       fields: {
         GET: "`hash(\"user:u_42\") = 2718281827`, and `2718281827 % 3 = 1`, so the key lives on cache B.",
         u_42: "The user id inside the key. Every API server computes the same cache for it, with no lookup table.",
@@ -87,6 +97,16 @@ const text: LessonText<typeof lesson> = {
       short: "Vnodes",
       title: "Virtual nodes: many small points per cache",
       body: "Each cache now gets 128 points on the ring (`cache-a#0` … `cache-a#127`), each from its own hash. 512 small arcs average out: every cache owns very close to 25%.\n\nThe lookup is the same: next point clockwise, then the cache that owns that point. A stronger cache can simply get more points.",
+      check: {
+        q: "With 128 points per cache, cache B dies. Where do its keys go?",
+        options: [
+          "All to the next cache clockwise from B",
+          "Nowhere: they miss until B comes back",
+          "Almost evenly to A, C and D",
+        ],
+        answer: 2,
+        why: "Each of B's 128 small arcs passes to the next point clockwise, and those points belong to A, C and D almost equally. About 25% of keys move, and each survivor takes about a third of B's load.",
+      },
       fields: {
         vnodes: "Virtual nodes: points on the ring that all map to one real server.",
         "cache-c#17": "Point number 17 of cache C. Points of different caches are mixed all around the ring.",

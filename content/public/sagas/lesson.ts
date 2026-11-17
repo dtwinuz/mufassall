@@ -284,7 +284,7 @@ export default defineLesson({
         },
         response: {
           format: "text",
-          head: "INSERT INTO processed (event_id) ON CONFLICT DO NOTHING",
+          head: "INSERT INTO processed (event_id) VALUES ('ev_5c1') ON CONFLICT DO NOTHING",
           body: "0 rows inserted: ev_5c1 seen before, skip",
         },
         marks: ["offset", "event_id", "ON CONFLICT", "skip"],

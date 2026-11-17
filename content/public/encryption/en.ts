@@ -42,13 +42,23 @@ const text: LessonText<typeof lesson> = {
       short: "TLS",
       title: "TLS handshake: a shared key and a proof of identity",
       body: "Before any data, the app and the server agree on a fresh key: each sends the public half of a `key_share`, and both compute the same secret. Nobody watching can compute it.\n\nThe server also sends its certificate: a signed statement from a CA that this key belongs to `api.example.com`. The app checks the name, the signature and the dates. The first request on a new connection pays one extra round trip, so p95 grows a little.",
+      check: {
+        q: "The certificate is renewed by hand once a year, and this year nobody does it. What happens at expiry?",
+        options: [
+          "Apps keep working; only a warning is logged",
+          "Only new connections fail; open ones go on",
+          "All apps refuse the server; all requests fail",
+        ],
+        answer: 2,
+        why: "The check runs on each client, against its own clock. After the `valid until` moment every app closes the connection, and nothing works until a new certificate is installed.",
+      },
       fields: {
         SNI: "The name the app wants. One IP can serve many sites; this picks the right certificate.",
         key_share: "The public half of a one-time key. The two halves give both sides the same secret.",
         subject: "Who the certificate is for. Must match the name the app asked for.",
         issuer: "Who signed it. The app trusts only a short built-in list of issuers.",
         "valid until": "The expiry date. After it, every client refuses the certificate.",
-        Finished: "From here the traffic is encrypted. The sniffer now sees only noise.",
+        Finished: "Ends the handshake. In TLS 1.3 everything after ServerHello, this certificate included, is already encrypted; a sniffer sees only noise.",
       },
     },
     expired: {
@@ -66,6 +76,16 @@ const text: LessonText<typeof lesson> = {
       short: "Auto renew",
       title: "Certificates renew themselves",
       body: "The server now asks the CA for a new certificate on its own, with the ACME protocol. It proves it controls the domain and gets a certificate for 90 days.\n\nRenewal starts when a third of the lifetime is left, and an alert fires if less than 14 days remain. A short lifetime is fine when nobody has to remember it.",
+      check: {
+        q: "TLS is on everywhere. A nightly backup file leaks from a misconfigured bucket. What can the attacker read?",
+        options: [
+          "Nothing: TLS encrypted the data",
+          "Every note, with ordinary tools",
+          "Only notes saved before TLS was enabled",
+        ],
+        answer: 1,
+        why: "TLS protects data on the move, not data lying on a disk. The backup is the database as is, so `strings` prints every user's notes.",
+      },
       fields: {
         identifiers: "The names the certificate must cover.",
         status: "`pending` until the CA checks that the server really controls the domain.",
@@ -86,6 +106,16 @@ const text: LessonText<typeof lesson> = {
       short: "At rest",
       title: "Encrypt the notes before saving them",
       body: "The API now encrypts the note with AES-256-GCM before the `INSERT`. The database, its disk and its backups hold only ciphertext.\n\nThe key is in the API's config file and loaded at start. The leaked backup is now useless, and the cost is a few milliseconds per request.",
+      check: {
+        q: "A container image with the config file reaches a public registry. What happens to the old leaked backup?",
+        options: [
+          "It decrypts in seconds with the key",
+          "It stays safe: AES-256 cannot be broken",
+          "Only notes written after the leak are exposed",
+        ],
+        answer: 0,
+        why: "The key sits in the same config file as the database password. With it the backup decrypts in seconds, and since one two-year-old key encrypts every row, every note is exposed.",
+      },
       fields: {
         text_enc: "The encrypted note. Without the key it is random bytes.",
         nonce: "A unique value per encryption. Reusing one with the same key breaks GCM, so it is stored next to the row.",

@@ -51,6 +51,16 @@ const text: LessonText<typeof lesson> = {
       short: "B-tree",
       title: "customer_id ustiga B-tree indeks",
       body: "Indeks — alohida saralangan tuzilma: `customer_id` qiymatlarining B-tree daraxti, har biri jadvaldagi o'z qatorlariga ishora qiladi. 42-mijozni topish uchun baza 40 million qator o'rniga daraxtning 3–4 darajasidan o'tadi.\n\n`CONCURRENTLY` uni yozishni bloklamasdan quradi. Sahifa 35 ms gacha tushadi: endi faqat shu mijozning 1 800 qatori o'qiladi.",
+      check: {
+        q: "7-mijozning 250 000 buyurtmasi bor. `customer_id` indeksi bilan uning sahifasi qanchalik tez?",
+        options: [
+          "Tez: daraxt bo'ylab yurish har mijoz uchun bir xil",
+          "Sekin: katta mijozlar uchun baza indeksni chetlab o'tadi",
+          "Yana sekin: 250 000 qatorning hammasi olinib saralanadi",
+        ],
+        answer: 2,
+        why: "Indeks mijozning qatorlarini topadi, lekin sana tartibida emas. Baza 20 tasini qoldirish uchun 250 000 tasini o'qib saralaydi, sahifa p95 yana 900 ms.",
+      },
       fields: {
         CONCURRENTLY: "Jadvalga yozish davom etayotganda indeks quradi. Sekinroq, lekin ishlayotgan jadval bloklanmaydi.",
         customer_id: "Indekslangan ustun. U bo'yicha qidiruv daraxt bo'ylab yurishga aylanadi.",
@@ -71,6 +81,16 @@ const text: LessonText<typeof lesson> = {
       short: "Composite",
       title: "Ikki ustunli bitta indeks",
       body: "Composite indeks `(customer_id, created_at DESC)` avval mijoz bo'yicha, keyin har mijoz ichida sana bo'yicha saralangan. Baza 7-mijozga sakraydi va birinchi 20 yozuvni o'qiydi: ular allaqachon eng yangilari.\n\nSaralash yo'q, 20 qator o'qildi, 1 ms dan kam. Eski bir ustunli indeks endi bunisining boshlang'ich qismi bo'lib qoldi va foydasiz.",
+      check: {
+        q: "Kunlik hisobot faqat `created_at` bo'yicha filtrlaydi. `(customer_id, created_at)` indeksi unga yordam beradimi?",
+        options: [
+          "Yo'q: `customer_id` siz reja to'liq skan bo'ladi",
+          "Ha: `created_at` indeksda bor, demak ishlatiladi",
+          "Qisman: indeksning faqat sana qismi skanerlanadi",
+        ],
+        answer: 0,
+        why: "Composite indeks boshidagi ustunlarga chapdan o'ngga xizmat qiladi. Faqat ikkinchi ustun bo'yicha filtr 40 million qator ustidan `Seq Scan` oladi, u bazani shunchalik yuklaydiki, sahifa p95 420 ms ga chiqadi.",
+      },
       fields: {
         idx_orders_cust_created: "`customer_id` bo'yicha, keyin `created_at` bo'yicha yangisidan eskisiga saralangan.",
         "Index Cond": "O'sha filtr, lekin qatorlar to'g'ri tartibda chiqadi.",
@@ -111,6 +131,16 @@ const text: LessonText<typeof lesson> = {
       title: "Yettita indeks va import sudraladi",
       body: "Bir yil davomida «har ehtimolga qarshi» yana uchta indeks qo'shildi: `status`, `total` va buyurtma izohi ustiga. Tungi import buyurtmalarni 500 tadan yuklaydi.\n\nHar yangi qator jadvalga va yettala indeksga yoziladi. Har indeks — yangilanadigan yana bitta daraxt va yana WAL: bir qatorni yozish 0,3 ms dan 2,4 ms ga oshdi.",
       watch: "Indeks o'zidan foydalanadigan o'qishni tezlashtiradi, lekin har yozishni sekinlashtiradi — ishlatilsa ham, ishlatilmasa ham.",
+      check: {
+        q: "`orders` da yettita indeks bilan import sudralib ketyapti. O'qishga zarar bermay yozishni nima tezlatadi?",
+        options: [
+          "Yettala indeksni `CONCURRENTLY` bilan qayta qurish",
+          "Nol marta skanerlangan indekslarni o'chirish",
+          "5 000 qatorlik kattaroq to'plamlarda yuklash",
+        ],
+        answer: 1,
+        why: "Indeks statistikasi to'rtta indeks nol marta ishlatilganini ko'rsatadi, ular orasida composite almashtirgan `idx_orders_customer` ham bor. Ularni o'chirgach uchta qoladi, yozish qatoriga 2.4 ms dan 0.5 ms ga tushadi.",
+      },
       fields: {
         "INSERT 0 500": "500 qator qo'shildi. Har biri yana yettita B-tree'ga ham yozildi.",
         Time: "500 qator uchun 1,2 soniya. Bitta indeks bilan shu paket 150 ms olardi.",

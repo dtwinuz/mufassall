@@ -62,6 +62,16 @@ const text: LessonText<typeof lesson> = {
       title: "Client tomonida topish",
       body: "Buyurtmalar registry'dan sog' `inventory` nusxalarini so'raydi, ro'yxatni bir necha soniya keshda saqlaydi va har chaqiruvga nusxani o'zi navbat bilan tanlaydi.\n\nYuk oshganda platforma D nusxasini qo'shadi. D ro'yxatdan o'tadi, buyurtmalar uni keyingi yangilashda ko'radi va trafik hech qanday deploysiz uchta nusxaga taqsimlanadi.",
       watch: "Topish va balanslash mantig'i har chaqiruvchiga kerak. Besh til: to'g'ri ushlab turiladigan beshta kutubxona.",
+      check: {
+        q: "A nusxasida elektr o'chdi, u ro'yxatdan chiqishga ulgurmadi. Buyurtmalar A ga yuborgan chaqiruvlar nima bo'ladi?",
+        options: [
+          "Registry A ni darhol chiqaradi, hech bir chaqiruv yiqilmaydi",
+          "Buyurtmalar A ulushini o'zi C va D ga o'tkazadi",
+          "A ga ketishda davom etadi, har biri 2 soniya kutib yiqiladi",
+        ],
+        answer: 2,
+        why: "Registry A ni hali ham sog' deb biladi, chunki A xayrlashmagan. Buyurtmalar chaqiruvlarning uchdan birini unga yuboradi, har biri 2 soniyada timeout bo'ladi, stock tekshiruvlarining 33% i yiqiladi.",
+      },
       fields: {
         passing: "Faqat health check'dan o'tgan nusxalar. O'liklar javobda bo'lmasligi kerak.",
         Address: "Buyurtmalar shu manzillarga to'g'ridan ulanadi. O'rtada ortiqcha qadam yo'q.",
@@ -71,6 +81,16 @@ const text: LessonText<typeof lesson> = {
       short: "Yiqilish",
       title: "Yiqilgan nusxa ro'yxatda qoldi",
       body: "A nusxasining host'ida elektr o'chdi. A ro'yxatdan chiqishga ulgurmadi, shuning uchun registry uni hali ham sog' deb hisoblaydi.\n\nBuyurtmalar chaqiruvlarning uchdan birini A ga yuborishda davom etadi va har birini 2 soniya kutadi. Faqat nusxalar odob bilan xayrlashganda o'zgaradigan ro'yxat yetarli emas.",
+      check: {
+        q: "Endi har nusxa har 5 soniyada heartbeat yuboradi, TTL 15 soniya. O'lik A qancha vaqtda trafik olmay qo'yadi?",
+        options: [
+          "Taxminan 20 soniyada, hech kim hech narsaga tegmasdan",
+          "Faqat operator A ni registry'dan o'chirgandan keyin",
+          "Darhol, A host'ida elektr o'chgan zahoti",
+        ],
+        answer: 0,
+        why: "A ning TTL'i tugagach, registry uni critical deb belgilaydi va sog'lar ro'yxatidan chiqaradi. A ga trafik 10 daqiqa emas, taxminan 20 soniyada to'xtaydi.",
+      },
       fields: {
         timeout: "Har chaqiruvga ikki soniya, yo'q mashinaga sarflangan.",
         passing: "Registry A aytgan oxirgi gapga ishonadi. Boshqacha bilishga hali imkoni yo'q.",

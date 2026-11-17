@@ -64,6 +64,16 @@ const text: LessonText<typeof lesson> = {
       title: "WebSocket: one connection, both ways",
       body: "The client starts with an HTTP request and asks to **upgrade** it. After the `101` answer the same TCP connection carries small frames in both directions.\n\nMessages, typing indicators and read receipts all go over it. HTTP requests almost disappear and delivery takes tens of milliseconds.",
       watch: "A WebSocket is stateful: the server now remembers who is connected to it. That changes how you scale.",
+      check: {
+        q: "Every user now keeps a socket open all day on one chat server. What runs out first?",
+        options: [
+          "Request capacity: HTTP calls pile up",
+          "File descriptors and memory for open sockets",
+          "Database connections, one per message",
+        ],
+        answer: 1,
+        why: "Each socket is a file descriptor, so the server stops at 65 535 open sockets and memory grows until GC pauses stall everyone. Connections, not requests, are now the limit.",
+      },
       fields: {
         Upgrade: "Asks to switch this connection from HTTP to the WebSocket protocol.",
         "101": "Switching Protocols: from here on it is no longer HTTP.",
@@ -86,6 +96,16 @@ const text: LessonText<typeof lesson> = {
       title: "A gateway layer holds the connections",
       body: "Connections move to a layer of **gateways**. A gateway only holds sockets and passes frames; the chat logic and the database sit behind it in an ordinary stateless service.\n\nThe load balancer spreads new connections across gateways, so more users means more gateways.",
       watch: "Balance by connection count, not by requests: one socket can live for hours.",
+      check: {
+        q: "Alice is on gateway 1, Bob on gateway 2. Alice sends a message to their room. What does Bob see?",
+        options: [
+          "Nothing, until he reloads",
+          "The message: the load balancer routes it to him",
+          "The message: the chat service pushes it to all users",
+        ],
+        answer: 0,
+        why: "Gateway 1 delivers only to sockets connected to it. Nobody tells gateway 2, so Bob is skipped and missed messages jump to 450 a minute.",
+      },
       fields: {
         room: "The chat room the client wants to follow.",
         "X-Gateway": "Bob landed on gateway 2. Alice is on gateway 1.",
@@ -117,6 +137,16 @@ const text: LessonText<typeof lesson> = {
       title: "The phone goes into a tunnel",
       body: "Bob's connection breaks without a goodbye. While he is away, three messages are published.\n\nGateway 2 has no socket for Bob, so it has nobody to give them to. When Bob comes back, the chat shows a gap.",
       watch: "Mobile connections drop all the time. Plan for reconnects, not for the happy path.",
+      check: {
+        q: "Bob comes back online after the tunnel. How does he get the three messages he missed?",
+        options: [
+          "The live channel replays them on reconnect",
+          "Gateway 2 kept them for him while he was away",
+          "His app sends the last ID it saw and gets everything newer",
+        ],
+        answer: 2,
+        why: "Live pub/sub kept nothing for him. The app resumes after `m_740`, the gateway reads the three newer messages from the chat service, and only then switches to live delivery.",
+      },
       fields: {
         "1006": "Abnormal closure: the socket died without a close frame, typical for a lost network.",
         dropped: "Live pub/sub keeps nothing for an absent subscriber.",

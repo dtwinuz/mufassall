@@ -133,7 +133,7 @@ export default defineLesson({
 VALUES ('c_a1b2', '12:00:01.204', 'm_7f3e',
         'u_alice', 'dinner tonight?');`,
         },
-        response: { format: "text", head: "INSERT 1  -- shard 12 of 64" },
+        response: { format: "text", head: "INSERT 0 1  -- shard 12 of 64" },
         marks: ["conv_id", "sent_at", "shard"],
       },
     },

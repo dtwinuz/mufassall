@@ -96,7 +96,7 @@ export default defineLesson({
         take1: { from: "queue", to: "w1", rate: 3 },
         send1: { from: "w1", to: "mail", rate: 3 },
       },
-      metrics: { p95: 35, backlog: 42000, delay: 480, lost: 0 },
+      metrics: { p95: 35, backlog: 42000, delay: 840, lost: 0 },
       focus: ["api", "queue", "w1"],
       exchange: {
         edge: "publish",
@@ -135,7 +135,7 @@ export default defineLesson({
         request: {
           format: "text",
           head: "autoscaler: queue emails",
-          body: "backlog=42000 oldest_age=480s\nworkers 1 -> 2 (each ~45/s, provider cap 100/s)",
+          body: "backlog=42000 oldest_age=840s\nworkers 1 -> 2 (each ~50/s, provider cap 100/s)",
         },
         marks: ["backlog", "oldest_age", "provider cap"],
       },

@@ -14,7 +14,7 @@ ORDER BY created_at DESC LIMIT 20;`,
 
 const reportPlan: WireMessage = {
   format: "sql",
-  head: "EXPLAIN SELECT count(*), sum(total) FROM orders",
+  head: "EXPLAIN ANALYZE SELECT count(*), sum(total) FROM orders",
   body: "WHERE created_at >= '2026-11-17';",
 };
 

@@ -48,7 +48,7 @@ export function Wire({ exchange, notes, from, to, ui }: WireProps) {
   return (
     <section className="mf-wire" aria-label={ui.title}>
       <header className="mf-wire__head">
-        <h3>{ui.title}</h3>
+        <h2>{ui.title}</h2>
         <span className="mf-wire__route">
           {from} → {to}
         </span>

@@ -18,5 +18,7 @@ const s = site[lang];
     <h1>{s.labPage.title}</h1>
     <p>{s.labPage.lead}</p>
   </header>
-  <Lab client:only="react" lang={lang} />
+  <Lab client:only="preact" lang={lang}>
+    <div slot="fallback" class="lab-skeleton" aria-hidden="true"></div>
+  </Lab>
 </Base>

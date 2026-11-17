@@ -51,6 +51,16 @@ const text: LessonText<typeof lesson> = {
       title: "Bitta yaratish ikki marta keldi",
       body: "API sekin ishladi, shlyuzning timeout'i tugadi va u `CreateTransaction`'ni o'sha `id` bilan qayta yubordi.\n\nKod uni qidirmadi va ikkinchi tranzaksiya ochdi. Bitta to'lov, ikkita tranzaksiya: ikki marta yechish yoki hisobda chalkashlik.",
       watch: "Shlyuz cheksiz kutmaydi. Har bir chaqiruv bir necha marta kelishi mumkin.",
+      check: {
+        q: "Shlyuz `CreateTransaction`'ni o'sha `id` bilan qayta yuboradi. Do'kon nima deb javob berishi kerak?",
+        options: [
+          "Xato, toki shlyuz qayta urinishni to'xtatsin",
+          "Yangi tranzaksiya, chunki bu yangi chaqiruv",
+          "Mavjud `tx_77`'ni, o'zgartirmasdan",
+        ],
+        answer: 2,
+        why: "API avval shlyuz ID bo'yicha qidiradi va mavjud tranzaksiyani so'zma-so'z qaytaradi. Shlyuz ID'dagi unique indeks ikki parallel chaqiruvning ikkalasi ham yaratishiga yo'l qo'ymaydi, ikki marta yechish 0 ga tushadi.",
+      },
       fields: {
         id: "Avvalgi shlyuz ID'ning o'zi. Bu yangi to'lov emas, takror.",
         transaction: "Yangi ID, `tx_78`. Endi bitta to'lov uchun do'konda ikkita tranzaksiya bor.",
@@ -69,6 +79,16 @@ const text: LessonText<typeof lesson> = {
       short: "Bajar",
       title: "Bajarish: pul endi sizniki",
       body: "Shlyuz kartadan pulni yechadi va do'kondan tranzaksiyani bajarishni so'raydi.\n\nAPI holatni `1` dan `2` ga o'tkazadi va buyurtmani to'langan deb belgilaydi. Takroriy `Perform` o'sha `perform_time`'ni qaytaradi.",
+      check: {
+        q: "Do'kon buyurtmani tranzaksiya yaratilishi bilan omborga yuborsa nima bo'ladi?",
+        options: [
+          "Keyin bekor qilinadigan to'lovlar uchun ham mol ketadi",
+          "Hech narsa: yaratilgan tranzaksiya doim bajariladi",
+          "Shlyuz tranzaksiyani bajarishdan bosh tortadi",
+        ],
+        answer: 0,
+        why: "`1` holati faqat va'da: karta rad etiladi, xaridor chiqib ketadi. Timeout'dan keyin shlyuz `-1` holati bilan bekor qiladi, kuniga 4 ta to'lanmagan buyurtma esa allaqachon yo'lda.",
+      },
       fields: {
         perform_time: "To'lov yakunlangan vaqt. Takror ham aynan shu qiymatni qaytarishi shart.",
         state: "`2` — bajarildi. Buyurtma faqat endi to'langan.",

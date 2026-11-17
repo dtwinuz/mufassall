@@ -29,6 +29,16 @@ const text: LessonText<typeof lesson> = {
       short: "Normal",
       title: "Every checkout asks for a delivery price",
       body: "The shop app sends a checkout to the API. Before saving the order, the API asks the rates service how much delivery costs.\n\nOn a good day the answer takes 85 ms and nobody thinks about it. The code just waits for it.",
+      check: {
+        q: "Rates starts answering in 30 seconds. The API has no timeout. What happens to the API?",
+        options: [
+          "Only checkout slows down; the rest works",
+          "The HTTP client gives up on its own in a second",
+          "Its 200 threads all hang, and every endpoint fails",
+        ],
+        answer: 2,
+        why: "Each request holds a worker thread while it waits. In seconds all 200 threads are stuck on rates, so even requests that never touch rates find no free thread and fail.",
+      },
       fields: {
         Host: "An internal service, not a public one. It is still a network call that can hang.",
         "X-Response-Time": "85 ms today. The code has no idea what to do if it becomes 30 seconds.",
@@ -49,6 +59,16 @@ const text: LessonText<typeof lesson> = {
       short: "Timeout",
       title: "Give up after 800 ms",
       body: "The API now waits at most 800 ms for rates: a short connect timeout plus a read timeout. When time runs out it uses a flat delivery price and finishes the order.\n\nThreads are released quickly, so the rest of the API works again. The timeout is set from the real p99 of rates, with some margin, not picked at random.",
+      check: {
+        q: "The API now retries 3 times at once, and the app retries checkout 3 times. What does rates get?",
+        options: [
+          "Up to 16 calls per order, and it falls over",
+          "At most 4 calls per order: retries do not stack",
+          "Fewer fallbacks, and time to recover",
+        ],
+        answer: 0,
+        why: "Four tries in the app times four tries in the API is up to 16 calls to rates per order. Rates was only slow; under that load it goes fully down, and every retry makes it worse.",
+      },
       fields: {
         timeout: "Waiting stops here. The thread goes back to the pool.",
         fallback: "A safe default instead of an error: the customer pays a flat price and the order is not lost.",
@@ -98,6 +118,16 @@ const text: LessonText<typeof lesson> = {
       short: "Half-open",
       title: "Half-open: one probe decides",
       body: "After 30 seconds the breaker goes **half-open** and lets a single real call through. If it fails, the breaker opens again for another 30 seconds.\n\nThe probe answered in 92 ms, so the breaker closes and traffic returns. Nobody had to wake up and flip a switch.",
+      check: {
+        q: "The same retry code now wraps the payment call. The first charge times out at 800 ms. What happens?",
+        options: [
+          "Nothing bad: a timeout means no charge",
+          "The customer can be charged twice for one order",
+          "The provider sees the same order_id and ignores it",
+        ],
+        answer: 1,
+        why: "The provider had already taken the money; only the answer was late. The retry looks like a new payment, so a second charge `ch_2` appears next to `ch_1`.",
+      },
       fields: {
         HALF_OPEN: "A test state: one call goes out, all others still get the fallback.",
         probe: "One real request. One is enough to learn and too little to hurt.",

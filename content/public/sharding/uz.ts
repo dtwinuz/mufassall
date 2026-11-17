@@ -60,6 +60,16 @@ const text: LessonText<typeof lesson> = {
       short: "Hash",
       title: "chat_id hash'i bo'yicha shard'lash",
       body: "Yangi shard kaliti — `chat_id`, shard esa `hash(chat_id) % 3`. Yaxshi hash chatlarni teng sochadi, yangi va eski chatlar uchala shard'da aralash turadi.\n\nBitta chatning barcha xabarlari bitta shard'da, shuning uchun «c_8812 chatini och» bitta serverga tegadi. Yuk hamma joyda 33–35%, p95 22 ms.",
+      check: {
+        q: "Yangi funksiya foydalanuvchi yuborgan barcha xabarlarni `sender_id` bo'yicha chiqaradi. API buni qanday bajaradi?",
+        options: [
+          "Faqat shu foydalanuvchi turgan shard'dan so'raydi",
+          "Rad etadi: har so'rovda shard kaliti bo'lishi shart",
+          "Uchala shard'dan so'raydi va eng sekinini kutadi",
+        ],
+        answer: 2,
+        why: "`sender_id` shard kaliti emas, qatorlar istalgan shard'da bo'lishi mumkin. API uchalasidan so'raydi va javoblarni birlashtiradi; shard 2 ga 612 ms kerak, shuning uchun butun so'rov 615 ms oladi.",
+      },
       fields: {
         chat_id: "Kalit eng ko'p uchraydigan so'rovga mos: bitta chatning xabarlari.",
         hash: "Bir-biriga yaqin id'larni uzoq sonlarga aylantiradi, qo'shnilar bitta shard'ga yig'ilmaydi.",
@@ -90,6 +100,16 @@ const text: LessonText<typeof lesson> = {
       short: "Kalitni bo'lish",
       title: "Qizigan chatni bucket'larga bo'lish",
       body: "Qizigan deb belgilangan chatlar uchun kalit `(chat_id, bucket)` bo'ladi, bucket esa `msg_id % 8`. `c_1` ning sakkizta bucket'i turli shard'larga tushadi va uning yozuvlari hammasiga taqsimlanadi.\n\nNarxi: `c_1` ning oxirgi xabarlarini o'qish endi har shard'dan so'raydi va birlashtiradi. Bir nechta qizigan chat uchun bu maqbul, hammasi uchun emas.",
+      check: {
+        q: "Shard 3 ni qo'shamiz va yo'naltirishni `hash % 3` dan `hash % 4` ga o'zgartiramiz. Qancha ma'lumot ko'chishi kerak?",
+        options: [
+          "Faqat shard 3 ning ulushi, taxminan 25%",
+          "Barcha qatorlarning taxminan 75% i",
+          "Hech qancha: shard 3 ga faqat yangi qatorlar boradi",
+        ],
+        answer: 1,
+        why: "Qator faqat `hash % 3` va `hash % 4` teng bo'lsa joyida qoladi: to'rttadan bittasi. Ko'chiruvchi yuk ostida 5,2 milliard qatorni nusxalashi kerak, bu taxminan to'qqiz kun oladi.",
+      },
       fields: {
         "hot chat": "Bucket faqat bir nechta chatga beriladi. Oddiy chatlar bitta shard'da qoladi.",
         bucket: "Kalitning bir qismi. `c_1` ning 5-bucket'i shard 0 ga, qolganlari boshqa joyga tushadi.",

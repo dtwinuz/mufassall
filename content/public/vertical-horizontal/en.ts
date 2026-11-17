@@ -54,7 +54,7 @@ const text: LessonText<typeof lesson> = {
     ceiling: {
       short: "Ceiling",
       title: "There is no bigger box",
-      body: "A year later: 2 400 requests a second. The app now runs on the largest machine the provider sells, 64 vCPU, at 88%. Next year's growth has nowhere to go.\n\nThe largest sizes are also the most expensive per CPU: this box costs 2 900 a month.",
+      body: "A year later: 2 400 requests a second. The app now runs on the largest machine the provider sells, 64 vCPU, at 88%. One process uses 64 cores far less efficiently than 4: locks and shared memory eat much of the gain. Next year's growth has nowhere to go.\n\nThe largest sizes are also the most expensive per CPU: this box costs 2 900 a month.",
       watch: "Vertical scaling hits a hard ceiling, and the last steps below it are the most expensive ones.",
     },
     crash: {
@@ -70,6 +70,16 @@ const text: LessonText<typeof lesson> = {
       short: "Scale out",
       title: "Horizontal scaling: more boxes",
       body: "Instead of one 64-vCPU giant, three 8-vCPU servers. A **load balancer** gets the public address and spreads requests across them; each runs at 62%.\n\nThree medium servers plus the balancer cost about 1 000 a month instead of 2 900. Growth now means adding a fourth.",
+      check: {
+        q: "Sessions still live in the memory of the server where the user logged in. What do users see now?",
+        options: [
+          "Nothing new: the cookie carries the whole session",
+          "They keep getting sent back to the login page",
+          "Only the first request is slower than usual",
+        ],
+        answer: 1,
+        why: "The balancer sends each request to any server, and the others have never heard of that session. Two requests out of three land on a wrong server: the user is sent to login and the cart looks empty.",
+      },
       fields: {
         "X-Forwarded-For": "The real user address, added by the balancer. The app sees the balancer's IP otherwise.",
         "X-Request-Id": "One ID to find this request in the logs of whichever server handled it.",
@@ -90,6 +100,16 @@ const text: LessonText<typeof lesson> = {
       short: "Stateless",
       title: "Make the app servers stateless",
       body: "Sessions move to a shared, fast session store. Every app server reads the session from there on each request and keeps nothing between requests.\n\nNow any server can answer any request. Servers can be added, removed or restarted without users noticing.",
+      check: {
+        q: "`app-2` crashes. What happens to the users it was serving?",
+        options: [
+          "Few notice: it leaves the pool, the others take over",
+          "They are logged out: their sessions died with it",
+          "Every request fails until `app-2` is back",
+        ],
+        answer: 0,
+        why: "The health check stops getting answers and `app-2` leaves rotation within seconds. Sessions live in the shared store, so the other two serve its users; only requests in those seconds fail, but the two now run at 92%.",
+      },
       fields: {
         session: "The key is a hash of the cookie, never the cookie itself.",
         user_id: "Who the user is. Any server can read it.",

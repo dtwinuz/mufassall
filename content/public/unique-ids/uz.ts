@@ -58,6 +58,16 @@ const text: LessonText<typeof lesson> = {
       short: "UUIDv4",
       title: "ID'ni servis yasasin: tasodifiy UUID",
       body: "Endi API ID'ni yozishdan oldin o'zi yaratadi: UUIDv4, 122 ta tasodifiy bit. Hisoblagich yo'q, kelishuv yo'q, istalgan server va istalgan shard.\n\nMilliardlab qatorda ham ikkita bir xil ID chiqish ehtimoli juda kichik. Qatorni boshqa shard'ga ko'chirganda ID o'zgarmaydi.",
+      check: {
+        q: "Endi tasodifiy UUIDv4 kalitlar B-tree primary key indeksiga yoziladi. Yozuvlar bilan nima bo'ladi?",
+        options: [
+          "Sekinlashadi: tasodifiy sahifalarga tushib, ularni bo'ladi",
+          "Tezlashadi: kelishiladigan hisoblagich yo'q",
+          "O'zgarmaydi: har qanday kalitni yozish bir xil",
+        ],
+        answer: 0,
+        why: "Hisoblagich bilan har yozuv oxirgi sahifaga tushardi. Tasodifiy kalitlar butun indeks bo'ylab sahifalarga tushadi, ularni diskdan o'qish kerak, ular to'lib bo'linadi: bo'linish sekundiga 2 dan 900 ga, yozish p95 4 dan 38 ms ga chiqadi.",
+      },
       fields: {
         id: "Bazada emas, API'da yaratilgan. Ikkinchi chiziqchadan keyingi `4` — 4-versiya: tasodifiy.",
       },
@@ -84,6 +94,16 @@ const text: LessonText<typeof lesson> = {
       short: "64 bitli ID",
       title: "Yanada kichik: 64 bitda vaqt + mashina + ketma-ketlik",
       body: "Ikkinchi API server qo'shildi. Ba'zi tizimlar oddiy `bigint` ga sig'adigan ID xohlaydi: har bir indeks va foreign key'da UUID'dan ikki baravar kichik.\n\nBitta 64 bitli son uch qismdan yig'iladi: tanlangan epoch'dan beri o'tgan millisekundlar, mashina raqami va shu millisekund ichidagi hisoblagich. Har bir server ID'ni mustaqil yasaydi; ular to'qnashmaydi, chunki mashina raqamlari har xil.",
+      check: {
+        q: "Vaqt serveri API #2 soatini 40 ms orqaga suradi. Uning 64 bitli ID generatori nima qiladi?",
+        options: [
+          "Hech narsa: mashina raqami ID'larni unikal saqlaydi",
+          "Soat yetib olguncha xato bilan to'xtaydi",
+          "Avval bergan o'sha ID'larni qayta chiqaradi",
+        ],
+        answer: 2,
+        why: "40 ms davomida generator allaqachon ishlatgan millisekundlarni ko'radi, hisoblagich esa 0 dan boshlanadi. O'sha vaqt, o'sha mashina, o'sha ketma-ketlik: bitta 64 bitli ID ikki marta. Mashina raqami faqat serverlarni ajratadi.",
+      },
       fields: {
         time: "Servisning o'z epoch'idan beri 41 bit millisekund. ID'lar hali ham vaqt bo'yicha tartiblanadi.",
         machine: "10 bit: 1 024 tagacha generator. Har bir serverga bir marta beriladigan o'z raqami kerak.",

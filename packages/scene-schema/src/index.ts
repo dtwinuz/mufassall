@@ -116,6 +116,17 @@ export interface StepText {
   watch?: string;
   /** one note per name in `exchange.marks` */
   fields?: Record<string, string>;
+  /** "what happens next?" question, answered before moving on; `answer` is the same index in every language */
+  check?: StepCheck;
+}
+
+export interface StepCheck {
+  q: string;
+  /** 2 to 4 choices */
+  options: string[];
+  answer: number;
+  /** why the answer is right; shown after any choice */
+  why: string;
 }
 
 export interface LessonText<T extends LessonInput> {

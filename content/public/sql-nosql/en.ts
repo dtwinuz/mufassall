@@ -50,6 +50,16 @@ const text: LessonText<typeof lesson> = {
       title: "A document: the whole order in one read",
       body: "A document store keeps the order as one JSON object, lines and product names inside it. Reading it is one lookup, with no join.\n\nFor the order page this is ideal: the page needs exactly this object, every time.",
       watch: "The product name is copied into the order. That is fine for an order (it shows what was bought), but every copy must be updated if it is meant to change.",
+      check: {
+        q: "The business asks which orders contain lamp `p_17`. That field has no index. What does the document store do?",
+        options: [
+          "One fast lookup, like reading by `_id`",
+          "Reads every order document and checks each",
+          "Rejects it: documents cannot be searched",
+        ],
+        answer: 1,
+        why: "The documents are shaped around reading one order, not around products. Without an index the store reads all 4.8 million orders, and the query takes about 3.4 seconds.",
+      },
       fields: {
         _id: "The document's key. Reading by key is the fast path.",
         items: "The order lines live inside the order, not in another table.",
@@ -59,8 +69,18 @@ const text: LessonText<typeof lesson> = {
     "new-question": {
       short: "New question",
       title: "A new question the model was not built for",
-      body: "The business asks: «which orders contain lamp `p_17`?». The documents were shaped around reading one order, not around products.\n\nWithout an index on that field the store reads all 4.8 million orders to find the matching ones. The query takes seconds and slows down everything else.",
+      body: "The business asks: “which orders contain lamp `p_17`?”. The documents were shaped around reading one order, not around products.\n\nWithout an index on that field the store reads all 4.8 million orders to find the matching ones. The query takes seconds and slows down everything else.",
       watch: "A document model is designed around known queries. Every new question means a new index, a new copy of the data, or a full scan.",
+      check: {
+        q: "The same question goes to the relational DB, where order lines are a table indexed by `product_id`. What does it take?",
+        options: [
+          "A schema change and a data migration first",
+          "A second copy of the orders keyed by product",
+          "Just a new query, answered in about 2 ms",
+        ],
+        answer: 2,
+        why: "Order lines already live in their own table with an index on `product_id`. The new question is a plain `GROUP BY` query that reads only product 17's lines; nothing in the schema changes.",
+      },
       fields: {
         COLLSCAN: "A collection scan: every document is read and checked.",
         docsExamined: "4.8 million documents read to answer one question.",
@@ -78,7 +98,7 @@ const text: LessonText<typeof lesson> = {
     "hot-writes": {
       short: "Write flood",
       title: "Page views flood the relational database",
-      body: "A new feature records every page view: 40,000 inserts a second. The same database also serves orders and payments.\n\nIt runs out of connections and disk throughput, and orders start to fail along with the page views.",
+      body: "A new feature records every page view: 40 000 inserts a second. The same database also serves orders and payments.\n\nIt runs out of connections and disk throughput, and orders start to fail along with the page views.",
       fields: {
         page_views: "One small row per view. Never updated, rarely read one by one.",
         ERROR: "The database refuses new connections. Orders fail too, not just the views.",
@@ -87,7 +107,17 @@ const text: LessonText<typeof lesson> = {
     "wide-column": {
       short: "Wide-column",
       title: "A wide-column store for the event stream",
-      body: "Page views move to a wide-column store. The table is split by `user_id` across many machines, and inside each user the rows are kept sorted by time.\n\nWrites are spread out and only appended, so the cluster takes 40,000 a second easily. The relational database is left with orders and is calm again.",
+      body: "Page views move to a wide-column store. The table is split by `user_id` across many machines, and inside each user the rows are kept sorted by time.\n\nWrites are spread out and only appended, so the cluster takes 40 000 a second easily. The relational database is left with orders and is calm again.",
+      check: {
+        q: "Someone asks who viewed one order page. The views table is split by `user_id`. What does the store do?",
+        options: [
+          "Refuses the query: page is not the key",
+          "Asks every machine and answers slowly",
+          "Answers fast using the time-sorted rows",
+        ],
+        answer: 0,
+        why: "To answer by page the store would have to ask every machine and read everything, so it rejects the query instead. In a wide-column store you can only ask by the key the table was built on.",
+      },
       fields: {
         views_by_user: "The table is named after its question: the views of one user, newest first.",
         user_id: "The partition key. It decides which machines store the row.",
@@ -97,7 +127,7 @@ const text: LessonText<typeof lesson> = {
     "wrong-key": {
       short: "Wrong key",
       title: "Asking by a column that is not the key",
-      body: "Now someone asks «who viewed this order page?». The table is split by user, not by page, so the store would have to ask every machine and read everything.\n\nIt refuses instead. In this kind of store you can only ask by the key the table was built on.",
+      body: "Now someone asks “who viewed this order page?”. The table is split by user, not by page, so the store would have to ask every machine and read everything.\n\nIt refuses instead. In this kind of store you can only ask by the key the table was built on.",
       fields: {
         InvalidRequest: "The store rejects the query rather than run a full cluster scan.",
         "ALLOW FILTERING": "The escape hatch. On a big table it reads everything; do not use it in production.",

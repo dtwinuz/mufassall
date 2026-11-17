@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./validate": "./src/validate.ts"
+    "./validate": "./src/validate.ts",
+    "./layout": "./src/layout.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"

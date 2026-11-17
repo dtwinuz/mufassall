@@ -31,6 +31,16 @@ const text: LessonText<typeof lesson> = {
       short: "Tungi",
       title: "Tungi job kechagi kunni sanaydi",
       body: "Ilovalar kliklarni yig'uvchiga yuboradi, u ularni fayllarga qo'shib boradi. Soat 02:00 da job kechagi barcha fayllarni o'qiydi, reklama bo'yicha guruhlaydi va jamini yozadi.\n\nBu oddiy va tuzatish oson: kodda xato bo'lsa, qayta ishga tushirasiz va kun qayta yoziladi. Narxi — yangilik: raqamlar bir kungacha kechikadi.",
+      check: {
+        q: "Reklama serveri kunlik $50 byudjet tugagach reklamani to'xtatadi. Reklama 10:00 da mashhur bo'lib ketdi. Nima bo'ladi?",
+        options: [
+          "Byudjet tugashi bilan daqiqalar ichida to'xtaydi",
+          "Kun bo'yi ko'rsatiladi: sarf hamon $0 ko'rinadi",
+          "Tungi job qayta sanaguncha to'xtatib turiladi",
+        ],
+        answer: 1,
+        why: "Byudjet tekshiruvi kechagi tungi ishga tushirish statistikasini o'qiydi, bugungi sarf 0.00 ko'rinadi. Reklama byudjetini bir soatda yoqib, kun bo'yi ko'rsatildi: tarmoq hisob chiqara olmaydigan $340.",
+      },
       fields: {
         OVERWRITE: "Job butun kunni almashtiradi. Ikki marta ishga tushirsa ham natija bir xil, ikki barobar emas.",
         PARTITION: "Har kunga bitta partition. Qayta ishga tushirish faqat shu kunga tegadi.",
@@ -84,7 +94,17 @@ const text: LessonText<typeof lesson> = {
       short: "Kechikkan",
       title: "Daqiqalab kechikib keladigan kliklar",
       body: "Metroda telefonda tarmoq yo'q. Uning kliklari navbatda turadi va signal qaytganda, uch daqiqadan keyin yuboriladi.\n\n10:00 oynasi allaqachon tugagan va yozilgan. Kech kelgan klik tashlab yuboriladi, sanoq haqiqatdan 3% kam bo'lib qoladi.",
-      watch: "Processing time — siz ko'rgan vaqt, event time — voqea bo'lgan vaqt. Oynalar event time bo'yicha bo'lishi kerak.",
+      watch: "Processing time — siz ko'rgan vaqt, event time — hodisa bo'lgan vaqt. Oynalar event time bo'yicha bo'lishi kerak.",
+      check: {
+        q: "Protsessor endi oynani yopishdan oldin kechikkan kliklarni 5 daqiqa kutadi. Buning narxi nima?",
+        options: [
+          "Yakuniy sanoq bir emas, taxminan olti daqiqada keladi",
+          "Hech narsa: kechikkanlar sanaladi, qolgani o'zgarmaydi",
+          "5 daqiqadan kech kelgan kliklar ikki marta sanaladi",
+        ],
+        answer: 0,
+        why: "Oyna faqat watermark — eng yangi event time minus 5 daqiqa — uning oxiridan o'tganda yakuniy bo'ladi. Noto'g'ri sanoq 0,2% ga tushadi, lekin yakuniy raqamlar bir emas, olti daqiqadan keyin keladi.",
+      },
       fields: {
         event_time: "10:00:52: klik 10:00 oynasiga tegishli.",
         received_at: "10:03:40: deyarli uch daqiqa keyin. U oyna allaqachon yopilgan.",
@@ -105,6 +125,16 @@ const text: LessonText<typeof lesson> = {
       short: "Yiqilish",
       title: "Yiqilish va qayta o'qish: kliklar ikki marta sanaldi",
       body: "Protsessor sanoqlarni 89320 offset'gacha yozdi va o'z joyini saqlashdan oldin yiqildi. Qayta ishga tushganda oxirgi saqlangan offset'dan, 88120 dan davom etadi.\n\nYetkazish **kamida bir marta** — bu to'g'ri: hech narsa yo'qolmaydi. Lekin yozuv qisman sanoqlarni qo'shadi, shuning uchun 1200 klik ikkinchi marta qo'shiladi va reklama beruvchilardan ortiqcha pul olinadi.",
+      check: {
+        q: "Yetkazish kamida bir marta bo'lib qoladi. Qayta o'qish o'sha kliklarni ikki marta qo'shishini nima to'xtatadi?",
+        options: [
+          "Bazaga yozishdan oldin offset'ni commit qilish",
+          "Tez-tez yozish, yiqilishdan keyin kamroq qayta o'qilsin",
+          "Oynaning to'liq sanog'ini offset bilan yozish, eskisini o'tkazish",
+        ],
+        answer: 2,
+        why: "Yozuv endi to'liq sanoqni `last_offset` bilan yozadi, qator faqat offset yangiroq bo'lsa o'zgaradi. Takror eski offset bilan yoziladi va e'tiborsiz qoladi: sanoq hamon 219.",
+      },
       fields: {
         "committed offset": "Protsessor saqlagan oxirgi o'rin. Undan keyingi hammasi qayta o'qiladi.",
         "second time": "Yozuvlar allaqachon bo'lgan. `+` bilan ular ikki marta qo'llanadi.",

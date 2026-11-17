@@ -54,7 +54,7 @@ const text: LessonText<typeof lesson> = {
     ceiling: {
       short: "Shift",
       title: "Bundan kattasi yo'q",
-      body: "Bir yildan keyin: soniyasiga 2 400 so'rov. App endi provayder sotadigan eng katta mashinada, 64 vCPU da, 88% yuk bilan ishlaydi. Keyingi yilgi o'sishga joy yo'q.\n\nEng katta o'lchamlar bir CPU hisobida eng qimmati ham: bu server oyiga 2 900 turadi.",
+      body: "Bir yildan keyin: soniyasiga 2 400 so'rov. App endi provayder sotadigan eng katta mashinada, 64 vCPU da, 88% yuk bilan ishlaydi. Bitta jarayon 64 yadroni 4 tasidek samarali ishlata olmaydi: lock'lar va umumiy xotira yutuqning katta qismini yeydi. Keyingi yilgi o'sishga joy yo'q.\n\nEng katta o'lchamlar bir CPU hisobida eng qimmati ham: bu server oyiga 2 900 turadi.",
       watch: "Vertikal masshtablash qattiq shiftga uriladi, undan oldingi oxirgi pog'onalar esa eng qimmatlari.",
     },
     crash: {
@@ -70,6 +70,16 @@ const text: LessonText<typeof lesson> = {
       short: "Kengaytirish",
       title: "Gorizontal masshtablash: ko'proq server",
       body: "Bitta 64 vCPU li gigant o'rniga uchta 8 vCPU li server. Ochiq manzilni **load balancer** oladi va so'rovlarni ular orasida taqsimlaydi; har biri 62% da ishlaydi.\n\nUchta o'rtacha server va balancer oyiga 2 900 emas, taxminan 1 000 turadi. O'sish endi to'rtinchisini qo'shish degani.",
+      check: {
+        q: "Sessiyalar hali ham foydalanuvchi kirgan server xotirasida. Endi foydalanuvchilar nimani ko'radi?",
+        options: [
+          "Yangilik yo'q: cookie butun sessiyani olib yuradi",
+          "Ularni qayta-qayta login sahifasiga qaytaradi",
+          "Faqat birinchi so'rov odatdagidan sekinroq",
+        ],
+        answer: 1,
+        why: "Balancer har so'rovni istalgan serverga yuboradi, boshqalar esa bu sessiya haqida hech narsa bilmaydi. Uchta so'rovdan ikkitasi «noto'g'ri» serverga tushadi: foydalanuvchi login'ga qaytariladi, savat bo'sh ko'rinadi.",
+      },
       fields: {
         "X-Forwarded-For": "Foydalanuvchining haqiqiy manzili, uni balancer qo'shadi. Aks holda app balancer IP'sini ko'radi.",
         "X-Request-Id": "Bu so'rovni qaysi server ishlagan bo'lsa ham, uning log'idan topish uchun bitta ID.",
@@ -90,6 +100,16 @@ const text: LessonText<typeof lesson> = {
       short: "Stateless",
       title: "App serverlarni stateless qilish",
       body: "Sessiyalar umumiy, tez sessiyalar omboriga ko'chadi. Har bir app server har so'rovda sessiyani o'sha yerdan o'qiydi va so'rovlar orasida hech narsa saqlamaydi.\n\nEndi istalgan server istalgan so'rovga javob bera oladi. Serverlarni foydalanuvchilar sezmagan holda qo'shish, olib tashlash yoki qayta ishga tushirish mumkin.",
+      check: {
+        q: "`app-2` yiqiladi. U xizmat qilgan foydalanuvchilar bilan nima bo'ladi?",
+        options: [
+          "Deyarli sezishmaydi: u chiqariladi, qolganlar oladi",
+          "Tizimdan chiqib ketadi: sessiyalari u bilan o'ldi",
+          "`app-2` qaytmaguncha har so'rov xato bo'ladi",
+        ],
+        answer: 0,
+        why: "Health check javob olmay qoladi va `app-2` bir necha soniyada aylanmadan chiqadi. Sessiyalar umumiy omborda, shuning uchun qolgan ikkitasi uning foydalanuvchilariga javob beradi; faqat o'sha soniyalardagi so'rovlar yiqiladi, lekin ikkalasi endi 92% da.",
+      },
       fields: {
         session: "Kalit — cookie'ning o'zi emas, uning hash'i.",
         user_id: "Foydalanuvchi kim. Buni istalgan server o'qiy oladi.",

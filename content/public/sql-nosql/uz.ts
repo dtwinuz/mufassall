@@ -50,6 +50,16 @@ const text: LessonText<typeof lesson> = {
       title: "Hujjat: butun buyurtma bitta o'qishda",
       body: "Hujjat ombori buyurtmani bitta JSON obyekt sifatida saqlaydi, qatorlar va mahsulot nomlari uning ichida. O'qish — bitta qidiruv, JOIN yo'q.\n\nBuyurtma sahifasi uchun bu ideal: sahifaga har safar aynan shu obyekt kerak.",
       watch: "Mahsulot nomi buyurtma ichiga nusxalangan. Buyurtma uchun bu to'g'ri (nima sotib olinganini ko'rsatadi), lekin o'zgarishi kerak bo'lsa, har nusxani yangilash kerak.",
+      check: {
+        q: "Biznes `p_17` chiroq qaysi buyurtmalarda borligini so'raydi. O'sha maydonda indeks yo'q. Hujjat ombori nima qiladi?",
+        options: [
+          "`_id` bo'yicha o'qishdek bitta tez qidiruv",
+          "Har buyurtma hujjatini o'qib, birma-bir tekshiradi",
+          "Rad etadi: hujjatlar ichidan qidirib bo'lmaydi",
+        ],
+        answer: 1,
+        why: "Hujjatlar mahsulot atrofida emas, bitta buyurtmani o'qish atrofida qurilgan. Indeks bo'lmasa, ombor 4,8 million buyurtmaning hammasini o'qiydi, so'rov taxminan 3,4 soniya davom etadi.",
+      },
       fields: {
         _id: "Hujjat kaliti. Kalit bo'yicha o'qish — tez yo'l.",
         items: "Buyurtma qatorlari boshqa jadvalda emas, buyurtmaning ichida.",
@@ -61,6 +71,16 @@ const text: LessonText<typeof lesson> = {
       title: "Model ko'zlamagan yangi savol",
       body: "Biznes so'raydi: «`p_17` chiroq qaysi buyurtmalarda bor?». Hujjatlar mahsulot atrofida emas, bitta buyurtmani o'qish atrofida qurilgan.\n\nO'sha maydonda indeks bo'lmasa, ombor mos kelganlarini topish uchun 4,8 million buyurtmaning hammasini o'qiydi. So'rov soniyalab davom etadi va qolgan hamma narsani sekinlashtiradi.",
       watch: "Hujjat modeli ma'lum so'rovlar atrofida loyihalanadi. Har yangi savol — yangi indeks, ma'lumotning yangi nusxasi yoki to'liq skanerlash.",
+      check: {
+        q: "O'sha savol relatsion bazaga beriladi, u yerda buyurtma qatorlari `product_id` bo'yicha indeksli jadval. Nima kerak bo'ladi?",
+        options: [
+          "Avval sxemani o'zgartirish va ma'lumotni ko'chirish",
+          "Buyurtmalarning mahsulot kalitli ikkinchi nusxasi",
+          "Shunchaki yangi so'rov, taxminan 2 ms da javob",
+        ],
+        answer: 2,
+        why: "Buyurtma qatorlari allaqachon `product_id` indeksli alohida jadvalda. Yangi savol — faqat 17-mahsulot qatorlarini o'qiydigan oddiy `GROUP BY` so'rovi, sxemada hech narsa o'zgarmaydi.",
+      },
       fields: {
         COLLSCAN: "Kolleksiyani skanerlash: har hujjat o'qiladi va tekshiriladi.",
         docsExamined: "Bitta savolga javob uchun 4,8 million hujjat o'qildi.",
@@ -88,6 +108,16 @@ const text: LessonText<typeof lesson> = {
       short: "Wide-column",
       title: "Hodisalar oqimi uchun wide-column ombor",
       body: "Sahifa ko'rishlari wide-column omborga ko'chadi. Jadval `user_id` bo'yicha ko'p mashinalarga bo'lingan, har foydalanuvchi ichida qatorlar vaqt bo'yicha tartiblangan.\n\nYozuvlar tarqalgan va faqat oxiriga qo'shiladi, shuning uchun klaster soniyasiga 40 000 tani bemalol oladi. Relatsion bazada faqat buyurtmalar qoldi, u yana tinch.",
+      check: {
+        q: "Kimdir bitta buyurtma sahifasini kimlar ko'rganini so'raydi. Ko'rishlar jadvali `user_id` bo'yicha bo'lingan. Ombor nima qiladi?",
+        options: [
+          "So'rovni rad etadi: sahifa kalit emas",
+          "Har mashinadan so'rab, sekin javob beradi",
+          "Vaqt bo'yicha tartiblangan qatorlardan tez javob beradi",
+        ],
+        answer: 0,
+        why: "Sahifa bo'yicha javob uchun ombor har mashinadan so'rab, hammasini o'qishi kerak bo'lardi, shuning uchun so'rovni rad etadi. Wide-column omborda faqat jadval qurilgan kalit bo'yicha so'rash mumkin.",
+      },
       fields: {
         views_by_user: "Jadval o'z savoli nomi bilan atalgan: bitta foydalanuvchining ko'rishlari, eng yangisi birinchi.",
         user_id: "Partition kaliti. Qator qaysi mashinalarda saqlanishini u hal qiladi.",

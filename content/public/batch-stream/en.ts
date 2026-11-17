@@ -31,6 +31,16 @@ const text: LessonText<typeof lesson> = {
       short: "Nightly",
       title: "A nightly job counts yesterday",
       body: "Apps send clicks to a collector, which appends them to files. At 02:00 a job reads all of yesterday's files, groups by ad and writes the totals.\n\nIt is simple and easy to fix: if the code had a bug, run it again and the day is rewritten. The price is freshness: numbers arrive up to a day late.",
+      check: {
+        q: "The ad server stops an ad once its $50 daily budget is spent. An ad goes viral at 10:00. What happens?",
+        options: [
+          "It stops within minutes, once the budget is gone",
+          "It keeps showing all day: spend still reads $0",
+          "It is paused until the nightly job recounts",
+        ],
+        answer: 1,
+        why: "The budget check reads stats from last night's run, so today's spend shows 0.00. The ad burned its budget in an hour and kept showing all day: $340 the network cannot bill.",
+      },
       fields: {
         OVERWRITE: "The job replaces the whole day. Running it twice gives the same result, not double counts.",
         PARTITION: "One partition per day. A rerun touches only that day.",
@@ -85,6 +95,16 @@ const text: LessonText<typeof lesson> = {
       title: "Clicks that arrive minutes late",
       body: "A phone in the metro has no network. Its clicks are queued and sent when it gets signal again, three minutes later.\n\nThe 10:00 window was already finished and written. The late click falls on the floor, and the counts drift 3% below the truth.",
       watch: "Processing time is when you saw it, event time is when it happened. Windows must use event time.",
+      check: {
+        q: "The processor now waits 5 minutes for late clicks before closing a window. What does that cost?",
+        options: [
+          "Final counts arrive about 6 minutes late instead of 1",
+          "Nothing: late clicks are counted, the rest is the same",
+          "Clicks later than 5 minutes are counted twice",
+        ],
+        answer: 0,
+        why: "A window is final only when the watermark, newest event time minus 5 minutes, passes its end. Miscounts fall to 0.2%, but final numbers come six minutes after the fact instead of one.",
+      },
       fields: {
         event_time: "10:00:52: the click belongs to the 10:00 window.",
         received_at: "10:03:40: almost three minutes later. That window has already closed.",
@@ -105,6 +125,16 @@ const text: LessonText<typeof lesson> = {
       short: "Crash",
       title: "Crash and replay: clicks counted twice",
       body: "The processor wrote counts up to offset 89320 and crashed before saving its position. On restart it resumes from the last saved offset, 88120.\n\nDelivery is **at least once**, which is right: nothing is lost. But the sink adds partial counts, so 1200 clicks are added a second time and advertisers are overbilled.",
+      check: {
+        q: "Delivery stays at-least-once. How do replays stop adding the same clicks twice?",
+        options: [
+          "Commit the offset before writing to the database",
+          "Flush more often, so less is replayed after a crash",
+          "Write the full window count with its offset; skip older offsets",
+        ],
+        answer: 2,
+        why: "The sink now writes the whole count plus `last_offset`, and the row changes only if the offset is newer. A replay writes with an old offset and is ignored: the count stays 219.",
+      },
       fields: {
         "committed offset": "The last position the processor saved. Everything after it is read again.",
         "second time": "The writes already happened. With `+` they are applied twice.",

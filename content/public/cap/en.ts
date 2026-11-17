@@ -72,6 +72,16 @@ const text: LessonText<typeof lesson> = {
       title: "Choice 2: stay available, accept writes on both sides",
       body: "The other option: the west keeps taking bookings during the cut. Every user can book, the service looks healthy.\n\nBut the east is doing the same. In the east `u_42` takes seat 14B; two seconds later in the west `u_77` takes the same 14B. Each side checked its own copy and saw it free. This is the available choice (AP).",
       watch: "Each side's check is correct for its own copy. The copies disagree.",
+      check: {
+        q: "The fibre is repaired and replication resumes. What happens to seat 14B?",
+        options: [
+          "Both copies are version 5 with different holders: a conflict",
+          "The newer version wins and the copies agree on their own",
+          "The later write, by `u_77`, simply replaces the earlier one",
+        ],
+        answer: 0,
+        why: "Both sides changed version 4, so both send version 5 with different holders. Neither is newer, so someone has to decide; over the hour of the cut 18 records ended up like this.",
+      },
       fields: {
         "holder IS NULL": "\"Only if the seat is free.\" True in the west copy, while the east has already sold it.",
         "UPDATE 1": "Success. The west has no idea it just double-booked.",
@@ -103,6 +113,16 @@ const text: LessonText<typeof lesson> = {
       short: "Quorum",
       title: "Three replicas, write to two, read from two",
       body: "A small third site is added. Each seat now lives on N = 3 replicas. A write counts only when W = 2 replicas confirm it; a read asks R = 2 replicas and takes the highest version.\n\nBecause R + W = 4 > 3, every read overlaps every finished write on at least one replica: no stale reads. The price is a slower write, 38 ms instead of 4, since one confirmation comes from another site.",
+      check: {
+        q: "The east site is cut off from both other sites. What does the east API do with a new booking?",
+        options: [
+          "Accepts it locally and reconciles after the link heals",
+          "Refuses it: it gets 1 confirmation, and W = 2 are needed",
+          "Holds the request until the link is back, then commits",
+        ],
+        answer: 1,
+        why: "The east reaches only its own replica, 1 of 3, and cannot collect W = 2, so it answers `no_quorum`. West and the third site are a majority and keep accepting bookings.",
+      },
       fields: {
         N: "How many replicas hold each record.",
         W: "How many must confirm before the write is accepted.",
