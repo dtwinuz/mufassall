@@ -44,9 +44,9 @@ export default defineLesson({
         store: { kind: "db", at: [7, 5] },
       },
       edges: {
-        in: { from: "provider", to: "api", rate: 3 },
-        out: { from: "api", to: "provider", flow: "ack", rate: 1 },
-        write: { from: "api", to: "store", rate: 3 },
+        // a call: the `200` travels back on the same line, so there is no separate reply edge
+        in: { from: "provider", to: "api", rate: 3, mode: "call" },
+        write: { from: "api", to: "store", rate: 3, mode: "call" },
       },
       metrics: { incoming: 40, p95: 3800, lost: 0, dupes: 0 },
       focus: ["api"],
@@ -61,7 +61,7 @@ export default defineLesson({
     {
       id: "false-ok",
       kind: "problem",
-      edges: { write: { cut: true }, out: { rate: 3 } },
+      edges: { write: { cut: true } },
       metrics: { lost: 2 },
       focus: ["api", "store"],
       exchange: {
@@ -101,9 +101,9 @@ export default defineLesson({
         worker: { kind: "worker", at: [6, 0] },
       },
       edges: {
-        publish: { from: "api", to: "queue", rate: 3 },
-        take: { from: "queue", to: "worker", rate: 3 },
-        save: { from: "worker", to: "store", rate: 3 },
+        publish: { from: "api", to: "queue", rate: 3, mode: "async" },
+        take: { from: "queue", to: "worker", rate: 3, mode: "async" },
+        save: { from: "worker", to: "store", rate: 3, mode: "call" },
       },
       metrics: { p95: 30 },
       focus: ["queue", "worker"],
@@ -179,5 +179,102 @@ export default defineLesson({
       },
     },
     { id: "recap", kind: "recap" },
+  ],
+  scenarios: [
+    {
+      id: "slow",
+      from: "queue",
+      steps: [
+        {
+          id: "slow-db",
+          kind: "problem",
+          nodes: { api: { state: "slow" }, store: { state: "slow", load: 98 } },
+          metrics: { p95: 30000 },
+          focus: ["api", "store"],
+          exchange: {
+            edge: "in",
+            request: callback(),
+            response: { format: "http", head: "HTTP/1.1 200 OK", headers: [["X-Response-Time", "30118 ms"]] },
+            marks: ["X-Response-Time"],
+            masked: ["X-Signature"],
+          },
+        },
+        {
+          id: "slow-retry",
+          kind: "problem",
+          edges: { in: { flow: "dup", rate: 6 } },
+          metrics: { dupes: 24 },
+          focus: ["provider", "api"],
+          exchange: {
+            edge: "in",
+            request: callback("2"),
+            marks: ["X-Retry-Count", "event_id"],
+            masked: ["X-Signature"],
+          },
+        },
+        {
+          id: "slow-end",
+          kind: "case",
+          nodes: { queue: { load: 92 }, worker: { state: "slow", load: 95 } },
+          metrics: { dupes: 36, p95: 31000 },
+          focus: ["queue", "worker"],
+        },
+      ],
+    },
+    {
+      id: "lost",
+      from: "queue",
+      steps: [
+        {
+          id: "gone",
+          kind: "problem",
+          edges: { in: { cut: true } },
+          metrics: { incoming: 38, lost: 5 },
+          focus: ["provider", "api"],
+          exchange: {
+            edge: "in",
+            request: callback(),
+            marks: ["event_id"],
+            masked: ["X-Signature"],
+          },
+        },
+        {
+          id: "gone-poll",
+          kind: "fix",
+          edges: { poll: { from: "api", to: "provider", rate: 1, mode: "call" } },
+          metrics: { lost: 0 },
+          focus: ["api", "provider"],
+          exchange: {
+            edge: "poll",
+            request: {
+              format: "http",
+              head: "GET /v1/documents/doc_5521 HTTP/1.1",
+              headers: [
+                ["Host", "provider.example.com"],
+                ["Authorization", "***"],
+              ],
+            },
+            response: {
+              format: "json",
+              head: "HTTP/1.1 200 OK",
+              body: `{
+  "document_id": "doc_5521",
+  "status": "accepted",
+  "updated_at": "2026-11-17T09:14:03Z"
+}`,
+            },
+            marks: ["Authorization", "status", "updated_at"],
+            masked: ["Authorization"],
+          },
+        },
+        {
+          id: "gone-end",
+          kind: "case",
+          edges: { in: { cut: false, flow: "dup" }, poll: { rate: 2 } },
+          metrics: { incoming: 40, dupes: 2 },
+          focus: ["provider", "api", "worker"],
+        },
+      ],
+    },
   ],
 });

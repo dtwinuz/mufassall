@@ -130,6 +130,65 @@ const text: LessonText<typeof lesson> = {
       body: "Four rules for a reliable callback.\n\n1) `200` only after the message is saved. 2) Heavy work in a queue and a worker. 3) Ack after the work. 4) Every handler is idempotent: a repeat gives the same result.",
     },
   },
+  scenarios: {
+    slow: {
+      label: "Reply in 30 s",
+      steps: {
+        "slow-db": {
+          short: "Slow DB",
+          title: "The inbox write takes 30 seconds",
+          body: "The database is under a heavy report and every write waits for a lock. The inbox insert, normally a few milliseconds, now takes 30 seconds.\n\nThe callback is a synchronous call: the sender holds the connection and waits for the `200` on the same line. It gave up long ago.",
+          watch: "The reply still comes. Nobody is listening for it any more.",
+          fields: {
+            "X-Response-Time": "30 seconds. The sender's timeout is 3, so for it this delivery failed.",
+          },
+        },
+        "slow-retry": {
+          short: "Retries",
+          title: "Timeouts turn into retries",
+          body: "For the sender every timeout is a failed delivery, so it sends the same callback again. Each retry also waits 30 seconds and also times out.\n\nOne event now arrives three times, and the extra traffic makes the slow database slower still.",
+          fields: {
+            "X-Retry-Count": "The third attempt. The first two were saved, but their `200` came too late.",
+            event_id: "The same ID every time. Without idempotency each copy becomes a job.",
+          },
+        },
+        "slow-end": {
+          short: "Outcome",
+          title: "Outcome: nothing lost, three times the work",
+          body: "Nothing is lost: every copy was saved. But the queue fills with copies and the worker does the same job up to three times, about 36 a minute.\n\nCompare with the normal path: a fast `200` is not only about speed. It is what stops the sender from retrying.",
+        },
+      },
+    },
+    lost: {
+      label: "Callback lost",
+      steps: {
+        gone: {
+          short: "Lost",
+          title: "The callback never arrives",
+          body: "A network failure between the sender and you drops some callbacks on the way. The sender got no answer and, after a few retries, gave up.\n\nOn your side nothing happened: no error, no log line. Document `doc_5521` stays pending forever.",
+          watch: "You cannot see a callback that never came. Only a regular check against the source finds it.",
+          fields: {
+            event_id: "This event never reached the API. Nothing on your side knows its ID.",
+          },
+        },
+        "gone-poll": {
+          short: "Reconcile",
+          title: "Reconcile: ask about what is still pending",
+          body: "Every few minutes the API takes documents that have been pending too long and asks the sender for their status itself.\n\nThis is a synchronous call in the other direction: the API waits, and the status comes back on the same line. Lost callbacks are no longer lost, only late.",
+          fields: {
+            Authorization: "Your own key for the sender's API. A secret, hidden here.",
+            status: "The real status. The API records it as if the callback had arrived.",
+            updated_at: "When the status changed at the sender. The lost callback would have said the same.",
+          },
+        },
+        "gone-end": {
+          short: "Outcome",
+          title: "Outcome: late, and sometimes twice",
+          body: "The network recovers and the delayed callback finally arrives, after reconciliation has already recorded the status. The same event now comes from two sides, about 2 times a minute.\n\nThe cost of reconciliation: extra calls to the sender and duplicates. Which is why handling must be idempotent.",
+        },
+      },
+    },
+  },
 };
 
 export default text;

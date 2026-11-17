@@ -37,6 +37,9 @@ export const sections: readonly Section[] = [
     id: "systems",
     lessons: ["hld-lld", "design-url-shortener", "design-news-feed", "design-chat", "design-video-streaming"],
   },
-  { id: "business", lessons: ["payments"] },
+  {
+    id: "business",
+    lessons: ["payments", "reconciliation", "digital-signature", "document-lifecycle", "audit-log"],
+  },
   { id: "cases", lessons: ["case-discord-messages", "case-figma-multiplayer"] },
 ];

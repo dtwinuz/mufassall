@@ -76,7 +76,7 @@ export default defineLesson({
       kind: "case",
       nodes: { db: { load: 20 } },
       edges: { sql: { rate: 1 } },
-      metrics: { "hit-ratio": 94, p95: 12, "db-reads": 145 },
+      metrics: { "hit-ratio": 94, p95: 40, "db-reads": 145 },
       focus: ["api", "cache"],
       exchange: {
         edge: "look",

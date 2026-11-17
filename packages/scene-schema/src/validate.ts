@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FLOWS, LEVELS, type LessonInput, NODE_KINDS, NODE_STATES, STEP_KINDS, TIERS, WIRE_FORMATS } from "./index";
+import { EDGE_MODES, FLOWS, LEVELS, type LessonInput, NODE_KINDS, NODE_STATES, STEP_KINDS, TIERS, WIRE_FORMATS } from "./index";
 
 const id = z.string().regex(/^[a-z][a-z0-9-]*$/, "id: lowercase latin, digits and dashes");
 
@@ -20,6 +20,7 @@ const edgePatch = z
     flow: z.enum(FLOWS),
     rate: z.number().min(0).max(12),
     cut: z.boolean(),
+    mode: z.enum(EDGE_MODES),
   })
   .partial()
   .strict();
@@ -63,8 +64,30 @@ export const lessonSchema = z
     tier: z.enum(TIERS),
     metrics: z.array(z.object({ id, unit: z.string(), better: z.enum(["up", "down"]) }).strict()).max(6),
     steps: z.array(stepSchema).min(2).max(16),
+    scenarios: z
+      .array(z.object({ id, from: id, steps: z.array(stepSchema).min(1).max(6) }).strict())
+      .max(4)
+      .optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((lesson, ctx) => {
+    const base = lesson.steps.map((s) => s.id);
+    const taken = new Set(base);
+    const ids = new Set<string>();
+    lesson.scenarios?.forEach((sc, i) => {
+      const at = (msg: string, ...path: (string | number)[]) =>
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["scenarios", i, ...path], message: msg });
+      if (ids.has(sc.id)) at(`duplicate scenario id "${sc.id}"`, "id");
+      ids.add(sc.id);
+      const from = base.indexOf(sc.from);
+      if (from < 0) at(`branches from unknown step "${sc.from}"`, "from");
+      else if (from === base.length - 1) at("cannot branch from the last step", "from");
+      sc.steps.forEach((s, j) => {
+        if (taken.has(s.id)) at(`step id "${s.id}" is already used by the base story or another scenario`, "steps", j, "id");
+        taken.add(s.id);
+      });
+    });
+  });
 
 /** Strict check of a lesson's shape (typos, extra keys, ranges). Throws with a readable path. */
 export function validateLesson(lesson: LessonInput): void {

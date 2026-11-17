@@ -27,8 +27,8 @@ export default defineLesson({
         shopdb: { kind: "db", at: [12, 7] },
       },
       edges: {
-        direct: { from: "payments", to: "shop", rate: 3 },
-        save: { from: "shop", to: "shopdb", rate: 3 },
+        direct: { from: "payments", to: "shop", rate: 3, mode: "call" },
+        save: { from: "shop", to: "shopdb", rate: 3, mode: "call" },
       },
       metrics: { p95: 8200, forged: 0, dups: 0, backlog: 0 },
       focus: ["payments", "shop"],
@@ -60,9 +60,10 @@ export default defineLesson({
       },
       edges: {
         direct: null,
-        enqueue: { from: "payments", to: "queue", rate: 3 },
-        take: { from: "queue", to: "sender", rate: 3 },
-        deliver: { from: "sender", to: "shop", rate: 3 },
+        // the payment only drops the event into the queue; the sender's delivery is a call that waits up to 10 s
+        enqueue: { from: "payments", to: "queue", rate: 3, mode: "async" },
+        take: { from: "queue", to: "sender", rate: 3, mode: "async" },
+        deliver: { from: "sender", to: "shop", rate: 3, mode: "call" },
       },
       metrics: { p95: 60 },
       focus: ["payments", "queue", "sender"],
@@ -247,5 +248,54 @@ export default defineLesson({
       },
     },
     { id: "recap", kind: "recap" },
+  ],
+  scenarios: [
+    {
+      id: "slow",
+      from: "queue",
+      steps: [
+        {
+          id: "shop-slow",
+          kind: "problem",
+          nodes: { shop: { state: "slow" } },
+          metrics: { backlog: 600 },
+          focus: ["sender", "shop"],
+          exchange: {
+            edge: "deliver",
+            request: {
+              format: "text",
+              head: "10:00:00 deliver evt_9f2 attempt 1",
+              body: "10:00:10 timeout: no answer in 10 s, schedule retry\n10:00:30 shop answers 200 to a connection closed 20 s ago",
+            },
+            marks: ["timeout", "10:00:30"],
+          },
+        },
+        {
+          id: "shop-retry",
+          kind: "problem",
+          nodes: { queue: { load: 60 }, sender: { load: 85 } },
+          edges: { deliver: { flow: "dup" }, save: { flow: "dup" } },
+          metrics: { dups: 40, backlog: 2400 },
+          focus: ["sender", "shop", "shopdb"],
+          exchange: {
+            edge: "deliver",
+            request: { format: "http", head: "POST /hooks/payments HTTP/1.1", headers: [["Webhook-Id", "evt_9f2"]] },
+            response: {
+              format: "text",
+              head: "attempt 3: timeout after 10 s",
+              body: "shop, 20 s later: order ord_5521 paid, bonus +500 (third time)",
+            },
+            marks: ["Webhook-Id", "attempt 3", "bonus"],
+          },
+        },
+        {
+          id: "shop-end",
+          kind: "case",
+          nodes: { queue: { load: 80 }, sender: { load: 95 } },
+          metrics: { dups: 60, backlog: 5200 },
+          focus: ["payments", "queue", "sender"],
+        },
+      ],
+    },
   ],
 });

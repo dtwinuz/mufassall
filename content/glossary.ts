@@ -1128,4 +1128,125 @@ export const glossary: Term[] = [
     },
     lesson: "design-video-streaming",
   },
+  // ---- business ----
+  {
+    id: "reconciliation",
+    term: { uz: "Solishtirish (reconciliation)", ru: "Сверка (reconciliation)", en: "Reconciliation" },
+    short: {
+      uz: "O'z hisob daftaringizni o'sha pulning tashqi yozuvi bilan solishtirib, har bir farqni hal qilish.",
+      ru: "Сравнение своего журнала с внешней записью тех же денег и разбор каждого расхождения.",
+      en: "Comparing your own ledger with an outside record of the same money and resolving every difference.",
+    },
+    lesson: "reconciliation",
+  },
+  {
+    id: "settlement-report",
+    term: { uz: "Hisob-kitob hisoboti", ru: "Реестр расчётов", en: "Settlement report" },
+    short: {
+      uz: "To'lov provayderining haqiqatan o'tkazgan har bir yechish, qaytarish va komissiyasi bo'yicha kunlik (T+1) ro'yxati.",
+      ru: "Ежедневный (T+1) список провайдера по всем реально проведённым списаниям, возвратам и комиссиям.",
+      en: "The payment provider's daily (T+1) list of every charge, refund and fee it actually booked.",
+    },
+    lesson: "reconciliation",
+  },
+  {
+    id: "minor-units",
+    term: { uz: "Eng kichik birlik (tiyin)", ru: "Минимальные единицы", en: "Minor units" },
+    short: {
+      uz: "Pulni eng kichik birlikda (tiyin, sent) butun son sifatida saqlash, shunda yig'indilar aniq chiqadi.",
+      ru: "Хранение денег целым числом в наименьших единицах (тийины, центы), чтобы суммы были точными.",
+      en: "Money stored as an integer of the smallest unit (tiyin, cents), so sums are exact.",
+    },
+    lesson: "reconciliation",
+  },
+  {
+    id: "electronic-signature",
+    term: { uz: "Elektron raqamli imzo (ERI)", ru: "Электронная цифровая подпись (ЭЦП)", en: "Electronic digital signature" },
+    short: {
+      uz: "Hujjat xeshi ustidan shaxsiy kalit bilan qo'yilgan imzo. Uni sertifikatdagi ochiq kalit bilan har kim tekshira oladi.",
+      ru: "Подпись закрытым ключом над хешем документа. Любой может проверить её открытым ключом из сертификата.",
+      en: "A private-key signature over a document's hash. Anyone can check it with the public key from the certificate.",
+    },
+    lesson: "digital-signature",
+  },
+  {
+    id: "cms-pkcs7",
+    term: { uz: "CMS (PKCS#7)", ru: "CMS (PKCS#7)", en: "CMS (PKCS#7)" },
+    short: {
+      uz: "Imzo, sertifikatlar va imzolangan atributlarni bitta paketga o'raydigan format: hujjat ichida (attached) yoki alohida (detached).",
+      ru: "Формат, упаковывающий подпись, сертификаты и подписываемые атрибуты: вместе с документом (attached) или отдельно (detached).",
+      en: "The format that packs a signature, certificates and signed attributes, with the document inside (attached) or apart (detached).",
+    },
+    lesson: "digital-signature",
+  },
+  {
+    id: "ocsp",
+    term: { uz: "OCSP", ru: "OCSP", en: "OCSP" },
+    short: {
+      uz: "Sertifikat hozir yaroqli, bekor qilingan yoki noma'lumligini sertifikat markazidan so'rash. CRL ro'yxatining onlayn muqobili.",
+      ru: "Запрос к удостоверяющему центру: действует ли сертификат сейчас, отозван или неизвестен. Онлайн-альтернатива списку CRL.",
+      en: "Asking the certificate authority whether a certificate is good, revoked or unknown right now. The online alternative to a CRL.",
+    },
+    lesson: "digital-signature",
+  },
+  {
+    id: "trusted-timestamp",
+    term: { uz: "Ishonchli vaqt tamg'asi", ru: "Доверенная метка времени", en: "Trusted timestamp" },
+    short: {
+      uz: "Vaqt tamg'asi xizmati (TSA) imzo qiymati xeshini o'z vaqti bilan imzolaydi. Sertifikat muddati tugagach ham imzo qachon qo'yilgani isbotlanadi.",
+      ru: "Служба меток времени (TSA) подписывает хеш значения подписи своим временем. Момент подписи доказуем и после истечения сертификата.",
+      en: "A timestamp authority (TSA) signs the hash of a signature value with its own time, so the signing time stays provable after the certificate expires.",
+    },
+    lesson: "digital-signature",
+  },
+  {
+    id: "state-machine",
+    term: { uz: "Holat mashinasi", ru: "Машина состояний", en: "State machine" },
+    short: {
+      uz: "Obyekt faqat o'tishlar jadvalida ruxsat etilgan (holat, amal) juftliklari bo'yicha o'zgaradi. Boshqa har qanday o'tish rad etiladi.",
+      ru: "Объект меняется только по парам (состояние, действие), разрешённым в таблице переходов. Любой другой переход отклоняется.",
+      en: "An object changes only through (state, action) pairs allowed by a transition table. Any other transition is rejected.",
+    },
+    lesson: "document-lifecycle",
+  },
+  {
+    id: "pending-state",
+    term: { uz: "Kutish holati (pending)", ru: "Промежуточное состояние (pending)", en: "Pending state" },
+    short: {
+      uz: "Tashqi tizim tasdiqlaguncha hujjat turadigan oraliq holat. Tasdiq kelmaguncha foydalanuvchiga yakuniy natija ko'rsatilmaydi.",
+      ru: "Промежуточное состояние, в котором документ ждёт подтверждения внешней системы. До подтверждения итог пользователю не показывают.",
+      en: "An in-between state a document holds until an external system confirms. The final result is not shown before that.",
+    },
+    lesson: "document-lifecycle",
+  },
+  {
+    id: "audit-log",
+    term: { uz: "Audit jurnali", ru: "Журнал аудита", en: "Audit log" },
+    short: {
+      uz: "Biznes harakatlarining faqat qo'shiladigan yozuvi: kim, nima qildi, nimaga, qachon, qayerdan, oldin va keyin.",
+      ru: "Журнал бизнес-действий только на добавление: кто, что сделал, над чем, когда, откуда, до и после.",
+      en: "An append-only record of business actions: who did what, to what, when, from where, before and after.",
+    },
+    lesson: "audit-log",
+  },
+  {
+    id: "hash-chain",
+    term: { uz: "Xesh zanjiri", ru: "Хеш-цепочка", en: "Hash chain" },
+    short: {
+      uz: "Har bir yozuv oldingisining xeshini saqlaydi, shuning uchun bitta yozuvni o'zgartirish yoki o'chirish undan keyingi hamma bog'lanishni buzadi.",
+      ru: "Каждая запись хранит хеш предыдущей, поэтому изменение или удаление одной записи ломает все последующие связи.",
+      en: "Each record stores the previous record's hash, so changing or deleting one record breaks every later link.",
+    },
+    lesson: "audit-log",
+  },
+  {
+    id: "worm-storage",
+    term: { uz: "WORM ombori", ru: "WORM-хранилище", en: "WORM storage" },
+    short: {
+      uz: "Bir marta yoz, ko'p o'qi: object lock yoqilgan ombor. Saqlash muddati tugaguncha hech kim ma'lumotni o'chira yoki ustidan yoza olmaydi.",
+      ru: "«Записал один раз, читай много»: хранилище с object lock. До конца срока хранения данные никто не удалит и не перезапишет.",
+      en: "Write once, read many: storage with an object lock. Until the retention date nobody can delete or overwrite the data.",
+    },
+    lesson: "audit-log",
+  },
 ];

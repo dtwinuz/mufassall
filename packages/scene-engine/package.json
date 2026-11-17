@@ -6,7 +6,10 @@
   "exports": {
     ".": "./src/index.ts",
     "./lab-editor": "./src/LabEditor.tsx",
-    "./player.css": "./src/player.css"
+    "./player.css": "./src/player.css",
+    "./whatif": "./src/WhatIfPanel.tsx",
+    "./whatif-model": "./src/whatif.ts",
+    "./whatif.css": "./src/whatif.css"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"

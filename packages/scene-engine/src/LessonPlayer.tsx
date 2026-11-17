@@ -7,8 +7,8 @@ import {
   type StepText,
   diff,
   emptyState,
-  resolve,
 } from "@mufassall/scene-schema";
+import { type Branch, branchChoices, branchOf, parseBranch, progressIndex, switchIndex } from "./branch";
 import { lessonBounds } from "./iso";
 import { tween, useReducedMotion } from "./motion";
 import { Scene } from "./Scene";
@@ -16,7 +16,7 @@ import { Check } from "./Check";
 import { downloadPng } from "./export";
 import { encodeDoc, fromScene } from "./lab";
 import { inline, paragraphs, plain } from "./text";
-import { type UiStrings, fill, formatNumber } from "./ui";
+import { type UiStrings, fill, formatNumber, scenarioUi } from "./ui";
 import { Wire } from "./Wire";
 import { Feedback, TryPanel, useSpeech, useTry } from "./extras";
 
@@ -50,14 +50,26 @@ export interface LessonPlayerProps<T extends LessonInput> {
 }
 
 export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, crumbs, next, labHref }: LessonPlayerProps<T>) {
-  const states = useMemo(() => resolve(lesson), [lesson]);
-  const box = useMemo(() => lessonBounds(states), [states]);
+  const [sc, setSc] = useState<string | null>(null);
+  const branch = useMemo(() => branchOf(lesson, sc), [lesson, sc]);
+  const states = branch.states;
+  // one frame for every path, so switching scenarios never rescales the scene
+  const box = useMemo(
+    () => lessonBounds([...branchOf(lesson, null).states, ...(lesson.scenarios ?? []).flatMap((s) => branchOf(lesson, s.id).states)]),
+    [lesson],
+  );
   const total = states.length;
-  const steps = text.steps as Record<string, StepText>;
+  const baseSteps = text.steps as Record<string, StepText>;
+  const scenarioTexts = (text.scenarios ?? {}) as Record<string, { label: string; steps: Record<string, StepText> } | undefined>;
+  const textOf = (id: string): StepText | undefined => baseSteps[id] ?? (sc ? scenarioTexts[sc]?.steps[id] : undefined);
   const labels = text.nodes as Record<string, string>;
   const metricLabels = text.metrics as Record<string, string>;
+  const sui = scenarioUi(ui, lang);
 
-  const [index, setIndex] = useState(0);
+  const [rawIndex, setIndex] = useState(0);
+  const index = Math.min(rawIndex, total - 1);
+  const branchRef = useRef<Branch>(branch);
+  branchRef.current = branch;
   const [paused, setPaused] = useState(false);
   const [runKey, setRunKey] = useState(0);
   const reduced = useReducedMotion();
@@ -70,31 +82,47 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
   const speech = useSpeech(lang);
   const [listening, setListening] = useState(false);
 
+  // read through a ref: the keyboard handler is registered once and must see the current path
   const go = (i: number) => {
-    const clamped = Math.max(0, Math.min(total - 1, i));
+    const b = branchRef.current;
+    const clamped = Math.max(0, Math.min(b.states.length - 1, i));
+    // before the fork every path is the same: stepping back there returns to the base story
+    if (b.sc !== null && clamped < b.from) setSc(null);
     setIndex(clamped);
     setRunKey((k) => k + 1);
   };
 
+  const pick = (next: string | null) => {
+    const target = branchOf(lesson, next);
+    setIndex(switchIndex(lesson, branch, index, target));
+    setSc(next);
+    setRunKey((k) => k + 1);
+  };
+
   useEffect(() => {
-    const n = Number(new URLSearchParams(window.location.search).get("step"));
-    if (Number.isInteger(n) && n >= 1 && n <= total) setIndex(n - 1);
-  }, [total]);
+    const at = parseBranch(lesson, window.location.search);
+    setSc(at.sc);
+    setIndex(at.index);
+  }, [lesson]);
 
   useEffect(() => {
     const url = new URL(window.location.href);
     url.searchParams.set("step", String(index + 1));
+    if (branch.sc) url.searchParams.set("sc", branch.sc);
+    else url.searchParams.delete("sc");
     window.history.replaceState(window.history.state, "", url);
+    const done = progressIndex(branch, index);
+    if (done < 0) return;
     try {
       const p = JSON.parse(window.localStorage.getItem(PROGRESS_KEY) ?? "{}") as Record<string, number>;
-      if ((p[lesson.slug] ?? -1) < index) {
-        p[lesson.slug] = index;
+      if ((p[lesson.slug] ?? -1) < done) {
+        p[lesson.slug] = done;
         window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(p));
       }
     } catch {
       /* storage can be blocked; progress is a convenience */
     }
-  }, [index, lesson.slug]);
+  }, [index, branch, lesson.slug]);
 
   const [keysOn, toggleKeys] = useShortcuts();
   const keysRef = useRef(keysOn);
@@ -111,7 +139,7 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
     const b = btn.getBoundingClientRect();
     const left = box.scrollLeft + (b.left - a.left) - box.clientWidth / 2 + b.width / 2;
     box.scrollTo({ left: Math.max(0, left), behavior: "auto" });
-  }, [index]);
+  }, [index, sc]);
   const indexRef = useRef(index);
   indexRef.current = index;
   useEffect(() => {
@@ -132,16 +160,19 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const step = lesson.steps[index]!;
+  const steps = branch.steps;
+  const step = steps[index]!;
   const state = states[index]!;
   const prev = index > 0 ? states[index - 1]! : emptyState();
   const changes = index > 0 ? diff(prev, state) : [];
-  const t = steps[step.id]!;
-  const nextStep = index < total - 1 ? steps[lesson.steps[index + 1]!.id] : undefined;
+  const t = textOf(step.id)!;
+  const nextStep = index < total - 1 ? textOf(steps[index + 1]!.id) : undefined;
   const exchange = step.exchange;
+  const choices = branchChoices(lesson, branch, index);
+  const modes = new Set(Object.values(state.edges).flatMap((e) => (e.mode ? [e.mode] : [])));
   const tried = useTry(state, labels, tryOn, tryRps, down);
   // a new step starts with every node back on
-  useEffect(() => setDown(new Set()), [index]);
+  useEffect(() => setDown(new Set()), [index, sc]);
   // listening mode reads each step as the reader moves on
   const spoken = `${plain(t.title)}. ${plain(t.body)}`;
   useEffect(() => {
@@ -180,6 +211,8 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
         return fill(ui.change.edgeFlow, { from: n(c.from), to: n(c.to), was: ui.flows[c.was], now: ui.flows[c.now] });
       case "edge-cut":
         return fill(c.op === "-" ? ui.change.edgeLost : ui.change.edgeRestored, { from: n(c.from), to: n(c.to) });
+      case "edge-mode":
+        return fill(sui.edgeMode, { from: n(c.from), to: n(c.to), was: sui.modes[c.was ?? "none"], now: sui.modes[c.now ?? "none"] });
       case "metric":
         return fill(ui.change.metric, {
           metric: metricLabels[c.id] ?? c.id,
@@ -200,7 +233,7 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
           <ul className="mf-chips" aria-label="meta">
             <li>{fill(ui.minutes, { n: lesson.minutes })}</li>
             <li>{ui.levels[lesson.level]}</li>
-            <li>{fill(ui.steps, { n: total })}</li>
+            <li>{fill(ui.steps, { n: lesson.steps.length })}</li>
           </ul>
         </header>
 
@@ -260,7 +293,7 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
                   className="mf-btn"
                   onClick={() => {
                     const svg = stageRef.current?.querySelector<SVGSVGElement>("svg.mf-scene");
-                    if (svg) void downloadPng(svg, `${lesson.slug}-${index + 1}`).catch(() => undefined);
+                    if (svg) void downloadPng(svg, `${lesson.slug}-${sc ? `${sc}-` : ""}${index + 1}`).catch(() => undefined);
                   }}
                 >
                   {ui.savePicture}
@@ -306,6 +339,13 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
                   </li>
                 ))}
                 <li className="mf-legend__item mf-legend__item--lost">{ui.legend.lost}</li>
+                {(["call", "async"] as const)
+                  .filter((m) => modes.has(m))
+                  .map((m) => (
+                    <li key={m} className={`mf-legend__item mf-legend__item--${m}`}>
+                      {sui.legend[m]}
+                    </li>
+                  ))}
               </ul>
               <p className="mf-note">{ui.modelNote}</p>
             </div>
@@ -329,6 +369,25 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
                 <span>{fill(ui.step, { n: index + 1, total })}</span>
                 <span className={`mf-kind mf-kind--${step.kind}`}>{ui.kinds[step.kind]}</span>
               </div>
+              {choices.length > 0 && (
+                <fieldset className="mf-branch">
+                  <legend>{sui.label}</legend>
+                  <div className="mf-branch__opts">
+                    {[null, ...choices].map((id) => (
+                      <label key={id ?? ""} className="mf-branch__opt">
+                        <input
+                          type="radio"
+                          name={`mf-sc-${lesson.slug}`}
+                          value={id ?? ""}
+                          checked={branch.sc === id}
+                          onChange={() => pick(id)}
+                        />
+                        <span>{id === null ? sui.base : (scenarioTexts[id]?.label ?? id)}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
               <h2 className="mf-panel__title">{inline(t.title)}</h2>
               <div className="mf-panel__body">{paragraphs(t.body)}</div>
               {t.check && <Check key={`${lesson.slug}/${step.id}`} id={`${lesson.slug}/${step.id}`} check={t.check} ui={ui.check} />}
@@ -388,11 +447,14 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
 
         <nav className="mf-timeline" aria-label={ui.inLesson} ref={timelineRef}>
           <ol>
-            {lesson.steps.map((s, i) => (
-              <li key={s.id} className={i < index ? "mf-tl--past" : i === index ? "mf-tl--now" : ""}>
-                <button type="button" onClick={() => go(i)} aria-current={i === index ? "step" : undefined} title={plain(steps[s.id]?.title ?? "")}>
+            {steps.map((s, i) => (
+              <li
+                key={s.id}
+                className={`${i < index ? "mf-tl--past" : i === index ? "mf-tl--now" : ""}${branch.sc !== null && i > branch.from ? " mf-tl--branch" : ""}`}
+              >
+                <button type="button" onClick={() => go(i)} aria-current={i === index ? "step" : undefined} title={plain(textOf(s.id)?.title ?? "")}>
                   <span className="mf-tl__dot">{i + 1}</span>
-                  <span className="mf-tl__label">{steps[s.id]?.short}</span>
+                  <span className="mf-tl__label">{textOf(s.id)?.short}</span>
                 </button>
               </li>
             ))}
