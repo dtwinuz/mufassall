@@ -35,6 +35,7 @@ export const site: Record<Lang, SiteStrings> = {
       lead: "Har bir dars — bitta muammo va uning yechimi. Sahnada so'rovlar harakatlanadi, tugunlar yiqiladi, raqamlar o'zgaradi. Siz esa har qadamda nima o'zgarganini ko'rasiz.",
       tracks: {
         reliability: { title: "Ishonchlilik", text: "Xabarlar yo'qolmasligi va ikki marta ishlanmasligi uchun." },
+        payments: { title: "To'lovlar", text: "Pul ikki marta yechilmasligi va mol to'lovsiz ketmasligi uchun." },
       },
       start: "Boshlash",
       continue: "Davom ettirish",
@@ -43,7 +44,6 @@ export const site: Record<Lang, SiteStrings> = {
       upcomingList: [
         "Elektron imzo: hujjat qanday imzolanadi va tekshiriladi",
         "Hujjat holatlari: ko'p tomonli holat mashinasi",
-        "To'lov shlyuzi: tekshir → yarat → bajar → bekor qil",
         "Navbatlar va qayta urinishlar: backoff, DLQ",
       ],
     },
@@ -62,6 +62,7 @@ export const site: Record<Lang, SiteStrings> = {
       lead: "Каждый урок — одна проблема и её решение. В сцене движутся запросы, падают узлы, меняются цифры, а вы на каждом шаге видите, что изменилось.",
       tracks: {
         reliability: { title: "Надёжность", text: "Чтобы сообщения не терялись и не обрабатывались дважды." },
+        payments: { title: "Платежи", text: "Чтобы деньги не списывались дважды, а товар не уходил без оплаты." },
       },
       start: "Начать",
       continue: "Продолжить",
@@ -70,7 +71,6 @@ export const site: Record<Lang, SiteStrings> = {
       upcomingList: [
         "Электронная подпись: как документ подписывается и проверяется",
         "Статусы документа: машина состояний с несколькими сторонами",
-        "Платёжный шлюз: проверить → создать → провести → отменить",
         "Очереди и повторы: backoff, DLQ",
       ],
     },
@@ -89,6 +89,7 @@ export const site: Record<Lang, SiteStrings> = {
       lead: "Every lesson is one problem and its fix. Requests move across the scene, nodes fail, numbers change, and at every step you see exactly what changed.",
       tracks: {
         reliability: { title: "Reliability", text: "So messages are never lost and never handled twice." },
+        payments: { title: "Payments", text: "So money is never charged twice and goods never leave unpaid." },
       },
       start: "Start",
       continue: "Continue",
@@ -97,7 +98,6 @@ export const site: Record<Lang, SiteStrings> = {
       upcomingList: [
         "Digital signatures: how a document is signed and verified",
         "Document statuses: a multi-party state machine",
-        "Payment gateways: check → create → perform → cancel",
         "Queues and retries: backoff, DLQ",
       ],
     },
@@ -127,7 +127,8 @@ export const player: Record<Lang, UiStrings> = {
     youLearn: "Nimani o'rganasiz",
     modelNote: "Raqamlar — model ssenariysi, o'lchov emas",
     sceneLabel: "Sahna: {title}",
-    units: { "/min": "/daq" },
+    units: { "/min": "/daq", "/day": "/kun" },
+    wire: { title: "Haqiqiy so'rov", request: "So'rov", response: "Javob", masked: "yashirilgan" },
     states: { ok: "ishlayapti", slow: "sekin", down: "ishdan chiqdi" },
     flows: { request: "so'rov", ack: "javob", fail: "xato", retry: "qayta yetkazish", dup: "takroriy" },
     legend: { request: "so'rov", ack: "javob", fail: "xato", retry: "qayta yetkazish", dup: "takroriy", lost: "yo'qolgan" },
@@ -164,7 +165,8 @@ export const player: Record<Lang, UiStrings> = {
     youLearn: "Вы узнаете",
     modelNote: "Цифры — модельный сценарий, не замеры",
     sceneLabel: "Сцена: {title}",
-    units: { "/s": "/с", ms: "мс", "/min": "/мин" },
+    units: { "/s": "/с", ms: "мс", "/min": "/мин", "/day": "/день" },
+    wire: { title: "Настоящий запрос", request: "Запрос", response: "Ответ", masked: "скрыто" },
     states: { ok: "работает", slow: "медленно", down: "упал" },
     flows: { request: "запрос", ack: "ответ", fail: "ошибка", retry: "повторная доставка", dup: "дубликат" },
     legend: { request: "запрос", ack: "ответ", fail: "ошибка", retry: "повторная доставка", dup: "дубликат", lost: "потеряно" },
@@ -201,6 +203,7 @@ export const player: Record<Lang, UiStrings> = {
     youLearn: "You will learn",
     modelNote: "Numbers are a model scenario, not measurements",
     sceneLabel: "Scene: {title}",
+    wire: { title: "The real request", request: "Request", response: "Response", masked: "hidden" },
     states: { ok: "healthy", slow: "slow", down: "down" },
     flows: { request: "request", ack: "reply", fail: "error", retry: "redelivery", dup: "duplicate" },
     legend: { request: "request", ack: "reply", fail: "error", retry: "redelivery", dup: "duplicate", lost: "lost" },

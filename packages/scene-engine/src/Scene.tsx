@@ -93,9 +93,11 @@ export interface SceneProps {
   reduced: boolean;
   /** changes on replay so packets and entrances restart */
   runKey: number;
+  /** edge whose wire message is shown under the scene */
+  active?: string;
 }
 
-export function Scene({ state, box, labels, title, paused, reduced, runKey }: SceneProps) {
+export function Scene({ state, box, labels, title, paused, reduced, runKey, active }: SceneProps) {
   const layer = useRef<SVGGElement>(null);
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
@@ -148,7 +150,10 @@ export function Scene({ state, box, labels, title, paused, reduced, runKey }: Sc
           const cx = l.x1 + (l.x2 - l.x1) * CUT_AT;
           const cy = l.y1 + (l.y2 - l.y1) * CUT_AT;
           return (
-            <g key={l.id} className={`mf-edge mf-edge--${l.flow}${l.cut ? " mf-edge--cut" : ""}`}>
+            <g
+              key={l.id}
+              className={`mf-edge mf-edge--${l.flow}${l.cut ? " mf-edge--cut" : ""}${l.id === active ? " mf-edge--active" : ""}`}
+            >
               <motion.path
                 d={`M${l.x1} ${l.y1} L${l.x2} ${l.y2}`}
                 markerEnd={l.cut ? undefined : `url(#mf-arrow-${l.flow})`}

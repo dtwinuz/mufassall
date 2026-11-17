@@ -1,4 +1,4 @@
-import { resolve } from "@mufassall/scene-schema";
+import { PUBLIC_MASK, annotate, maskedRaw, resolve } from "@mufassall/scene-schema";
 import { validateLesson } from "@mufassall/scene-schema/validate";
 import { describe, expect, it } from "vitest";
 import { LANGS, lessons, tracks } from "./index";
@@ -21,6 +21,28 @@ describe.each(Object.entries(lessons))("lesson %s", (slug, { lesson, text }) => 
       expect(st?.title && st.short && st.body, `step ${s.id}`).toBeTruthy();
     }
     expect(t.learn.length).toBeGreaterThan(0);
+  });
+
+  it("public wire messages carry no real secret, every mark appears and is explained", () => {
+    for (const s of lesson.steps) {
+      const ex = s.exchange;
+      if (!ex) continue;
+      const seen = new Set<string>();
+      const lines = [ex.request, ...(ex.response ? [ex.response] : [])].flatMap((m) =>
+        annotate(m, ex.marks, ex.masked, seen),
+      );
+      for (const raw of maskedRaw(lines)) expect(raw, `${s.id}: masked value`).toBe(PUBLIC_MASK);
+      for (const name of ex.masked ?? []) {
+        expect(lines.some((l) => l.some((g) => g.kind === "mask" && g.name === name)), `${s.id}: ${name} masked`).toBe(true);
+      }
+      for (const name of ex.marks ?? []) {
+        expect(seen.has(name), `${s.id}: mark ${name} not found in the message`).toBe(true);
+        for (const lang of LANGS) {
+          const fields = (text[lang].steps as Record<string, { fields?: Record<string, string> }>)[s.id]?.fields;
+          expect(fields?.[name], `${lang} ${s.id}: note for ${name}`).toBeTruthy();
+        }
+      }
+    }
   });
 });
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FLOWS, LEVELS, type LessonInput, NODE_KINDS, NODE_STATES, STEP_KINDS, TIERS } from "./index";
+import { FLOWS, LEVELS, type LessonInput, NODE_KINDS, NODE_STATES, STEP_KINDS, TIERS, WIRE_FORMATS } from "./index";
 
 const id = z.string().regex(/^[a-z][a-z0-9-]*$/, "id: lowercase latin, digits and dashes");
 
@@ -23,6 +23,25 @@ const edgePatch = z
   .partial()
   .strict();
 
+const wireMessage = z
+  .object({
+    head: z.string().min(1),
+    headers: z.array(z.tuple([z.string().min(1), z.string()])).optional(),
+    body: z.string().optional(),
+    format: z.enum(WIRE_FORMATS),
+  })
+  .strict();
+
+const exchange = z
+  .object({
+    edge: id,
+    request: wireMessage,
+    response: wireMessage.optional(),
+    marks: z.array(z.string().min(1)).max(9).optional(),
+    masked: z.array(z.string().min(1)).optional(),
+  })
+  .strict();
+
 export const stepSchema = z
   .object({
     id,
@@ -31,6 +50,7 @@ export const stepSchema = z
     edges: z.record(id, edgePatch.nullable()).optional(),
     metrics: z.record(id, z.number()).optional(),
     focus: z.array(id).optional(),
+    exchange: exchange.optional(),
   })
   .strict();
 

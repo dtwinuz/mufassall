@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defineLesson, diff, emptyState, resolve } from "./index";
+import { type annotate, defineLesson, diff, emptyState, resolve } from "./index";
 
 const base = defineLesson({
   slug: "demo",
@@ -66,6 +66,44 @@ describe("validateLesson", () => {
     expect(() => validateLesson(base)).not.toThrow();
     const bad = { ...base, steps: [{ ...base.steps[0], colour: "red" }, base.steps[1]] } as unknown as typeof base;
     expect(() => validateLesson(bad)).toThrow(/steps\.0/);
+  });
+});
+
+describe("annotate", () => {
+  const msg = {
+    head: "POST /pay HTTP/1.1",
+    headers: [
+      ["Authorization", "***"],
+      ["Content-Type", "application/json"],
+    ] as const,
+    body: '{\n  "id": "tx-1",\n  "token": "***",\n  "amount": 500\n}',
+    format: "json" as const,
+  };
+  const text = (l: ReturnType<typeof annotate>[number]) => l.map((s) => (s.kind === "text" ? s.text : s.kind === "mark" ? `[${s.n}]` : "<masked>")).join("");
+
+  it("numbers marks once and masks headers and JSON values", async () => {
+    const { annotate: run, maskedRaw } = await import("./wire");
+    const lines = run(msg, ["id", "amount", "Authorization"], ["Authorization", "token"]);
+    expect(lines.map(text)).toEqual([
+      "POST /pay HTTP/1.1",
+      "Authorization[3]: <masked>",
+      "Content-Type: application/json",
+      "",
+      "{",
+      '  "id": [1]"tx-1",',
+      '  "token": <masked>,',
+      '  "amount": [2]500',
+      "}",
+    ]);
+    expect(maskedRaw(lines)).toEqual(["***", "***"]);
+  });
+
+  it("shares numbering across request and response and masks XML", async () => {
+    const { annotate: run } = await import("./wire");
+    const seen = new Set<string>();
+    run({ head: "req", body: '{"id": 1}', format: "json" }, ["id"], [], seen);
+    const xml = run({ head: "resp", body: "<doc><id>7</id><sign>***</sign></doc>", format: "xml" }, ["id", "sign"], ["sign"], seen);
+    expect(xml.map(text)).toEqual(["resp", "<doc><id>7</id><sign>[2]<masked></sign></doc>"]);
   });
 });
 

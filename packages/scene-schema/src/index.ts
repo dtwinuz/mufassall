@@ -31,6 +31,32 @@ export interface EdgePatch {
   cut?: boolean;
 }
 
+export const WIRE_FORMATS = ["json", "xml", "http", "sql", "text"] as const;
+export type WireFormat = (typeof WIRE_FORMATS)[number];
+
+/** One message as it travels on the wire: a start line, headers and a body. */
+export interface WireMessage {
+  /** "POST /callbacks HTTP/1.1", "HTTP/1.1 200 OK", "basic.ack", "INSERT …" */
+  head: string;
+  headers?: readonly (readonly [string, string])[];
+  body?: string;
+  format: WireFormat;
+}
+
+/**
+ * The "real request" layer: what actually crosses one edge in this step.
+ * `marks` are field names (JSON keys, XML tags, header names) numbered in this order and
+ * explained in the step text (`StepText.fields`). `masked` fields are hidden by role; in a
+ * public lesson their value must be the placeholder `***`, so a real secret can never ship.
+ */
+export interface Exchange {
+  edge: string;
+  request: WireMessage;
+  response?: WireMessage;
+  marks?: readonly string[];
+  masked?: readonly string[];
+}
+
 export interface StepInput {
   id: string;
   kind: StepKind;
@@ -38,6 +64,7 @@ export interface StepInput {
   edges?: Readonly<Record<string, EdgePatch | null>>;
   metrics?: Readonly<Record<string, number>>;
   focus?: readonly string[];
+  exchange?: Exchange;
 }
 
 export interface MetricDef {
@@ -73,6 +100,8 @@ export interface StepText {
   title: string;
   body: string;
   watch?: string;
+  /** one note per name in `exchange.marks` */
+  fields?: Record<string, string>;
 }
 
 export interface LessonText<T extends LessonInput> {
@@ -192,6 +221,10 @@ export function resolve(input: LessonInput): SceneState[] {
     }
     next.focus = [...(step.focus ?? [])];
 
+    if (step.exchange && !next.edges[step.exchange.edge]) {
+      throw new Error(`${where}: exchange on missing edge "${step.exchange.edge}"`);
+    }
+
     cur = next;
     return next;
   });
@@ -241,3 +274,5 @@ export function diff(prev: SceneState, next: SceneState): Change[] {
 }
 
 export const emptyState = empty;
+
+export { annotate, maskedRaw, PUBLIC_MASK, type Segment, type WireLine } from "./wire";
