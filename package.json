@@ -15,7 +15,8 @@
     "check:i18n": "node tools/check-i18n.mjs",
     "check:leaks": "node tools/leak-guard.mjs apps/web/dist",
     "check": "pnpm typecheck && pnpm test && pnpm check:i18n && pnpm build && pnpm check:leaks",
-    "gen": "node tools/gen-registry.mjs"
+    "gen": "node tools/gen-registry.mjs",
+    "mcp": "node packages/mcp/bin/server.mjs"
   },
   "devDependencies": {
     "typescript": "~5.9.3",

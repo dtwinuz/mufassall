@@ -1,5 +1,5 @@
-// "Diagram as code": a lesson's scene as Mermaid (flowchart, sequence) or D2 text, for pasting into
-// Jira, GitLab, GitHub, Notion or docs. Pure functions, no DOM.
+// "Diagram as code": a lesson's scene as Mermaid (flowchart, sequence), PlantUML (sequence, components)
+// or D2 text, for pasting into Jira, GitLab, GitHub, Notion or docs. Pure functions, no DOM.
 import { type EdgeState, type Flow, type LessonInput, type NodeKind, type SceneState, resolve } from "@mufassall/scene-schema";
 
 export interface TextExportOptions {
@@ -213,6 +213,133 @@ export function toMermaidSequence(lesson: LessonInput, text: SequenceText, opts:
     lines.push(`  ${a}${r.cut ? "-x" : "->>"}${b}: ${mermaidText(plainText(r.req, max))}`);
     if (r.res !== undefined && !r.cut) lines.push(`  ${b}-->>${a}: ${mermaidText(plainText(r.res, max))}`);
   }
+  return `${lines.join("\n")}\n`;
+}
+
+/**
+ * PlantUML text for a quoted name or a label after ":". PlantUML reads Creole markup and
+ * preprocessor calls anywhere in a line, so the characters that start them become `&#code;`
+ * entities: `"` (ends a quoted name), `\` (`\n` is a line break), `<` `>` (tags), `~` (Creole escape),
+ * `%` (`%date()` and friends), `&` (so text never forms an entity), and the second char of a doubled markup pair (`**`, `//` in URLs, `--`).
+ */
+export function plantUmlText(s: string): string {
+  return plainText(s)
+    .replace(/["\\<>~%&]/g, (c) => `&#${c.charCodeAt(0)};`)
+    .replace(/([*/_^=-])\1/g, (_, c: string) => `${c}&#${c.charCodeAt(0)};`);
+}
+
+/** A PlantUML double-quoted display name. */
+export function plantUmlString(s: string): string {
+  return `"${plantUmlText(s)}"`;
+}
+
+/**
+ * The lesson's exchanges as a PlantUML sequence diagram, the same rows as {@link toMermaidSequence}.
+ * A `call` edge (and an edge with no mode) is a solid `->` answered by a dashed `-->`; an `async`
+ * edge has the open `->>` head; a cut edge ends in `->x` and gets no answer. Lost, retry and
+ * duplicate deliveries carry their word in front of the message.
+ */
+export function toPlantUmlSequence(
+  lesson: LessonInput,
+  text: SequenceText,
+  opts: SequenceOptions & { words?: Partial<EdgeWords> } = {},
+): string {
+  const w = { ...WORDS, ...opts.words };
+  const states = resolve(lesson);
+  const max = opts.maxHead ?? 90;
+  const rows: { from: string; to: string; edge: EdgeState; title: string; req: string; res?: string }[] = [];
+  lesson.steps.forEach((step, i) => {
+    const x = step.exchange;
+    const e = x && states[i]!.edges[x.edge];
+    if (!x || !e) return;
+    rows.push({ from: e.from, to: e.to, edge: e, title: text.steps[step.id]?.title ?? step.id, req: x.request.head, res: x.response?.head });
+  });
+
+  const order: string[] = [];
+  for (const r of rows) for (const n of [r.from, r.to]) if (!order.includes(n)) order.push(n);
+  const ids = safeIds(order);
+  const kinds = new Map<string, NodeKind>();
+  for (const s of states) for (const n of Object.values(s.nodes)) if (!kinds.has(n.id)) kinds.set(n.id, n.kind);
+
+  const lines = ["@startuml"];
+  for (const n of order) lines.push(`${plantUmlParticipant(kinds.get(n))} ${plantUmlString(labelOf(text.nodes, n))} as ${ids.get(n)}`);
+  for (const r of rows) {
+    const a = ids.get(r.from)!;
+    const b = ids.get(r.to)!;
+    const e = r.edge;
+    if (opts.notes !== false) lines.push(`note over ${a === b ? a : `${a}, ${b}`} : ${plantUmlText(r.title)}`);
+    const word = e.cut ? w.lost : e.flow === "retry" ? w.retry : e.flow === "dup" ? w.dup : "";
+    const msg = `${word ? `[${word}] ` : ""}${plainText(r.req, max)}`;
+    const async = modeOf(e) === "async";
+    lines.push(`${a} ${e.cut ? "->x" : async ? "->>" : "->"} ${b} : ${plantUmlText(msg)}`);
+    if (r.res !== undefined && !e.cut) lines.push(`${b} ${async ? "-->>" : "-->"} ${a} : ${plantUmlText(plainText(r.res, max))}`);
+  }
+  lines.push("@enduml");
+  return `${lines.join("\n")}\n`;
+}
+
+function plantUmlParticipant(kind: NodeKind | undefined): string {
+  switch (kind) {
+    case "actor":
+      return "actor";
+    case "db":
+    case "storage":
+      return "database";
+    case "queue":
+      return "queue";
+    case "external":
+      return "boundary";
+    case "cache":
+      return "collections";
+    default:
+      return "participant";
+  }
+}
+
+const PLANTUML_ELEMENT: Record<NodeKind, string> = {
+  actor: "actor",
+  client: "agent",
+  service: "component",
+  worker: "collections",
+  lb: "node",
+  cache: "stack",
+  cdn: "frame",
+  queue: "queue",
+  db: "database",
+  storage: "storage",
+  external: "cloud",
+};
+
+/** Arrow bodies for the component diagram: dashed for ack / retry, bold for duplicates, red for failures. */
+const PLANTUML_ARROW: Record<Flow, string> = {
+  request: "-->",
+  ack: "..>",
+  fail: "-[#c62828]->",
+  retry: "..>",
+  dup: "-[bold]->",
+};
+
+/** The design as a PlantUML component (deployment) diagram: the PlantUML twin of {@link toMermaidFlowchart}. */
+export function toPlantUmlComponents(state: SceneState, labels: Readonly<Record<string, string>>, opts: TextExportOptions = {}): string {
+  const w = { ...WORDS, ...opts.words };
+  const nodes = Object.values(state.nodes);
+  const ids = safeIds(nodes.map((n) => n.id));
+  const lines = ["@startuml", opts.direction === "TB" ? "top to bottom direction" : "left to right direction"];
+  for (const n of nodes) {
+    let colour = "";
+    if (opts.states !== false && n.state === "slow") colour = " #fff4d6;line:b26a00";
+    if (opts.states !== false && n.state === "down") colour = " #fde2e2;line:c62828;line.dashed";
+    lines.push(`${PLANTUML_ELEMENT[n.kind] ?? "component"} ${plantUmlString(labelOf(labels, n.id))} as ${ids.get(n.id)}${colour}`);
+  }
+  for (const e of Object.values(state.edges)) {
+    const a = ids.get(e.from);
+    const b = ids.get(e.to);
+    if (!a || !b) continue;
+    const arrow = e.cut ? "-[#c62828,dashed]->" : PLANTUML_ARROW[e.flow] ?? "-->";
+    const word = edgeWord(e, w);
+    lines.push(`${a} ${arrow} ${b}${word ? ` : ${plantUmlText(word)}` : ""}`);
+  }
+  lines.push("@enduml");
   return `${lines.join("\n")}\n`;
 }
 

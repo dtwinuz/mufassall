@@ -12,6 +12,8 @@ export interface DiagramStrings {
   flow: string;
   seq: string;
   d2: string;
+  pumlSeq: string;
+  puml: string;
   copy: string;
   copied: string;
   failed: string;
@@ -22,11 +24,13 @@ export interface DiagramStrings {
 export const diagram: Record<"uz" | "ru" | "en", DiagramStrings> = {
   uz: {
     title: "Diagramma kod sifatida",
-    lead: "Darsdagi yakuniy sxemani matn ko'rinishida oling va Jira, GitLab, GitHub, Notion yoki hujjatga qo'ying: Mermaid u yerlarda o'zi chiziladi. D2 uchun alohida variant bor.",
+    lead: "Darsdagi yakuniy sxemani matn ko'rinishida oling va Jira, GitLab, GitHub, Notion yoki hujjatga qo'ying: Mermaid u yerlarda o'zi chiziladi. D2 va PlantUML (Confluence, IntelliJ) uchun alohida variantlar bor.",
     tabs: "Diagramma formati",
     flow: "Mermaid: sxema",
     seq: "Mermaid: so'rovlar ketma-ketligi",
     d2: "D2",
+    pumlSeq: "PlantUML: so'rovlar ketma-ketligi",
+    puml: "PlantUML: komponentlar",
     copy: "Nusxa olish",
     copied: "Nusxa olindi",
     failed: "Nusxa olinmadi: matn belgilandi, Ctrl+C bosing",
@@ -34,11 +38,13 @@ export const diagram: Record<"uz" | "ru" | "en", DiagramStrings> = {
   },
   ru: {
     title: "Диаграмма как код",
-    lead: "Итоговая схема урока в виде текста: вставьте её в Jira, GitLab, GitHub, Notion или документацию, там Mermaid рисуется сам. Есть и вариант для D2.",
+    lead: "Итоговая схема урока в виде текста: вставьте её в Jira, GitLab, GitHub, Notion или документацию, там Mermaid рисуется сам. Есть варианты для D2 и PlantUML (Confluence, IntelliJ).",
     tabs: "Формат диаграммы",
     flow: "Mermaid: схема",
     seq: "Mermaid: последовательность запросов",
     d2: "D2",
+    pumlSeq: "PlantUML: последовательность запросов",
+    puml: "PlantUML: компоненты",
     copy: "Копировать",
     copied: "Скопировано",
     failed: "Не удалось скопировать: текст выделен, нажмите Ctrl+C",
@@ -46,11 +52,13 @@ export const diagram: Record<"uz" | "ru" | "en", DiagramStrings> = {
   },
   en: {
     title: "Diagram as code",
-    lead: "The lesson's final design as text: paste it into Jira, GitLab, GitHub, Notion or your docs, where Mermaid renders by itself. There is a D2 version too.",
+    lead: "The lesson's final design as text: paste it into Jira, GitLab, GitHub, Notion or your docs, where Mermaid renders by itself. There are D2 and PlantUML (Confluence, IntelliJ) versions too.",
     tabs: "Diagram format",
     flow: "Mermaid: flowchart",
     seq: "Mermaid: request sequence",
     d2: "D2",
+    pumlSeq: "PlantUML: request sequence",
+    puml: "PlantUML: components",
     copy: "Copy",
     copied: "Copied",
     failed: "Could not copy: the text is selected, press Ctrl+C",

@@ -560,7 +560,7 @@ export const glossary: Term[] = [
       ru: "Торможение продюсера, когда потребители не успевают. Очередь ограничена, и вместо бесконечного роста продюсер ждёт.",
       en: "Slowing the producer down when consumers cannot keep up. The queue is bounded, and the producer waits instead of the queue growing without limit.",
     },
-    lesson: "queues",
+    lesson: "backpressure",
   },
   {
     id: "pub-sub",
@@ -1528,5 +1528,192 @@ export const glossary: Term[] = [
       en: "Write once, read many: storage with an object lock. Until the retention date nobody can delete or overwrite the data.",
     },
     lesson: "audit-log",
+  },
+
+  // ---- outbox-pattern (section: architecture) ----
+  {
+    id: "outbox-relay",
+    term: { uz: "Outbox relay", ru: "Outbox relay", en: "Outbox relay" },
+    short: {
+      uz: "Outbox jadvalidagi yuborilmagan qatorlarni o'qib, broker'ga e'lon qiladigan va ack'dan keyin ularni yuborilgan deb belgilaydigan worker. Belgilashdan oldin yiqilsa, qatorlarni yana yuboradi, shuning uchun yetkazish at-least-once bo'ladi.",
+      ru: "Воркер, который читает неотправленные строки таблицы outbox, публикует их в брокер и помечает отправленными после ack. Если он упадёт до пометки, строки уйдут снова, поэтому доставка получается at-least-once.",
+      en: "A worker that reads unsent rows from the outbox table, publishes them to the broker and marks them sent after the ack. If it crashes before marking, the rows go out again, so delivery is at-least-once.",
+    },
+    lesson: "outbox-pattern",
+  },
+  {
+    id: "inbox-table",
+    term: { uz: "Inbox (processed events) jadvali", ru: "Таблица inbox (processed events)", en: "Inbox (processed events) table" },
+    short: {
+      uz: "Iste'molchi qo'llagan har hodisa id'sini unique kalit bilan, ta'sir bilan bitta tranzaksiyada yozadigan jadval. Takroriy yetkazish kalitga uriladi va o'tkazib yuboriladi.",
+      ru: "Таблица, куда потребитель пишет id каждого применённого события с уникальным ключом в той же транзакции, что и эффект. Повторная доставка упирается в ключ и пропускается.",
+      en: "A table where the consumer records every applied event id under a unique key, in the same transaction as the effect. A repeated delivery hits the key and is skipped.",
+    },
+    lesson: "outbox-pattern",
+  },
+  {
+    id: "message-key",
+    term: { uz: "Xabar kaliti (partition key)", ru: "Ключ сообщения (partition key)", en: "Message key (partition key)" },
+    short: {
+      uz: "Broker xabarni qaysi partition'ga qo'yishini belgilaydigan qiymat, odatda aggregate id. Bir xil kalitli xabarlar bitta partition'ga tushadi va tartibi saqlanadi; turli kalitlar orasida tartib kafolatlanmaydi.",
+      ru: "Значение, по которому брокер выбирает партицию для сообщения, обычно id агрегата. Сообщения с одним ключом попадают в одну партицию и сохраняют порядок; между разными ключами порядок не гарантирован.",
+      en: "The value the broker uses to pick a partition for a message, usually the aggregate id. Messages with the same key land in one partition and keep their order; across different keys there is no order.",
+    },
+    lesson: "outbox-pattern",
+  },
+  {
+    id: "aggregate-version",
+    term: { uz: "Aggregate versiyasi", ru: "Версия агрегата", en: "Aggregate version" },
+    short: {
+      uz: "Hodisaning o'z aggregate'i ichidagi tartib raqami: 1, 2, 3. Iste'molchi oxirgi qo'llangan versiyani saqlaydi, eskirog'ini tashlaydi, oraliq bo'lsa oldingisini kutadi.",
+      ru: "Порядковый номер события внутри своего агрегата: 1, 2, 3. Потребитель хранит последнюю применённую версию, более старую отбрасывает, а при пропуске ждёт предыдущую.",
+      en: "An event's sequence number within its aggregate: 1, 2, 3. The consumer stores the last version it applied, drops older ones and waits for the missing one when there is a gap.",
+    },
+    lesson: "outbox-pattern",
+  },
+
+  // ---- distributed-locks (section: architecture) ----
+  {
+    id: "distributed-lock",
+    term: { uz: "Taqsimlangan lock", ru: "Распределённая блокировка", en: "Distributed lock" },
+    short: {
+      uz: "Bir nechta jarayon yoki mashina orasida bir vaqtda faqat bittasi ishni bajarishini ta'minlaydigan, umumiy joyda (Redis, baza, consensus ombori) turadigan lock. Odatda lease bilan beriladi, shuning uchun yolg'iz o'zi to'g'rilikni kafolatlamaydi.",
+      ru: "Блокировка в общем месте (Redis, база, консенсусное хранилище), которая даёт выполнять работу только одному из нескольких процессов или машин. Обычно выдаётся с lease, поэтому сама по себе корректность не гарантирует.",
+      en: "A lock kept in a shared place (Redis, a database, a consensus store) so that only one of several processes or machines does the work at a time. It usually comes with a lease, so on its own it does not guarantee correctness.",
+    },
+    lesson: "distributed-locks",
+  },
+  {
+    id: "lock-token",
+    term: { uz: "Lock tokeni (egasi qiymati)", ru: "Токен блокировки (значение владельца)", en: "Lock token (owner value)" },
+    short: {
+      uz: "Lock olinganda kalitga yoziladigan tasodifiy qiymat. Bo'shatish va uzaytirish faqat kalitda hali o'sha token tursa bajariladi, shunda lease'i tugagan ega birovning lock'ini o'chirmaydi.",
+      ru: "Случайное значение, которое пишется в ключ при захвате. Снятие и продление выполняются, только если в ключе всё ещё этот токен, и владелец с истёкшим lease не удалит чужую блокировку.",
+      en: "A random value written into the key when the lock is taken. Release and renewal only happen if the key still holds that token, so a holder whose lease expired cannot delete someone else's lock.",
+    },
+    lesson: "distributed-locks",
+  },
+  {
+    id: "redlock",
+    term: { uz: "Redlock", ru: "Redlock", en: "Redlock" },
+    short: {
+      uz: "Lock'ni 5 ta mustaqil Redis node'dan so'rab, lease ichida ko'pchilik bergandagina olingan deb hisoblaydigan algoritm. Bitta node'ning yiqilishiga chidaydi, lekin fencing token bermaydi va pauza hamda soat siljishi chegaralangan deb faraz qiladi.",
+      ru: "Алгоритм, который запрашивает блокировку у 5 независимых узлов Redis и считает её взятой, только если большинство выдало её в пределах lease. Переживает падение одного узла, но не даёт fencing-токена и предполагает ограниченные паузы и дрейф часов.",
+      en: "An algorithm that asks 5 independent Redis nodes for the lock and counts it as taken only if a majority grants it within the lease. It survives one node failing, but gives no fencing token and assumes bounded pauses and clock drift.",
+    },
+    lesson: "distributed-locks",
+  },
+  {
+    id: "advisory-lock",
+    term: { uz: "Advisory lock", ru: "Advisory-блокировка", en: "Advisory lock" },
+    short: {
+      uz: "Baza ilova bergan ixtiyoriy kalit bo'yicha ushlab turadigan lock, masalan Postgres'dagi `pg_try_advisory_xact_lock`. U tranzaksiya yoki sessiya bilan birga tugaydi, shuning uchun alohida lock servisisiz ishlaydi.",
+      ru: "Блокировка, которую база держит по произвольному ключу приложения, например `pg_try_advisory_xact_lock` в Postgres. Она заканчивается вместе с транзакцией или сессией, поэтому не нужен отдельный сервис блокировок.",
+      en: "A lock the database holds on any key the application chooses, such as `pg_try_advisory_xact_lock` in Postgres. It ends with the transaction or the session, so no separate lock service is needed.",
+    },
+    lesson: "distributed-locks",
+  },
+  {
+    id: "process-pause",
+    term: { uz: "Jarayon pauzasi (stop-the-world)", ru: "Пауза процесса (stop-the-world)", en: "Process pause (stop-the-world)" },
+    short: {
+      uz: "Garbage collection, VM migratsiyasi yoki swap tufayli butun jarayon soniyalab to'xtab qolishi. Jarayon buni sezmaydi, shuning uchun lease tugaganidan keyin ham lock o'zida deb ishlashda davom etishi mumkin.",
+      ru: "Остановка всего процесса на секунды из-за сборки мусора, миграции VM или swap. Процесс этого не замечает и может продолжить работу, считая, что блокировка у него, хотя lease уже истёк.",
+      en: "The whole process stopping for seconds because of garbage collection, a VM migration or swapping. The process does not notice, so it can carry on as if it held the lock after its lease has run out.",
+    },
+    lesson: "distributed-locks",
+  },
+  // ---- reliability: backpressure ----
+  {
+    id: "bounded-queue",
+    term: { uz: "Chegarali navbat (bounded queue)", ru: "Ограниченная очередь (bounded queue)", en: "Bounded queue" },
+    short: {
+      uz: "Sig'imi oldindan belgilangan navbat. To'lganda nima qilish (kutish, yangisini yoki eskisini tashlash) aniq qoida bilan hal qilinadi, xotira esa cheksiz o'smaydi.",
+      ru: "Очередь с заранее заданной ёмкостью. Что делать при заполнении (ждать, выбросить новое или старое) решает явное правило, и память не растёт бесконечно.",
+      en: "A queue with a fixed capacity. What happens when it is full (wait, drop the newest or the oldest) is an explicit rule, and memory never grows without limit.",
+    },
+    lesson: "backpressure",
+  },
+  {
+    id: "consumer-lag",
+    term: { uz: "Consumer lag", ru: "Consumer lag (отставание потребителя)", en: "Consumer lag" },
+    short: {
+      uz: "Consumer logning oxiridan qancha orqada ekani, yozuvlarda yoki soniyalarda. Ortiqcha yukning eng to'g'ri signali: alert CPU'ga emas, shunga qo'yiladi.",
+      ru: "Насколько потребитель отстаёт от конца лога, в записях или секундах. Самый честный сигнал перегрузки: алерт ставят на него, а не на CPU.",
+      en: "How far a consumer is behind the end of the log, in records or seconds. The most honest overload signal: alert on it, not on CPU.",
+    },
+    lesson: "backpressure",
+  },
+  {
+    id: "retry-after",
+    term: { uz: "Retry-After", ru: "Retry-After", en: "Retry-After" },
+    short: {
+      uz: "429 yoki 503 javobidagi sarlavha: mijoz necha soniyadan keyin qaytishi kerak. Mijoz shu vaqt ustiga tasodifiy jitter qo'shib kutadi, ma'lumotini esa saqlab qoladi.",
+      ru: "Заголовок в ответе 429 или 503: через сколько секунд клиенту вернуться. Клиент ждёт это время плюс случайный jitter и сохраняет свои данные.",
+      en: "A header on a 429 or 503 response: how many seconds until the client should come back. The client waits that long plus random jitter and keeps its data.",
+    },
+    lesson: "backpressure",
+  },
+  {
+    id: "admission-control",
+    term: { uz: "Admission control", ru: "Admission control (контроль допуска)", en: "Admission control" },
+    short: {
+      uz: "Kirishda qaysi so'rovni qabul qilish, qaysini darhol rad etishni hal qilish: bir vaqtdagi so'rovlar limiti va ustuvorliklar bo'yicha. Tez rad etish arzon, navbatda kutish qimmat.",
+      ru: "Решение на входе, какой запрос принять, а какой сразу отклонить: по лимиту одновременных запросов и приоритетам. Быстрый отказ дёшев, ожидание в очереди дорого.",
+      en: "Deciding at the door which requests to take and which to reject at once, by a limit on concurrent requests and by priority. A fast rejection is cheap, waiting in a queue is not.",
+    },
+    lesson: "backpressure",
+  },
+  {
+    id: "pull-based-flow",
+    term: { uz: "Pull asosidagi oqim", ru: "Pull-модель потока", en: "Pull-based flow" },
+    short: {
+      uz: "Consumer keyingi ishni faqat oldingisini tugatgach o'zi so'raydi (poll, request(n), TCP oynasi). Sur'atni producer emas, qabul qiluvchi belgilaydi.",
+      ru: "Потребитель сам просит следующую порцию, только закончив предыдущую (poll, request(n), окно TCP). Темп задаёт получатель, а не производитель.",
+      en: "The consumer asks for the next batch only after finishing the last one (poll, request(n), the TCP window). The receiver sets the pace, not the producer.",
+    },
+    lesson: "backpressure",
+  },
+
+  // ---- shipping: zero-downtime migrations ----
+  {
+    id: "expand-contract",
+    term: { uz: "Expand va contract", ru: "Expand и contract", en: "Expand and contract" },
+    short: {
+      uz: "Sxemani bosqichma-bosqich o'zgartirish: avval eski kod e'tibor bermaydigan yangi narsa qo'shiladi, ikkalasiga yoziladi va ko'chiriladi, eskisi esa uni hech kim ishlatmay qo'ygandan keyingina o'chiriladi.",
+      ru: "Пошаговое изменение схемы: сначала добавляется новое, что старый код игнорирует, данные пишутся в оба места и переносятся, а старое удаляется, только когда им уже никто не пользуется.",
+      en: "Changing a schema in phases: first add something new that old code ignores, write both and move the data, and remove the old part only once nothing uses it.",
+    },
+    lesson: "zero-downtime-migrations",
+  },
+  {
+    id: "backfill",
+    term: { uz: "Backfill", ru: "Backfill (дозаполнение)", en: "Backfill" },
+    short: {
+      uz: "Yangi ustun yoki jadvalni mavjud qatorlar uchun to'ldirish. Katta jadvalda kichik, qayta yurgizsa bo'ladigan bo'laklarda, pauza bilan va replika kechikishini kuzatib qilinadi.",
+      ru: "Заполнение новой колонки или таблицы для уже существующих строк. На большой таблице его делают маленькими перезапускаемыми пачками, с паузами и с оглядкой на отставание реплик.",
+      en: "Filling a new column or table for rows that already exist. On a big table it runs in small, restartable batches, with pauses and an eye on replica lag.",
+    },
+    lesson: "zero-downtime-migrations",
+  },
+  {
+    id: "lock-queue",
+    term: { uz: "Qulf navbati (lock queue)", ru: "Очередь блокировок", en: "Lock queue" },
+    short: {
+      uz: "Jadval qulfini kutayotgan so'rovlar navbati. Uzun so'rov ortida kutayotgan eksklyuziv qulf undan keyingi hamma so'rovni ham to'xtatadi, shuning uchun DDL lock_timeout bilan yurgiziladi.",
+      ru: "Очередь запросов, ждущих блокировку таблицы. Эксклюзивная блокировка, ждущая за длинным запросом, останавливает и все запросы после себя, поэтому DDL запускают с lock_timeout.",
+      en: "The line of statements waiting for a table lock. An exclusive lock waiting behind a long query also stops every query after it, which is why DDL runs with a lock_timeout.",
+    },
+    lesson: "zero-downtime-migrations",
+  },
+  {
+    id: "not-valid-constraint",
+    term: { uz: "NOT VALID cheklov", ru: "Ограничение NOT VALID", en: "NOT VALID constraint" },
+    short: {
+      uz: "Darhol faqat yangi yozuvlarga qo'llanadigan cheklov; eski qatorlar keyinroq VALIDATE bilan, o'qish va yozishni to'smasdan tekshiriladi. Katta jadvalga NOT NULL yoki foreign key qo'shishning xavfsiz yo'li.",
+      ru: "Ограничение, которое сразу действует только на новые записи; старые строки потом проверяет VALIDATE, не блокируя чтение и запись. Безопасный способ добавить NOT NULL или внешний ключ на большую таблицу.",
+      en: "A constraint that applies only to new writes at first; the old rows are checked later by VALIDATE without blocking reads or writes. The safe way to add NOT NULL or a foreign key to a big table.",
+    },
+    lesson: "zero-downtime-migrations",
   },
 ];

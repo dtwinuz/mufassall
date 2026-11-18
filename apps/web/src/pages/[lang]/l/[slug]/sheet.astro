@@ -1,6 +1,6 @@
 ---
 import { LANGS, type Lang, lessons, sectionOf } from "@mufassall/content";
-import { Scene, designState, hasExchanges, lessonBounds, toD2, toMermaidFlowchart, toMermaidSequence } from "@mufassall/scene-engine";
+import { Scene, designState, hasExchanges, lessonBounds, toD2, toMermaidFlowchart, toMermaidSequence, toPlantUmlComponents, toPlantUmlSequence } from "@mufassall/scene-engine";
 import { resolve } from "@mufassall/scene-schema";
 import "@mufassall/scene-engine/player.css";
 import Base from "../../../../layouts/Base.astro";
@@ -33,6 +33,8 @@ const codes = [
   { id: "flow", name: D.flow, syntax: "mermaid", code: toMermaidFlowchart(design, nodeLabels, { words: D.words }) },
   ...(hasExchanges(entry.lesson) ? [{ id: "seq", name: D.seq, syntax: "mermaid", code: toMermaidSequence(entry.lesson, text) }] : []),
   { id: "d2", name: D.d2, syntax: "d2", code: toD2(design, nodeLabels, { words: D.words }) },
+  ...(hasExchanges(entry.lesson) ? [{ id: "puml-seq", name: D.pumlSeq, syntax: "plantuml", code: toPlantUmlSequence(entry.lesson, text, { words: D.words }) }] : []),
+  { id: "puml", name: D.puml, syntax: "plantuml", code: toPlantUmlComponents(design, nodeLabels, { words: D.words }) },
 ].map((c) => ({ ...c, code: c.code.trimEnd() }));
 ---
 

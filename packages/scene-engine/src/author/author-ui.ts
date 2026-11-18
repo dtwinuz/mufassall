@@ -1,3 +1,4 @@
+import type { BpmnErrorCode, BpmnWarningCode } from "./bpmn";
 import type { AuthorLang } from "./model";
 import type { IssueCode } from "./validation";
 
@@ -119,6 +120,22 @@ export interface AuthorStrings {
   /* preview */
   previewBroken: string;
   previewNote: string;
+  /* BPMN import */
+  bpmn: {
+    open: string;
+    title: string;
+    lead: string;
+    file: string;
+    paste: string;
+    importText: string;
+    close: string;
+    replaceConfirm: string;
+    reading: string;
+    done: string;
+    notes: string;
+    error: Record<BpmnErrorCode, string>;
+    warning: Record<BpmnWarningCode, string>;
+  };
 }
 
 /** Page head and nav label for the host page (the site strings are not edited from here). */
@@ -284,6 +301,44 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     fileTabs: "Files",
     previewBroken: "The draft cannot be shown yet: {x}",
     previewNote: "Preview of the main story in the selected text language.",
+    bpmn: {
+      open: "Import BPMN",
+      title: "Import a BPMN diagram",
+      lead: "A .bpmn file from Camunda Modeler or bpmn.io becomes a draft: blocks, lines and one step per element in process order. Names go into the {lang} text; the other languages get a copy to translate. Step texts and real requests are yours to write.",
+      file: "BPMN file (.bpmn, .xml)",
+      paste: "Or paste the XML",
+      importText: "Import the pasted XML",
+      close: "Close",
+      replaceConfirm: "Replace the current draft with the imported diagram?",
+      reading: "Reading…",
+      done: "Imported: {nodes} blocks, {steps} steps.",
+      notes: "Notes on the import",
+      error: {
+        empty: "The file is empty.",
+        tooLarge: "The file is too large (more than 5 MB).",
+        malformed: "The XML is broken at line {line}: {x}",
+        notBpmn: "This is not a BPMN 2.0 file (no bpmn:definitions).",
+        tooDeep: "The XML is nested too deeply.",
+        tooMany: "The XML has too many elements.",
+        noElements: "The diagram has no events, tasks or gateways.",
+      },
+      warning: {
+        boundary: "Boundary events are not imported: {x}.",
+        subprocess: "An expanded subprocess is one block; its inner elements are skipped: {x}.",
+        eventSubprocess: "Event subprocesses are not imported: {x}.",
+        unsupported: "Not supported, skipped: {x}.",
+        danglingFlow: "Lines to elements that were not imported are dropped: {x}.",
+        selfLoop: "A line from an element to itself is dropped: {x}.",
+        loop: "The process loops back to {x}; steps follow the first pass.",
+        unreachable: "Not reachable from a start event, placed at the end: {x}.",
+        noStart: "No start event: the walk starts from elements without incoming lines.",
+        maxElements: "The file is too big: {x} elements were not read.",
+        maxNodes: "At most 30 blocks: {x} elements were left out.",
+        maxSteps: "A lesson has at most 16 steps: {x} elements have no step of their own.",
+        partialLayout: "Only some elements have diagram coordinates, so blocks are laid out by order.",
+        translate: "Names were copied into all three languages: translate them.",
+      },
+    },
   },
   ru: {
     langNames: { uz: "Узбекский", ru: "Русский", en: "Английский" },
@@ -425,6 +480,44 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     fileTabs: "Файлы",
     previewBroken: "Черновик пока нельзя показать: {x}",
     previewNote: "Просмотр основной истории на выбранном языке текста.",
+    bpmn: {
+      open: "Импорт BPMN",
+      title: "Импорт диаграммы BPMN",
+      lead: "Файл .bpmn из Camunda Modeler или bpmn.io становится черновиком: блоки, линии и по шагу на каждый элемент в порядке процесса. Названия попадают в текст на языке «{lang}», остальные языки получают копию для перевода. Тексты шагов и реальные запросы пишете вы.",
+      file: "Файл BPMN (.bpmn, .xml)",
+      paste: "Или вставьте XML",
+      importText: "Импортировать вставленный XML",
+      close: "Закрыть",
+      replaceConfirm: "Заменить текущий черновик импортированной диаграммой?",
+      reading: "Чтение…",
+      done: "Импортировано: блоков {nodes}, шагов {steps}.",
+      notes: "Заметки об импорте",
+      error: {
+        empty: "Файл пуст.",
+        tooLarge: "Файл слишком большой (больше 5 МБ).",
+        malformed: "XML повреждён в строке {line}: {x}",
+        notBpmn: "Это не файл BPMN 2.0 (нет bpmn:definitions).",
+        tooDeep: "В XML слишком глубокая вложенность.",
+        tooMany: "В XML слишком много элементов.",
+        noElements: "В диаграмме нет событий, задач или шлюзов.",
+      },
+      warning: {
+        boundary: "Граничные события не импортируются: {x}.",
+        subprocess: "Развёрнутый подпроцесс стал одним блоком, его внутренние элементы пропущены: {x}.",
+        eventSubprocess: "Событийные подпроцессы не импортируются: {x}.",
+        unsupported: "Не поддерживается, пропущено: {x}.",
+        danglingFlow: "Линии к неимпортированным элементам убраны: {x}.",
+        selfLoop: "Линия элемента в самого себя убрана: {x}.",
+        loop: "Процесс возвращается к {x}; шаги идут по первому проходу.",
+        unreachable: "Недостижимо от стартового события, поставлено в конец: {x}.",
+        noStart: "Нет стартового события: обход начат с элементов без входящих линий.",
+        maxElements: "Файл слишком большой: не прочитано элементов: {x}.",
+        maxNodes: "Не больше 30 блоков: не вошло элементов: {x}.",
+        maxSteps: "В уроке не больше 16 шагов: без своего шага осталось элементов: {x}.",
+        partialLayout: "Координаты есть только у части элементов, поэтому блоки расставлены по порядку.",
+        translate: "Названия скопированы во все три языка: переведите их.",
+      },
+    },
   },
   uz: {
     langNames: { uz: "O'zbekcha", ru: "Ruscha", en: "Inglizcha" },
@@ -566,5 +659,43 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     fileTabs: "Fayllar",
     previewBroken: "Qoralamani hozircha ko'rsatib bo'lmaydi: {x}",
     previewNote: "Tanlangan matn tilida asosiy hikoyaning ko'rinishi.",
+    bpmn: {
+      open: "BPMN import",
+      title: "BPMN diagrammasini import qilish",
+      lead: "Camunda Modeler yoki bpmn.io dan olingan .bpmn fayl qoralamaga aylanadi: bloklar, chiziqlar va jarayon tartibida har bir element uchun bitta qadam. Nomlar \u201c{lang}\u201d matniga tushadi, qolgan tillar tarjima uchun nusxa oladi. Qadam matnlari va haqiqiy so'rovlarni o'zingiz yozasiz.",
+      file: "BPMN fayl (.bpmn, .xml)",
+      paste: "Yoki XML ni qo'ying",
+      importText: "Qo'yilgan XML ni import qilish",
+      close: "Yopish",
+      replaceConfirm: "Joriy qoralama import qilingan diagramma bilan almashtirilsinmi?",
+      reading: "O'qilmoqda…",
+      done: "Import qilindi: {nodes} ta blok, {steps} ta qadam.",
+      notes: "Import bo'yicha izohlar",
+      error: {
+        empty: "Fayl bo'sh.",
+        tooLarge: "Fayl juda katta (5 MB dan ortiq).",
+        malformed: "XML {line}-qatorda buzilgan: {x}",
+        notBpmn: "Bu BPMN 2.0 fayli emas (bpmn:definitions yo'q).",
+        tooDeep: "XML juda chuqur joylashgan.",
+        tooMany: "XML da elementlar juda ko'p.",
+        noElements: "Diagrammada hodisa, vazifa yoki shlyuz yo'q.",
+      },
+      warning: {
+        boundary: "Chegaraviy hodisalar import qilinmaydi: {x}.",
+        subprocess: "Ochilgan ichki jarayon bitta blok bo'ldi, ichidagi elementlar o'tkazib yuborildi: {x}.",
+        eventSubprocess: "Hodisaviy ichki jarayonlar import qilinmaydi: {x}.",
+        unsupported: "Qo'llab-quvvatlanmaydi, o'tkazib yuborildi: {x}.",
+        danglingFlow: "Import qilinmagan elementlarga boradigan chiziqlar olib tashlandi: {x}.",
+        selfLoop: "Element o'ziga boradigan chiziq olib tashlandi: {x}.",
+        loop: "Jarayon {x} ga qaytadi; qadamlar birinchi o'tish bo'yicha.",
+        unreachable: "Boshlanish hodisasidan yetib bo'lmaydi, oxiriga qo'yildi: {x}.",
+        noStart: "Boshlanish hodisasi yo'q: aylanish kiruvchi chizig'i yo'q elementlardan boshlandi.",
+        maxElements: "Fayl juda katta: {x} ta element o'qilmadi.",
+        maxNodes: "Ko'pi bilan 30 ta blok: {x} ta element kirmadi.",
+        maxSteps: "Darsda ko'pi bilan 16 qadam: {x} ta elementga alohida qadam yetmadi.",
+        partialLayout: "Koordinatalar faqat ayrim elementlarda bor, shuning uchun bloklar tartib bo'yicha joylashtirildi.",
+        translate: "Nomlar uchala tilga ham nusxalandi: ularni tarjima qiling.",
+      },
+    },
   },
 };

@@ -246,6 +246,15 @@ export const WHATIF: Record<string, WhatIfModel> = {
       return lines.join("\n");
     },
   },
+  backpressure: {
+    params: [
+      { id: "lambda", min: 0, max: 10000, step: 50, default: 1200, unit: "/s" },
+      { id: "c", min: 1, max: 20, step: 1, default: 4, unit: "", int: true },
+      { id: "serviceMs", min: 0.1, max: 50, step: 0.1, default: 2, unit: "ms" },
+    ],
+    compute: (x) => WHATIF.queues!.compute(x),
+    formula: (x, lang) => WHATIF.queues!.formula(x, lang),
+  },
   "timeouts-retries": {
     params: [
       { id: "p", min: 0, max: 1, step: 0.01, default: 0.03, unit: "%", scale: 100 },

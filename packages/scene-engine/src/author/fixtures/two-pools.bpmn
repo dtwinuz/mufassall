@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn2:definitions xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" id="defs" targetNamespace="urn:example">
+  <bpmn2:collaboration id="Collab">
+    <bpmn2:participant id="P_shop" name="Shop" processRef="Proc_shop"/>
+    <bpmn2:participant id="P_warehouse" name="Warehouse" processRef="Proc_wh"/>
+    <bpmn2:participant id="P_bank" name="Bank"/>
+    <bpmn2:messageFlow id="MF_order" name="Pick order" sourceRef="T_send" targetRef="S_wh"/>
+    <bpmn2:messageFlow id="MF_shipped" sourceRef="E_wh_done" targetRef="C_shipped"/>
+    <bpmn2:messageFlow id="MF_refund" sourceRef="P_bank" targetRef="P_shop"/>
+  </bpmn2:collaboration>
+  <bpmn2:process id="Proc_shop" isExecutable="false">
+    <bpmn2:laneSet id="LS_shop">
+      <bpmn2:lane id="L_sales" name="Sales">
+        <bpmn2:flowNodeRef>S_shop</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>T_send</bpmn2:flowNodeRef>
+      </bpmn2:lane>
+      <bpmn2:lane id="L_support" name="Support">
+        <bpmn2:flowNodeRef>C_shipped</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>E_shop</bpmn2:flowNodeRef>
+      </bpmn2:lane>
+    </bpmn2:laneSet>
+    <bpmn2:startEvent id="S_shop" name="Order paid"/>
+    <bpmn2:sendTask id="T_send" name="Send to warehouse"/>
+    <bpmn2:intermediateCatchEvent id="C_shipped" name="Shipped">
+      <bpmn2:messageEventDefinition/>
+    </bpmn2:intermediateCatchEvent>
+    <bpmn2:endEvent id="E_shop" name="Customer told"/>
+    <bpmn2:boundaryEvent id="B_timeout" name="2 days" attachedToRef="C_shipped">
+      <bpmn2:timerEventDefinition/>
+    </bpmn2:boundaryEvent>
+    <bpmn2:task id="T_apology" name="Say sorry"/>
+    <bpmn2:sequenceFlow id="f1" sourceRef="S_shop" targetRef="T_send"/>
+    <bpmn2:sequenceFlow id="f2" sourceRef="T_send" targetRef="C_shipped"/>
+    <bpmn2:sequenceFlow id="f3" sourceRef="C_shipped" targetRef="E_shop"/>
+    <bpmn2:sequenceFlow id="f4" sourceRef="B_timeout" targetRef="T_apology"/>
+  </bpmn2:process>
+  <bpmn2:process id="Proc_wh" isExecutable="false">
+    <bpmn2:startEvent id="S_wh" name="Order received">
+      <bpmn2:messageEventDefinition/>
+    </bpmn2:startEvent>
+    <bpmn2:parallelGateway id="G_split"/>
+    <bpmn2:task id="T_pick" name="Pick items"/>
+    <bpmn2:subProcess id="SP_pack" name="Pack">
+      <bpmn2:startEvent id="SP_s"/>
+      <bpmn2:task id="SP_t" name="Wrap"/>
+      <bpmn2:sequenceFlow id="SP_f" sourceRef="SP_s" targetRef="SP_t"/>
+    </bpmn2:subProcess>
+    <bpmn2:parallelGateway id="G_join"/>
+    <bpmn2:endEvent id="E_wh_done" name="Shipped out">
+      <bpmn2:messageEventDefinition/>
+    </bpmn2:endEvent>
+    <bpmn2:sequenceFlow id="w1" sourceRef="S_wh" targetRef="G_split"/>
+    <bpmn2:sequenceFlow id="w2" sourceRef="G_split" targetRef="T_pick"/>
+    <bpmn2:sequenceFlow id="w3" sourceRef="G_split" targetRef="SP_pack"/>
+    <bpmn2:sequenceFlow id="w4" sourceRef="T_pick" targetRef="G_join"/>
+    <bpmn2:sequenceFlow id="w5" sourceRef="SP_pack" targetRef="G_join"/>
+    <bpmn2:sequenceFlow id="w6" sourceRef="G_join" targetRef="E_wh_done"/>
+  </bpmn2:process>
+</bpmn2:definitions>
