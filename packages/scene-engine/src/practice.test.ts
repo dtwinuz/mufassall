@@ -1,9 +1,22 @@
+import type { EdgeState, Flow, NodeKind, NodeState, SceneState } from "@mufassall/scene-schema";
 import { describe, expect, it } from "vitest";
 // the engine does not depend on the content package; the test reaches it by path
 import { lessons, order } from "../../../content/index";
 import { checkRule } from "./challenges";
-import { emptyDoc, sanitize } from "./lab";
-import { collapse, finalState, kindPaths, parsePractice, practiceFor, practiceSlug, recordSolved, toSolution, today } from "./practice";
+import { GRID_MAX, GRID_MIN, emptyDoc, sanitize } from "./lab";
+import {
+  collapse,
+  explainState,
+  finalState,
+  fitAxis,
+  kindPaths,
+  parsePractice,
+  practiceFor,
+  practiceSlug,
+  recordSolved,
+  toSolution,
+  today,
+} from "./practice";
 import { PRACTICE_UI } from "./practice-ui";
 
 const eligible = order
@@ -29,17 +42,75 @@ describe("practice from lessons", () => {
     expect(p.hints.paths.length).toBeGreaterThan(0);
   });
 
-  // practiceFor also drops a lesson whose own scene fails its rubric; this proves none is dropped for that
-  it("ineligible lessons are only too small, pathless or too wide for the grid", () => {
+  // every lesson, with the reason if one is not: practice-all.test.ts holds the hard guarantee
+  it("ineligible lessons are reported with the guard that stopped them", () => {
     const out: string[] = [];
     for (const slug of order) {
       if (eligible.some((x) => x.slug === slug)) continue;
-      const s = finalState(lessons[slug]!.lesson)!;
-      const why = Object.keys(s.nodes).length < 3 ? "small" : kindPaths(s).length === 0 ? "no path" : !toSolution(s, {}) ? "too wide" : "";
-      expect(why, slug).not.toBe("");
+      const why = explainState(finalState(lessons[slug]!.lesson)!).blocker;
+      expect(why, slug).toBeTruthy();
       out.push(`${slug} (${why})`);
     }
     console.log(`practice: not eligible: ${out.join(", ") || "none"}`);
+  });
+});
+
+const scene = (nodes: [string, NodeKind, number, number][], edges: [string, string, Flow?][]): SceneState => ({
+  nodes: Object.fromEntries(nodes.map(([id, kind, x, y]) => [id, { id, kind, at: [x, y], state: "ok" } as NodeState])),
+  edges: Object.fromEntries(edges.map(([from, to, flow = "request"], i) => [`e${i}`, { id: `e${i}`, from, to, flow, rate: 1, cut: false } as EdgeState])),
+  metrics: {},
+  focus: [],
+});
+
+describe("where request walks start", () => {
+  it("a client that sends wins; one that only receives does not count", () => {
+    const s = scene(
+      [["u", "client", 0, 0], ["a", "service", 2, 0], ["d", "db", 4, 0], ["p", "actor", 6, 0]],
+      [["u", "a"], ["a", "d"], ["a", "p"]],
+    );
+    expect(kindPaths(s)).toContainEqual(["client", "service", "db"]);
+    const noClient = scene([["a", "service", 2, 0], ["d", "db", 4, 0], ["p", "actor", 6, 0]], [["a", "d"], ["a", "p"]]);
+    expect(kindPaths(noClient)).toEqual([["service", "db"], ["service", "actor"]]);
+  });
+
+  it("a provider calling back starts the walk, and an ack does not make it a receiver", () => {
+    const s = scene(
+      [["provider", "external", 0, 6], ["api", "service", 2, 4], ["store", "db", 7, 5], ["q", "queue", 4, 2], ["w", "worker", 6, 0]],
+      [["provider", "api"], ["api", "store"], ["api", "q"], ["q", "w"], ["w", "store"], ["store", "provider", "ack"]],
+    );
+    const paths = kindPaths(s);
+    expect(paths).toContainEqual(["external", "service", "db"]);
+    expect(paths).toContainEqual(["external", "service", "queue", "worker", "db"]);
+    const p = explainState(s);
+    expect(p.blocker).toBeUndefined();
+    for (const r of p.practice!.rules) expect(checkRule(p.practice!.solution, r), JSON.stringify(r)).toBe(true);
+  });
+
+  it("a request cycle with no source starts everywhere", () => {
+    const s = scene([["a", "service", 0, 0], ["b", "worker", 2, 0], ["c", "db", 4, 0]], [["a", "b"], ["b", "a"], ["b", "c"]]);
+    expect(kindPaths(s).length).toBeGreaterThan(0);
+  });
+});
+
+describe("grid fit", () => {
+  it("only shifts a range that fits", () => {
+    expect([...fitAxis([-2, 0, 5])!.values()]).toEqual([0, 2, 7]);
+    expect([...fitAxis([3, 15])!.values()]).toEqual([0, 12]);
+  });
+  it("squeezes a wider or fractional range, keeping order and never merging", () => {
+    const m = fitAxis([0, 1, 2, 3, 40])!;
+    const cells = [0, 1, 2, 3, 40].map((v) => m.get(v)!);
+    expect(cells.every((c, i) => i === 0 || c > cells[i - 1]!)).toBe(true);
+    expect(Math.min(...cells)).toBeGreaterThanOrEqual(GRID_MIN);
+    expect(Math.max(...cells)).toBeLessThanOrEqual(GRID_MAX);
+    expect(fitAxis([0, 0.5, 1])!.get(0.5)).toBe(6);
+    expect(fitAxis(Array.from({ length: 14 }, (_, i) => i * 3))).toBeNull();
+  });
+  it("a scene wider than the grid becomes a solution with every block", () => {
+    const s = scene([["u", "client", -10, 0], ["a", "service", 0, 4], ["d", "db", 30, 9]], [["u", "a"], ["a", "d"]]);
+    const doc = toSolution(s, {})!;
+    expect(Object.keys(doc.nodes)).toHaveLength(3);
+    expect(explainState(s).blocker).toBeUndefined();
   });
 });
 

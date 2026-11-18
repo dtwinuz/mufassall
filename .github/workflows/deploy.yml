@@ -68,7 +68,7 @@ jobs:
       - name: Smoke test
         run: |
           fail=0
-          for p in / /uz/ /uz/review/ /en/review/ /uz/review.json /review.js /ru/ /en/ /uz/l/callbacks/ /en/l/callbacks/ /uz/l/payments/ /ru/l/payments/ /uz/l/request-lifecycle/ /en/l/design-chat/ /uz/lab/ /ru/lab/ /en/lab/ /uz/glossary/ /ru/glossary/ /en/glossary/ /progress.js /search.js /sw.js /pwa.js /manifest.webmanifest /uz/search.json /en/search.json /robots.txt /sitemap.xml /favicon.svg /theme.js /og/uz.png /og/ru/caching.png /lang.js /uz/l/audit-log/ /ru/l/digital-signature/ /en/l/caching/sheet/ /uz/practice/caching.json /uz/test/ /uz/test/business.json /fsrs.js /test.js /ru/l/bulk-import/; do
+          for p in / /uz/ /uz/review/ /en/review/ /uz/review.json /review.js /ru/ /en/ /uz/l/callbacks/ /en/l/callbacks/ /uz/l/payments/ /ru/l/payments/ /uz/l/request-lifecycle/ /en/l/design-chat/ /uz/lab/ /ru/lab/ /en/lab/ /uz/glossary/ /ru/glossary/ /en/glossary/ /progress.js /search.js /sw.js /pwa.js /manifest.webmanifest /uz/search.json /en/search.json /robots.txt /sitemap.xml /favicon.svg /theme.js /og/uz.png /og/ru/caching.png /lang.js /uz/l/audit-log/ /ru/l/digital-signature/ /en/l/caching/sheet/ /uz/practice/caching.json /uz/test/ /uz/test/business.json /fsrs.js /test.js /ru/l/bulk-import/ /uz/me/ /me.js /me-core.js /en/author/ /uz/l/event-sourcing/ /en/l/design-job-scheduler/; do
             code=$(curl -s --retry 4 --retry-all-errors --retry-delay 3 --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' "$SITE$p")
             echo "$code $p"; [ "$code" = 200 ] || fail=1
           done

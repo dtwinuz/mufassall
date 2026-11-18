@@ -21,7 +21,9 @@ export type Rule =
    */
   | { kind: "path"; kinds: NodeKind[] }
   /** both kinds are on the diagram and no request link goes straight from a `from` node to a `to` node */
-  | { kind: "noEdge"; from: NodeKind; to: NodeKind };
+  | { kind: "noEdge"; from: NodeKind; to: NodeKind }
+  /** a reply line (ack) from one kind to another, e.g. a registry confirming a registration */
+  | { kind: "link"; from: NodeKind; to: NodeKind; flow: "ack" };
 
 export interface Challenge {
   id: string;
@@ -203,5 +205,7 @@ export function checkRule(doc: LabDoc, rule: Rule): boolean {
       if (of(rule.from).length === 0 || of(rule.to).length === 0) return false;
       return !links(doc).some((e) => doc.nodes[e.from]!.kind === rule.from && doc.nodes[e.to]!.kind === rule.to);
     }
+    case "link":
+      return Object.values(doc.edges).some((e) => e.flow === rule.flow && doc.nodes[e.from]?.kind === rule.from && doc.nodes[e.to]?.kind === rule.to);
   }
 }

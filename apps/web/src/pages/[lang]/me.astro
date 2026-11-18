@@ -1,0 +1,415 @@
+---
+import { LANGS, type Lang, lessons, sections } from "@mufassall/content";
+import { resolve } from "@mufassall/scene-schema";
+import "@mufassall/scene-engine/player.css";
+import Base from "../../layouts/Base.astro";
+import { site } from "../../i18n/site";
+import { me } from "../../i18n/learner";
+import { questionsOf } from "./test/_bank";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const s = site[lang];
+const T = me[lang];
+const course = sections.map((sec) => ({
+  id: sec.id,
+  title: s.sections[sec.id]?.title ?? sec.id,
+  lessons: sec.lessons.map((slug) => ({ slug, title: lessons[slug]!.text[lang].title, steps: resolve(lessons[slug]!.lesson).length })),
+}));
+const total = course.reduce((n, c) => n + c.lessons.length, 0);
+const testSections = course.filter((c) => questionsOf(c.id, lang).length > 0);
+const first = course[0]?.lessons[0];
+const active = "me" as const;
+---
+
+<Base lang={lang} title={T.title} description={T.lead} active={active}>
+  <header class="page-head">
+    <h1>{T.title}</h1>
+    <p>{T.lead}</p>
+  </header>
+  <noscript><p class="me-note">{T.noscript}</p></noscript>
+
+  <div class="me" data-me data-t={JSON.stringify(T)} data-pass="70">
+    <p class="me-note" data-me-storage hidden>{T.storage}</p>
+
+    <section class="me-card me-empty" data-me-empty hidden aria-labelledby="me-empty-text">
+      <p id="me-empty-text">{T.empty}</p>
+      {first && <a class="mf-btn mf-btn--primary" href={`/${lang}/l/${first.slug}/`}>{T.start} →</a>}
+    </section>
+
+    <section class="me-card" aria-labelledby="me-stats" data-me-overview hidden>
+      <h2 id="me-stats">{T.statsTitle}</h2>
+      <dl class="me-stats">
+        <div>
+          <dt>{T.lessons}</dt>
+          <dd data-me-lessons>–</dd>
+          <dd><progress max={total} value="0" data-me-lessons-bar aria-labelledby="me-stats"></progress></dd>
+        </div>
+        <div>
+          <dt>{T.streak}</dt>
+          <dd data-me-streak>–</dd>
+          <dd class="me-sub"><span>{T.best}:</span> <span data-me-best>–</span></dd>
+        </div>
+        <div>
+          <dt>{T.goal}</dt>
+          <dd data-me-goal>–</dd>
+        </div>
+        <div>
+          <dt>{T.review}</dt>
+          <dd data-me-review>–</dd>
+          <dd class="me-sub" data-me-recall hidden></dd>
+        </div>
+      </dl>
+      <p class="me-actions">
+        <a class="mf-btn mf-btn--primary" data-me-next hidden href={`/${lang}/`}></a>
+        <a class="mf-btn" href={`/${lang}/review/`}>{T.reviewGo}</a>
+      </p>
+      <div class="me-cert" data-me-cert>
+        <h3>{T.certTitle}</h3>
+        <p data-me-cert-text>–</p>
+        <a class="mf-btn" href={`/${lang}/#rhythm`} data-me-cert-go hidden>{T.certGo}</a>
+      </div>
+    </section>
+
+    <section class="me-card" aria-labelledby="me-sections">
+      <h2 id="me-sections">{T.sectionsTitle}</h2>
+      <ul class="me-sections">
+        {
+          course.map((c) => (
+            <li class="me-section" data-me-section={c.id}>
+              <details>
+                <summary>
+                  <span class="me-section__title">{c.title}</span>
+                  <span class="me-section__count" data-me-section-count hidden>
+                    {T.sectionOf.replace("{done}", "0").replace("{total}", String(c.lessons.length))}
+                  </span>
+                </summary>
+                <ol class="me-lessons">
+                  {c.lessons.map((l) => (
+                    <li>
+                      <a href={`/${lang}/l/${l.slug}/`} data-me-lesson={l.slug} data-steps={l.steps} data-title={l.title}>
+                        <span class="me-dot" aria-hidden="true" />
+                        <span>{l.title}</span>
+                        <span class="sr-only" data-me-state />
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="me-card" aria-labelledby="me-tests" data-me-js hidden>
+      <h2 id="me-tests">{T.testsTitle}</h2>
+      <ul class="me-tests">
+        {
+          testSections.map((c) => (
+            <li>
+              <a href={`/${lang}/test/${c.id}/`}>{c.title}</a>
+              <span class="me-badge" data-me-test={c.id}>
+                {T.testNone}
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="me-card" aria-labelledby="me-move" data-me-js hidden>
+      <h2 id="me-move">{T.moveTitle}</h2>
+      <p class="me-muted">{T.moveLead}</p>
+
+      <h3>{T.exportTitle}</h3>
+      <div class="me-actions">
+        <button type="button" class="mf-btn" data-me-download>{T.download}</button>
+        <button type="button" class="mf-btn" data-me-copy>{T.copy}</button>
+        <button type="button" class="mf-btn" data-me-show-code aria-expanded="false" aria-controls="me-code-box">{T.showCode}</button>
+      </div>
+      <div id="me-code-box" class="me-code" hidden>
+        <label for="me-code">{T.codeLabel}</label>
+        <p class="me-muted" id="me-code-note">{T.codeNote}</p>
+        <textarea id="me-code" readonly rows="4" aria-describedby="me-code-note" spellcheck="false"></textarea>
+        <button type="button" class="mf-btn" data-me-copy-code>{T.copyCode}</button>
+      </div>
+      <p class="me-status" role="status" data-me-export-status></p>
+
+      <h3>{T.importTitle}</h3>
+      <div class="me-import">
+        <label class="mf-btn me-file">
+          {T.file}
+          <input type="file" accept=".json,application/json,text/plain" data-me-file class="sr-only" />
+        </label>
+        <label for="me-paste">{T.paste}</label>
+        <textarea id="me-paste" rows="4" spellcheck="false" data-me-paste></textarea>
+        <div class="me-actions">
+          <button type="button" class="mf-btn" data-me-check>{T.check}</button>
+        </div>
+      </div>
+      <div class="me-preview" data-me-preview hidden tabindex="-1" aria-labelledby="me-preview-title">
+        <h4 id="me-preview-title">{T.previewTitle}</h4>
+        <p class="me-muted" data-me-preview-from hidden></p>
+        <ul data-me-preview-list></ul>
+        <div class="me-actions">
+          <button type="button" class="mf-btn mf-btn--primary" data-me-confirm>{T.confirm}</button>
+          <button type="button" class="mf-btn" data-me-cancel>{T.cancel}</button>
+        </div>
+      </div>
+      <p class="me-status" role="status" data-me-import-status></p>
+    </section>
+
+    <section class="me-card me-danger" aria-labelledby="me-reset" data-me-js hidden>
+      <h2 id="me-reset">{T.resetTitle}</h2>
+      <p class="me-muted">{T.resetLead}</p>
+      <button type="button" class="mf-btn" data-me-reset aria-expanded="false" aria-controls="me-reset-confirm">{T.reset}</button>
+      <div id="me-reset-confirm" class="me-confirm" hidden>
+        <p><strong>{T.resetSure}</strong></p>
+        <div class="me-actions">
+          <button type="button" class="mf-btn me-btn-bad" data-me-reset-yes>{T.resetYes}</button>
+          <button type="button" class="mf-btn" data-me-reset-no>{T.cancel}</button>
+        </div>
+      </div>
+      <p class="me-status" role="status" data-me-reset-status></p>
+    </section>
+  </div>
+  <script is:inline src="/fsrs.js" defer></script>
+  <script is:inline src="/me-core.js" defer></script>
+  <script is:inline src="/me.js" defer></script>
+</Base>
+
+<style>
+  .me {
+    display: grid;
+    gap: 16px;
+    max-width: 820px;
+    margin: 0 0 64px;
+    min-width: 0;
+  }
+  /* .mf-btn and the grid boxes set display, which would beat the hidden attribute */
+  .me [hidden] {
+    display: none !important;
+  }
+  .me-card {
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .me-card h2 {
+    margin: 0 0 12px;
+    font: 600 20px/1.25 var(--font-sans);
+  }
+  .me-card h3 {
+    margin: 18px 0 8px;
+    font: 600 16px/1.3 var(--font-sans);
+  }
+  .me-card h4 {
+    margin: 0 0 6px;
+    font: 600 15px/1.3 var(--font-sans);
+  }
+  .me-note,
+  .me-muted {
+    color: var(--muted);
+  }
+  .me-note {
+    max-width: 820px;
+  }
+  .me-empty p {
+    margin: 0 0 12px;
+  }
+  .me-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+    margin: 0;
+  }
+  .me-stats dt {
+    color: var(--muted);
+    font: 500 13px var(--font-mono);
+  }
+  .me-stats dd {
+    margin: 2px 0 0;
+    font: 600 22px/1.2 var(--font-sans);
+    overflow-wrap: anywhere;
+  }
+  .me-stats dd.me-sub {
+    color: var(--muted);
+    font: 500 13px/1.4 var(--font-sans);
+  }
+  .me-stats progress {
+    width: 100%;
+    accent-color: var(--signal);
+  }
+  .me-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0 0;
+  }
+  .me-cert {
+    margin-top: 6px;
+  }
+  .me-cert p {
+    margin: 0 0 8px;
+  }
+  .me-sections,
+  .me-tests {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .me-section summary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 12px;
+    padding: 8px 4px;
+    cursor: pointer;
+  }
+  .me-section__title {
+    font-weight: 600;
+  }
+  .me-section__count {
+    color: var(--muted);
+    font: 500 13px var(--font-mono);
+  }
+  .me-lessons {
+    display: grid;
+    gap: 2px;
+    margin: 0 0 8px;
+    padding: 0 0 0 4px;
+    list-style: none;
+  }
+  .me-lessons a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 32px;
+    color: inherit;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+  .me-lessons a:hover,
+  .me-lessons a:focus-visible {
+    text-decoration: underline;
+  }
+  .me-dot {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--line-strong);
+    border-radius: 50%;
+  }
+  .me-lessons a.is-started .me-dot {
+    border-color: var(--signal);
+    background: linear-gradient(90deg, var(--signal) 50%, transparent 50%);
+  }
+  .me-lessons a.is-done .me-dot {
+    border-color: var(--ok);
+    background: var(--ok);
+  }
+  .me-tests li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .me-tests li:last-child {
+    border-bottom: 0;
+  }
+  .me-tests a {
+    color: inherit;
+    font-weight: 600;
+  }
+  .me-badge {
+    padding: 2px 8px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--muted);
+    font: 500 12px/1.5 var(--font-mono);
+  }
+  .me-badge.is-pass {
+    border-color: var(--ok);
+    color: var(--ok);
+  }
+  .me-badge.is-fail {
+    border-color: var(--warn);
+    color: var(--warn);
+  }
+  .me-code,
+  .me-import {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .me-code p {
+    margin: 0;
+  }
+  .me textarea {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: calc(var(--radius) - 6px);
+    background: var(--stage);
+    color: var(--fg);
+    font: 12px/1.4 var(--font-mono);
+    resize: vertical;
+    word-break: break-all;
+  }
+  .me textarea:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 1px;
+  }
+  .me-file {
+    justify-self: start;
+  }
+  .me-file:focus-within {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+  .me-preview {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--signal);
+    border-radius: calc(var(--radius) - 4px);
+  }
+  .me-preview ul {
+    margin: 6px 0 0;
+    padding-left: 20px;
+  }
+  .me-status:empty {
+    display: none;
+  }
+  .me-status {
+    margin: 10px 0 0;
+  }
+  .me-status.is-bad {
+    color: var(--bad);
+  }
+  .me-confirm {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--bad);
+    border-radius: calc(var(--radius) - 4px);
+  }
+  .me-confirm p {
+    margin: 0;
+  }
+  .me-btn-bad {
+    border-color: var(--bad);
+    color: var(--bad);
+  }
+</style>

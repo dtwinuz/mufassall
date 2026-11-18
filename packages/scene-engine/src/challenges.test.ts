@@ -103,3 +103,20 @@ describe("interview scenarios", () => {
     expect(passes("design-feed", farm(4, { cache: true }))).toBe(true);
   });
 });
+
+describe("link rule", () => {
+  const doc = (flow: "ack" | "request"): LabDoc =>
+    sanitize({
+      nodes: {
+        a: { id: "a", kind: "service", at: [2, 2], state: "ok" },
+        r: { id: "r", kind: "lb", at: [5, 2], state: "ok" },
+      },
+      edges: { e: { id: "e", from: "r", to: "a", flow, rate: 2, cut: false } },
+      labels: {},
+    } as unknown as LabDoc);
+  it("needs an ack line between the two kinds", () => {
+    const rule = { kind: "link", from: "lb", to: "service", flow: "ack" } as const;
+    expect(checkRule(doc("ack"), rule)).toBe(true);
+    expect(checkRule(doc("request"), rule)).toBe(false);
+  });
+});

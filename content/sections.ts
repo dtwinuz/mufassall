@@ -30,12 +30,12 @@ export const sections: readonly Section[] = [
   },
   { id: "communication", lessons: ["apis", "queues", "pubsub", "realtime", "callbacks", "webhooks"] },
   { id: "reliability", lessons: ["redundancy", "rate-limiting", "timeouts-retries", "observability", "slo-error-budget"] },
-  { id: "architecture", lessons: ["microservices", "service-discovery", "sagas", "cdc", "batch-stream"] },
-  { id: "security", lessons: ["authentication", "authorization", "encryption"] },
-  { id: "shipping", lessons: ["testing", "cicd"] },
+  { id: "architecture", lessons: ["microservices", "service-discovery", "sagas", "cdc", "batch-stream", "multi-tenancy", "event-sourcing"] },
+  { id: "security", lessons: ["authentication", "authorization", "encryption", "secrets-management"] },
+  { id: "shipping", lessons: ["testing", "cicd", "feature-flags"] },
   {
     id: "systems",
-    lessons: ["hld-lld", "design-url-shortener", "design-news-feed", "design-chat", "design-video-streaming"],
+    lessons: ["hld-lld", "design-url-shortener", "design-news-feed", "design-chat", "design-video-streaming", "design-search-autocomplete", "design-job-scheduler"],
   },
   {
     id: "business",

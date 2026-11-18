@@ -9,7 +9,7 @@ import "../styles/tokens.css";
 import "../styles/site.css";
 import { LANGS, type Lang } from "@mufassall/content";
 import { site } from "../i18n/site";
-import { test } from "../i18n/learner";
+import { me, test } from "../i18n/learner";
 
 interface Props {
   lang: Lang;
@@ -21,7 +21,7 @@ interface Props {
   jsonLd?: object | object[];
   /** error page: no canonical/hreflang, noindex, language links go to each home page */
   notFound?: boolean;
-  active?: "learn" | "lab" | "glossary" | "review" | "test" | "tools" | "paths";
+  active?: "learn" | "lab" | "glossary" | "review" | "test" | "tools" | "paths" | "me";
 }
 
 const { lang, title, description, active = "learn" } = Astro.props;
@@ -89,6 +89,7 @@ const ldJson = jsonLd ? JSON.stringify(jsonLd).replace(/</g, "\\u003c") : undefi
           <a href={`/${lang}/glossary/`} aria-current={active === "glossary" ? "page" : undefined}>{s.nav.glossary}</a>
           <a href={`/${lang}/review/`} aria-current={active === "review" ? "page" : undefined}>{s.nav.review}<span class="nav-badge" data-review-badge></span></a>
           <a href={`/${lang}/test/`} aria-current={active === "test" ? "page" : undefined}>{test[lang].nav}</a>
+          <a href={`/${lang}/me/`} aria-current={active === "me" ? "page" : undefined}>{me[lang].nav}</a>
           <a href={`/${lang}/paths/`} aria-current={active === "paths" ? "page" : undefined}>{s.learner.nav.paths}</a>
           <a href={`/${lang}/tools/`} aria-current={active === "tools" ? "page" : undefined}>{s.learner.nav.tools}</a>
         </nav>
