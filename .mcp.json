@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "mufassall": {
+      "command": "node",
+      "args": [
+        "packages/mcp/bin/server.mjs"
+      ]
+    }
+  }
+}

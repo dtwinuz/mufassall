@@ -11,6 +11,8 @@ export {
   toD2,
   toMermaidFlowchart,
   toMermaidSequence,
+  toPlantUmlComponents,
+  toPlantUmlSequence,
   type TextExportOptions,
   type SequenceText,
 } from "./textexport";

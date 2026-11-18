@@ -300,6 +300,34 @@
   overflow: auto;
   resize: vertical;
 }
+/* BPMN import dialog: a plain stack, it scrolls as a whole when the notes are long */
+.mf-lab__dialog.mf-author__bpmn .mf-panel__card {
+  grid-template-rows: none;
+  overflow: auto;
+}
+.mf-author__bpmn h2,
+.mf-author__bpmn h3,
+.mf-author__bpmn p {
+  margin: 0;
+}
+.mf-author__bpmn .mf-author__bpmn-xml {
+  font: 12px/1.5 var(--font-mono);
+  white-space: pre;
+  overflow: auto;
+}
+.mf-author__bpmn-done {
+  font-weight: 600;
+}
+.mf-author__bpmn-notes {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.mf-author__bpmn-error {
+  color: var(--bad);
+  overflow-wrap: anywhere;
+}
 .mf-author__sr {
   position: absolute;
   width: 1px;

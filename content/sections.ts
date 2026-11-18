@@ -29,10 +29,10 @@ export const sections: readonly Section[] = [
     ],
   },
   { id: "communication", lessons: ["apis", "queues", "pubsub", "realtime", "callbacks", "webhooks"] },
-  { id: "reliability", lessons: ["redundancy", "rate-limiting", "timeouts-retries", "observability", "slo-error-budget"] },
-  { id: "architecture", lessons: ["microservices", "service-discovery", "sagas", "cdc", "batch-stream", "multi-tenancy", "event-sourcing"] },
+  { id: "reliability", lessons: ["redundancy", "rate-limiting", "timeouts-retries", "observability", "slo-error-budget", "backpressure"] },
+  { id: "architecture", lessons: ["microservices", "service-discovery", "sagas", "cdc", "outbox-pattern", "distributed-locks", "batch-stream", "multi-tenancy", "event-sourcing"] },
   { id: "security", lessons: ["authentication", "authorization", "encryption", "secrets-management"] },
-  { id: "shipping", lessons: ["testing", "cicd", "feature-flags"] },
+  { id: "shipping", lessons: ["testing", "cicd", "zero-downtime-migrations", "feature-flags"] },
   {
     id: "systems",
     lessons: ["hld-lld", "design-url-shortener", "design-news-feed", "design-chat", "design-video-streaming", "design-search-autocomplete", "design-job-scheduler"],

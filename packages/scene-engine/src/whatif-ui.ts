@@ -74,6 +74,15 @@ export const WHATIF_UI: Record<WhatIfLang, WhatIfUi> = {
         },
         warn: "Baza ortiqcha yuklangan: unga kelayotgan o'qishlar quvvatidan ko'p, navbat va kechikish cheksiz o'sadi.",
       },
+      backpressure: {
+        params: {
+          lambda: { label: "Kelish tezligi λ", hint: "API'ga soniyasiga keladigan hodisalar." },
+          c: { label: "Writer'lar c", hint: "Parallel yozadigan writer'lar soni." },
+          serviceMs: { label: "Bitta hodisaga vaqt", hint: "Bitta writer bitta hodisani bazaga yozishi uchun vaqt. Sekin bazada 5 ms." },
+        },
+        results: { rho: "Yuk ρ", pWait: "Kutib qolish ehtimoli", wq: "Buferda o'rtacha kutish", w: "Jami kechikish", lq: "Buferda o'rtacha hodisalar" },
+        warn: "ρ ≥ 1: hodisalar yozilishidan tezroq kelyapti, chegarasiz bufer xotira tugaguncha o'sadi. Bufer chegarasi, 429 yoki writer qo'shish kerak.",
+      },
       queues: {
         params: {
           lambda: { label: "Kelish tezligi λ", hint: "Navbatga soniyasiga tushadigan ishlar." },
@@ -177,6 +186,15 @@ export const WHATIF_UI: Record<WhatIfLang, WhatIfUi> = {
         },
         warn: "База перегружена: чтений приходит больше, чем она успевает, очередь и задержка растут без предела.",
       },
+      backpressure: {
+        params: {
+          lambda: { label: "Поток событий λ", hint: "Сколько событий в секунду приходит в API." },
+          c: { label: "Writer'ы c", hint: "Сколько writer'ов пишут параллельно." },
+          serviceMs: { label: "Время на событие", hint: "Сколько одному writer'у нужно, чтобы записать одно событие. При медленной базе 5 мс." },
+        },
+        results: { rho: "Нагрузка ρ", pWait: "Вероятность ждать", wq: "Среднее ожидание в буфере", w: "Задержка всего", lq: "Событий в буфере в среднем" },
+        warn: "ρ ≥ 1: события приходят быстрее, чем пишутся, и неограниченный буфер растёт, пока не кончится память. Нужен предел буфера, 429 или больше writer'ов.",
+      },
       queues: {
         params: {
           lambda: { label: "Поток задач λ", hint: "Сколько задач в секунду попадает в очередь." },
@@ -279,6 +297,15 @@ export const WHATIF_UI: Record<WhatIfLang, WhatIfUi> = {
           p95: "Reply p95 (rough)",
         },
         warn: "Database overloaded: more reads arrive than it can serve, so its queue and latency grow without bound.",
+      },
+      backpressure: {
+        params: {
+          lambda: { label: "Arrival rate λ", hint: "Events per second arriving at the API." },
+          c: { label: "Writers c", hint: "Writers storing events in parallel." },
+          serviceMs: { label: "Time per event", hint: "How long one writer needs to store one event. 5 ms while the DB is slow." },
+        },
+        results: { rho: "Load ρ", pWait: "Chance to wait", wq: "Average wait in the buffer", w: "Total delay", lq: "Average events in the buffer" },
+        warn: "ρ ≥ 1: events arrive faster than they are stored, and an unbounded buffer grows until memory runs out. Bound it, shed with 429 or add writers.",
       },
       queues: {
         params: {

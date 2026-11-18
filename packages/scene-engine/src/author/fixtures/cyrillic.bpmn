@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" id="d1" name="Выдача кредита" targetNamespace="urn:bank">
+  <process id="loan">
+    <startEvent id="s" name="Заявка получена"/>
+    <task id="t1" name="Проверить клиента"/>
+    <businessRuleTask id="t2" name="Скоринг"/>
+    <inclusiveGateway id="g" name="Решение"/>
+    <task id="t3" name="Выдать кредит"/>
+    <task id="t4" name="Отказать"/>
+    <endEvent id="e1" name="Ҳужжат тайёр"/>
+    <endEvent id="e2"/>
+    <dataObjectReference id="doc" name="Договор"/>
+    <sequenceFlow id="a" sourceRef="s" targetRef="t1"/>
+    <sequenceFlow id="b" sourceRef="t1" targetRef="t2"/>
+    <sequenceFlow id="c" sourceRef="t2" targetRef="g"/>
+    <sequenceFlow id="d" name="да" sourceRef="g" targetRef="t3"/>
+    <sequenceFlow id="e" name="нет" sourceRef="g" targetRef="t4"/>
+    <sequenceFlow id="f" sourceRef="t3" targetRef="e1"/>
+    <sequenceFlow id="h" sourceRef="t4" targetRef="e2"/>
+    <sequenceFlow id="broken" sourceRef="t4" targetRef="nowhere"/>
+  </process>
+  <bpmndi:BPMNDiagram id="dia">
+    <bpmndi:BPMNPlane id="pl" bpmnElement="loan">
+      <bpmndi:BPMNShape id="s_di" bpmnElement="s"><omgdc:Bounds x="100" y="200" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="t1_di" bpmnElement="t1"><omgdc:Bounds x="200" y="178" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="t2_di" bpmnElement="t2"><omgdc:Bounds x="350" y="178" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="g_di" bpmnElement="g"><omgdc:Bounds x="500" y="193" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="t3_di" bpmnElement="t3"><omgdc:Bounds x="600" y="80" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="t4_di" bpmnElement="t4"><omgdc:Bounds x="600" y="300" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="e1_di" bpmnElement="e1"><omgdc:Bounds x="760" y="102" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="e2_di" bpmnElement="e2"><omgdc:Bounds x="760" y="322" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="doc_di" bpmnElement="doc"><omgdc:Bounds x="630" y="200" width="36" height="50"/></bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

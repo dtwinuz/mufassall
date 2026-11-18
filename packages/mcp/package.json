@@ -1,0 +1,20 @@
+{
+  "name": "@mufassall/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local MCP server (stdio) for mufassall lessons. No dependencies: runs the course sources on Node's native TypeScript support.",
+  "type": "module",
+  "bin": {
+    "mufassall-mcp": "./bin/server.mjs"
+  },
+  "engines": {
+    "node": ">=23.6"
+  },
+  "scripts": {
+    "start": "node bin/server.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3"
+  }
+}

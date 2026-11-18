@@ -26,6 +26,8 @@ import { freeCell } from "../lab";
 import { useReducedMotion } from "../motion";
 import { type LabStrings, type UiStrings, fill } from "../ui";
 import { AUTHOR_UI, type AuthorStrings } from "./author-ui";
+import { BpmnImport } from "./BpmnImport";
+import { isBlankDraft } from "./bpmn";
 import {
   ALLOWED_UNITS,
   AUTHOR_LANGS,
@@ -481,7 +483,8 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson }: Author
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e.target)) return;
+      // a modal dialog (BPMN import) owns the keyboard, Escape must close it
+      if (isTyping(e.target) || document.querySelector("dialog[open]")) return;
       const mod = e.ctrlKey || e.metaKey;
       const onControl = (e.target as HTMLElement | null)?.closest?.("button, a, summary, dialog");
       if (mod && e.key.toLowerCase() === "z") e.shiftKey ? redo() : undo();
@@ -869,6 +872,7 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson }: Author
                   <button type="button" className="mf-btn" onClick={() => fileRef.current?.click()}>
                     {a.openJson}
                   </button>
+                  <BpmnImport a={a} lang={tl} blank={isBlankDraft(draft)} onImport={replace} />
                   <button type="button" className="mf-btn mf-btn--danger" onClick={() => window.confirm(a.newConfirm) && replace(newDraft())}>
                     {a.newDraft}
                   </button>
