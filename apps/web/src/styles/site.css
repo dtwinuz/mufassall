@@ -774,6 +774,10 @@ main.wrap {
 .review .lab-skeleton {
   min-height: 240px;
 }
+/* the editor is taller than a screen: keep the footer below the fold until it mounts (CLS) */
+.author-skeleton {
+  min-height: 110vh;
+}
 
 /* 404: the same message in all three languages */
 .not-found__list {

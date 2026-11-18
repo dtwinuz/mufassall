@@ -21,20 +21,32 @@ const PROPS = [
 
 /** moving packets and editor-only overlays are not part of the picture */
 const SKIP = ".mf-packets, .mf-area, .mf-area__hover, .mf-edge__hit";
+/** a video frame keeps the packets in flight */
+const SKIP_EDITOR = ".mf-area, .mf-area__hover, .mf-edge__hit";
 
-function viewBox(svg: SVGSVGElement): [number, number, number, number] {
+export function viewBox(svg: SVGSVGElement): [number, number, number, number] {
   const v = (svg.getAttribute("viewBox") ?? "0 0 800 500").split(/\s+/).map(Number);
   return [v[0] ?? 0, v[1] ?? 0, v[2] ?? 800, v[3] ?? 500];
 }
 
-export function standaloneSvg(svg: SVGSVGElement): string {
+/** The first painted background behind the scene (the stage colour of the current theme). */
+export function backdrop(svg: Element): string {
+  for (let n: Element | null = svg; n; n = n.parentElement) {
+    const c = getComputedStyle(n).backgroundColor;
+    if (c && c !== "transparent" && !/rgba\(.*,\s*0\)$/.test(c)) return c;
+  }
+  return "";
+}
+
+export function standaloneSvg(svg: SVGSVGElement, opts: { packets?: boolean } = {}): string {
+  const skip = opts.packets ? SKIP_EDITOR : SKIP;
   const clone = svg.cloneNode(true) as SVGSVGElement;
   const src = [...svg.querySelectorAll<SVGElement>("*")];
   const dst = [...clone.querySelectorAll<SVGElement>("*")];
   src.forEach((el, i) => {
     const out = dst[i]!;
     const cs = getComputedStyle(el);
-    if (el.closest(SKIP) || cs.display === "none" || cs.visibility === "hidden") {
+    if (el.closest(skip) || cs.display === "none" || cs.visibility === "hidden") {
       out.remove();
       return;
     }
@@ -52,12 +64,7 @@ export function standaloneSvg(svg: SVGSVGElement): string {
   bg.setAttribute("y", String(y));
   bg.setAttribute("width", String(w));
   bg.setAttribute("height", String(h));
-  let paint = "";
-  for (let n: Element | null = svg; n && !paint; n = n.parentElement) {
-    const c = getComputedStyle(n).backgroundColor;
-    if (c && c !== "transparent" && !/rgba\(.*,\s*0\)$/.test(c)) paint = c;
-  }
-  bg.setAttribute("fill", paint || "#ffffff");
+  bg.setAttribute("fill", backdrop(svg) || "#ffffff");
   clone.insertBefore(bg, clone.firstChild);
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   clone.setAttribute("width", String(w));
@@ -66,7 +73,7 @@ export function standaloneSvg(svg: SVGSVGElement): string {
   return new XMLSerializer().serializeToString(clone);
 }
 
-function download(blob: Blob, name: string) {
+export function downloadBlob(blob: Blob, name: string) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = name;
@@ -75,7 +82,7 @@ function download(blob: Blob, name: string) {
 }
 
 export function downloadSvg(svg: SVGSVGElement, name: string) {
-  download(new Blob([standaloneSvg(svg)], { type: "image/svg+xml" }), `${name}.svg`);
+  downloadBlob(new Blob([standaloneSvg(svg)], { type: "image/svg+xml" }), `${name}.svg`);
 }
 
 /** PNG at 2x through a canvas; the SVG is self-contained, so the canvas stays untainted. */
@@ -94,7 +101,7 @@ export function downloadPng(svg: SVGSVGElement, name: string): Promise<void> {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       canvas.toBlob((b) => {
         if (!b) return reject(new Error("no blob"));
-        download(b, `${name}.png`);
+        downloadBlob(b, `${name}.png`);
         resolve();
       }, "image/png");
     };

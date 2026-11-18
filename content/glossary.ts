@@ -166,7 +166,7 @@ export const glossary: Term[] = [
       ru: "Удаление старой копии из кеша, когда данные изменились. Ключ удаляют после коммита, и следующее чтение берёт свежее значение.",
       en: "Removing the old cached copy when the data changes. The key is deleted after the commit, so the next read fetches the fresh value.",
     },
-    lesson: "caching",
+    lesson: "cache-invalidation",
   },
   {
     id: "cache-stampede",
@@ -1715,5 +1715,271 @@ export const glossary: Term[] = [
       en: "A constraint that applies only to new writes at first; the old rows are checked later by VALIDATE without blocking reads or writes. The safe way to add NOT NULL or a foreign key to a big table.",
     },
     lesson: "zero-downtime-migrations",
+  },
+  {
+    id: "inverted-index",
+    term: { uz: "Teskari indeks (inverted index)", ru: "Инвертированный индекс", en: "Inverted index" },
+    short: {
+      uz: "Har bir so'z uchun shu so'z uchraydigan hujjatlarning saralangan ro'yxatini (postings) saqlaydigan indeks. Qidiruv hujjatlarni emas, faqat so'rovdagi so'zlarning ro'yxatlarini o'qiydi va kesishtiradi.",
+      ru: "Индекс, который хранит для каждого слова отсортированный список документов, где оно встречается (postings). Поиск читает не документы, а только списки слов из запроса и пересекает их.",
+      en: "An index that stores, for every word, the sorted list of documents containing it (its postings). A search reads only the lists for its words and intersects them, never the documents themselves.",
+    },
+    lesson: "full-text-search",
+  },
+  {
+    id: "text-analyzer",
+    term: { uz: "Analyzer (matn tahlilchisi)", ru: "Анализатор текста", en: "Text analyzer" },
+    short: {
+      uz: "Matnni indeks tokenlariga aylantiradigan qadamlar zanjiri: kichik harf, bitta alifbo, apostrof variantlarini olib tashlash, tokenlarga bo'lish, stemming. Aynan o'sha analyzer so'rovga ham qo'llanishi shart.",
+      ru: "Цепочка шагов, превращающая текст в токены индекса: нижний регистр, один алфавит, удаление вариантов апострофа, разбиение на токены, стемминг. Тот же анализатор обязан применяться и к запросу.",
+      en: "The chain of steps that turns text into index tokens: lowercase, one alphabet, apostrophe variants removed, split into tokens, stemming. The very same analyzer must run on the query.",
+    },
+    lesson: "full-text-search",
+  },
+  {
+    id: "bm25",
+    term: { uz: "BM25", ru: "BM25", en: "BM25" },
+    short: {
+      uz: "Matn qidiruvining standart reyting formulasi. Kam uchraydigan so'zlar og'irroq (idf), takrorlar foyda beradi, lekin to'yinadi (k1), uzun matnlar chegirma oladi (b).",
+      ru: "Стандартная формула ранжирования полнотекстового поиска. Редкие слова весят больше (idf), повторы помогают, но насыщаются (k1), длинные тексты штрафуются (b).",
+      en: "The standard ranking formula of full-text search. Rare words weigh more (idf), repetitions help but saturate (k1), and long texts are discounted (b).",
+    },
+    lesson: "full-text-search",
+  },
+  {
+    id: "near-real-time",
+    term: { uz: "Near-real-time indeks", ru: "Индекс near-real-time", en: "Near-real-time index" },
+    short: {
+      uz: "Yangi yozuvlar darhol emas, keyingi refresh'da, odatda soniyada bir marta qidiruvga ochiladigan indeks. Refresh qanchalik tez-tez bo'lsa, birlashtirish kerak bo'lgan mayda segmentlar shunchalik ko'p.",
+      ru: "Индекс, в котором новые записи становятся видимыми не сразу, а при следующем refresh, обычно раз в секунду. Чем чаще refresh, тем больше мелких сегментов на слияние.",
+      en: "An index where new writes become searchable not at once but at the next refresh, typically once a second. The more frequent the refresh, the more small segments there are to merge.",
+    },
+    lesson: "full-text-search",
+  },
+  {
+    id: "scatter-gather",
+    term: { uz: "Scatter-gather", ru: "Scatter-gather", en: "Scatter-gather" },
+    short: {
+      uz: "So'rov hamma shard'larga yuboriladi, har biri o'zining top-k natijasini qaytaradi, koordinator esa ularni bitta ro'yxatga birlashtiradi. Javob eng sekin shard qancha ishlasa, shuncha vaqt oladi.",
+      ru: "Запрос рассылается во все шарды, каждый возвращает свой топ-k, а координатор сливает их в один список. Ответ длится столько, сколько самый медленный шард.",
+      en: "The query is sent to every shard, each returns its own top k, and a coordinator merges them into one list. The answer takes as long as the slowest shard.",
+    },
+    lesson: "full-text-search",
+  },
+
+  // ---- vector-search (section: data) ----
+  {
+    id: "embedding",
+    term: { uz: "Embedding (vektor ifoda)", ru: "Эмбеддинг", en: "Embedding" },
+    short: {
+      uz: "Model matn yoki rasmdan yasagan sonlar vektori, masalan 768 ta son. Ma'nosi o'xshash narsalar yaqin vektorlarga tushadi; turli model yoki versiya vektorlarini solishtirib bo'lmaydi.",
+      ru: "Вектор чисел, который модель строит из текста или картинки, например 768 чисел. Похожие по смыслу вещи получают близкие векторы; векторы разных моделей или версий несравнимы.",
+      en: "A vector of numbers a model makes from a text or an image, for example 768 numbers. Things with similar meaning get nearby vectors; vectors from different models or versions cannot be compared.",
+    },
+    lesson: "vector-search",
+  },
+  {
+    id: "cosine-similarity",
+    term: { uz: "Kosinus o'xshashligi", ru: "Косинусная близость", en: "Cosine similarity" },
+    short: {
+      uz: "Ikki vektor orasidagi burchak kosinusi: 1 bir xil yo'nalish, 0 aloqasiz. Vektorlar uzunligi 1 ga keltirilgan bo'lsa, bu oddiy skalyar ko'paytma.",
+      ru: "Косинус угла между двумя векторами: 1 — одно направление, 0 — несвязанные. Для векторов длины 1 это просто скалярное произведение.",
+      en: "The cosine of the angle between two vectors: 1 means the same direction, 0 means unrelated. For vectors of length 1 it is just the dot product.",
+    },
+    lesson: "vector-search",
+  },
+  {
+    id: "hnsw",
+    term: { uz: "HNSW", ru: "HNSW", en: "HNSW" },
+    short: {
+      uz: "Taxminiy eng yaqin qo'shnilarni qidirish uchun qatlamli graf: har vektor qo'shnilari bilan bog'langan, qidiruv graf bo'ylab savol tomon yuradi. ef_search recall va kechikishni, M esa xotirani belgilaydi.",
+      ru: "Многослойный граф для приближённого поиска ближайших соседей: каждый вектор связан с соседями, поиск идёт по графу к запросу. ef_search задаёт recall и задержку, M — память.",
+      en: "A layered graph for approximate nearest neighbour search: each vector links to its neighbours and a search walks the graph towards the query. ef_search sets recall and latency, M sets memory.",
+    },
+    lesson: "vector-search",
+  },
+  {
+    id: "reciprocal-rank-fusion",
+    term: { uz: "Reciprocal rank fusion (RRF)", ru: "Reciprocal rank fusion (RRF)", en: "Reciprocal rank fusion (RRF)" },
+    short: {
+      uz: "Bir nechta reyting ro'yxatini birlashtirish usuli: hujjat har bir ro'yxatdan 1 / (60 + o'rin) oladi va ular qo'shiladi. Ballarni bir masshtabga keltirish shart emas, shuning uchun BM25 va vektor natijalarini birlashtirishda qulay.",
+      ru: "Способ слить несколько ранжированных списков: документ получает 1 / (60 + место) из каждого списка, и они складываются. Оценки не нужно приводить к одной шкале, поэтому удобно объединять BM25 и векторы.",
+      en: "A way to merge several ranked lists: a document gets 1 / (60 + rank) from each list and the terms are added up. Scores need no common scale, which makes it handy for combining BM25 and vector results.",
+    },
+    lesson: "vector-search",
+  },
+  {
+    id: "re-embedding",
+    term: { uz: "Qayta embed qilish (re-embedding)", ru: "Перекодирование эмбеддингов (re-embedding)", en: "Re-embedding" },
+    short: {
+      uz: "Embedding modeli o'zgarganda barcha hujjatlarni yangi model bilan qaytadan vektorga aylantirish, yangi indeksga yozish va so'rov modeli bilan birga alias orqali almashtirish. Busiz eski vektorlar va yangi so'rovlar turli fazoda qoladi.",
+      ru: "При смене модели эмбеддингов: заново закодировать все документы новой моделью в новый индекс и переключить его через alias вместе с моделью запросов. Иначе старые векторы и новые запросы окажутся в разных пространствах.",
+      en: "When the embedding model changes: encode every document again with the new model into a new index, then switch it through an alias together with the query model. Otherwise old vectors and new queries live in different spaces.",
+    },
+    lesson: "vector-search",
+  },
+  {
+    id: "stale-while-revalidate",
+    term: { uz: "Stale-while-revalidate", ru: "Stale-while-revalidate", en: "Stale-while-revalidate" },
+    short: {
+      uz: "Kesh qiymatining yumshoq va qattiq TTL'i bor: yumshoq muddat o'tgach eski qiymat darhol beriladi, bitta so'rov esa uni fonda yangilaydi. Hech kim qayta qurishni kutmaydi.",
+      ru: "У значения в кеше мягкий и жёсткий TTL: после мягкого старое значение отдают сразу, а один запрос обновляет его в фоне. Никто не ждёт пересборки.",
+      en: "A cached value has a soft and a hard TTL: after the soft one the old value is still served at once while one request refreshes it in the background, so nobody waits for the rebuild.",
+    },
+    lesson: "cache-invalidation",
+  },
+  {
+    id: "negative-caching",
+    term: { uz: "Negativ keshlash", ru: "Негативное кеширование", en: "Negative caching" },
+    short: {
+      uz: "\"Topilmadi\" javobini ham qisqa TTL bilan keshlash, shunda mavjud bo'lmagan qatorni qidirish har safar bazaga bormaydi. Yangi qator qo'shilganda bu yozuv o'chirilishi kerak.",
+      ru: "Кеширование ответа «не найдено» с коротким TTL, чтобы поиск несуществующей строки не ходил в базу каждый раз. При вставке строки эту запись нужно удалить.",
+      en: "Caching a \"not found\" answer with a short TTL, so lookups of rows that do not exist stop hitting the database every time. Inserting the row must delete the entry.",
+    },
+    lesson: "cache-invalidation",
+  },
+  {
+    id: "cache-lease",
+    term: { uz: "Kesh lease'i", ru: "Лиз в кеше", en: "Cache lease" },
+    short: {
+      uz: "Keshda topilmaslik bilan beriladigan token: to'ldirish faqat hali amal qilayotgan token bilan qabul qilinadi, kalitni o'chirish esa tokenni bekor qiladi. Sekin o'quvchi eski qiymatni qayta yoza olmaydi.",
+      ru: "Токен, который выдаётся вместе с промахом: запись принимается только с действующим токеном, а удаление ключа его отменяет. Медленный читатель не может вернуть старое значение.",
+      en: "A token handed out with a cache miss: a fill is accepted only with a token that is still valid, and deleting the key cancels it, so a slow reader cannot write an old value back.",
+    },
+    lesson: "cache-invalidation",
+  },
+  {
+    id: "double-delete",
+    term: { uz: "Ikki marta o'chirish", ru: "Двойное удаление", en: "Delayed double delete" },
+    short: {
+      uz: "Yozuvdan keyin kesh kalitini darhol, so'ng bir oz kechiktirib yana o'chirish, shunda oraliqda sekin o'quvchi qaytargan eski qiymat ham olib tashlanadi. Oynani toraytiradi, lekin yopmaydi.",
+      ru: "Удаление ключа кеша сразу после записи и ещё раз с небольшой задержкой, чтобы убрать старое значение, которое успел вернуть медленный читатель. Сужает окно, но не закрывает его.",
+      en: "Deleting a cache key right after a write and once more a little later, to remove an old value a slow reader put back in between. It narrows the race window but does not close it.",
+    },
+    lesson: "cache-invalidation",
+  },
+
+  // ---- money-and-rounding ----
+  {
+    id: "floating-point-error",
+    term: { uz: "Suzuvchi nuqta xatosi", ru: "Ошибка плавающей точки", en: "Floating-point error" },
+    short: {
+      uz: "Ikkilik double 0.1 kabi o'nlik kasrlarni aniq saqlay olmaydi, shuning uchun 0.1 + 0.2 0.30000000000000004 beradi. Pul uchun butun sonlar yoki decimal turi ishlatiladi.",
+      ru: "Двоичный double не может точно хранить десятичные дроби вроде 0.1, поэтому 0.1 + 0.2 даёт 0.30000000000000004. Для денег берут целые числа или decimal.",
+      en: "A binary double cannot store decimal fractions such as 0.1 exactly, so 0.1 + 0.2 gives 0.30000000000000004. Money uses integers or a decimal type instead.",
+    },
+    lesson: "money-and-rounding",
+  },
+  {
+    id: "rounding-mode",
+    term: { uz: "Yaxlitlash usuli", ru: "Режим округления", en: "Rounding mode" },
+    short: {
+      uz: "Aynan yarimdagi qiymat qayerga ketishini belgilaydigan qoida: half-up yarimni noldan uzoqqa, half-even (bank usuli) juft qo'shniga oladi. Qoidani qonun yoki shartnoma belgilaydi.",
+      ru: "Правило, куда уходит значение ровно на половине: half-up отправляет половину от нуля, half-even (банковское) к чётному соседу. Правило задаёт закон или договор.",
+      en: "The rule for a value exactly halfway: half-up sends the half away from zero, half-even (banker's rounding) to the even neighbour. Law or contract decides which one applies.",
+    },
+    lesson: "money-and-rounding",
+  },
+  {
+    id: "largest-remainder",
+    term: { uz: "Eng katta qoldiq usuli", ru: "Метод наибольшего остатка", en: "Largest remainder method" },
+    short: {
+      uz: "Summani qismlarga bo'lish usuli: har bir qism pastga yaxlitlangan ulushini oladi, ortgan tiyinlar esa bittadan eng katta qoldiqli qismlarga beriladi. Qismlar doim butunga teng.",
+      ru: "Способ делить сумму на части: каждая часть получает долю, округлённую вниз, а оставшиеся тийины по одному уходят частям с наибольшими остатками. Части всегда дают целое.",
+      en: "A way to split an amount: every part gets its share rounded down, and the leftover minor units go one each to the parts with the largest remainders, so the parts always add up.",
+    },
+    lesson: "money-and-rounding",
+  },
+  {
+    id: "fx-rate-snapshot",
+    term: { uz: "Saqlangan valyuta kursi", ru: "Сохранённый курс валюты", en: "Stored exchange rate" },
+    short: {
+      uz: "Konvertatsiya bilan birga yozib qo'yiladigan kurs, uning manbai, vaqti va yaxlitlash usuli. Qaytarish va audit shu sonlardan foydalanadi, kursni qaytadan olmaydi.",
+      ru: "Курс, записанный вместе с конвертацией, с источником, временем и режимом округления. Возврат и аудит используют эти числа, а не запрашивают курс заново.",
+      en: "The rate recorded with a conversion, together with its source, time and rounding mode. Refunds and audits use these numbers instead of fetching the rate again.",
+    },
+    lesson: "money-and-rounding",
+  },
+  {
+    id: "partial-refund",
+    term: { uz: "Qisman refund", ru: "Частичный возврат", en: "Partial refund" },
+    short: {
+      uz: "Yechilgan summaning bir qismini qaytarish. U asl to'lovni tahrirlamaydi: alohida qator va alohida provodka bo'ladi, jami refund'lar esa yechilgan summadan oshmasligi kerak.",
+      ru: "Возврат части списанной суммы. Исходный платёж не меняется: это отдельная строка и отдельная проводка, а сумма всех возвратов не должна превышать списанное.",
+      en: "Giving back part of a captured amount. The original payment is not edited: it is a separate row and a separate ledger entry, and all refunds together must not exceed what was captured.",
+    },
+    lesson: "refunds-and-chargebacks",
+  },
+  {
+    id: "chargeback",
+    term: { uz: "Chargeback", ru: "Чарджбэк (chargeback)", en: "Chargeback" },
+    short: {
+      uz: "Karta egasining banki to'lovni e'tiroz bilan qaytarib olishi. Pul do'kondan darhol yechiladi, do'kon esa uni faqat muddatgacha dalil yuborib qaytarishi mumkin.",
+      ru: "Принудительный возврат платежа по претензии банка держателя карты. Деньги списываются с магазина сразу, вернуть их можно только доказательствами до срока.",
+      en: "A payment taken back by the cardholder's bank after a dispute. The money leaves the merchant at once; it can only be won back with evidence before the deadline.",
+    },
+    lesson: "refunds-and-chargebacks",
+  },
+  {
+    id: "evidence-deadline",
+    term: { uz: "Dalil muddati", ru: "Срок подачи доказательств", en: "Evidence deadline" },
+    short: {
+      uz: "Do'kon chargeback'ga javob berishi kerak bo'lgan oxirgi payt. Undan keyin dispute javobsiz yutqazilgan hisoblanadi.",
+      ru: "Последний момент, когда магазин может ответить на чарджбэк. После него спор считается проигранным без ответа.",
+      en: "The last moment a merchant can answer a chargeback. After it the dispute is lost by default.",
+    },
+    lesson: "refunds-and-chargebacks",
+  },
+  {
+    id: "refund-reservation",
+    term: { uz: "Refund summasini band qilish", ru: "Резерв суммы возврата", en: "Refund reservation" },
+    short: {
+      uz: "Refund summasi provayder chaqirilishidan oldin, limit tekshiruvi bilan bitta shartli update'da to'lovning qaytarilgan hisoblagichiga qo'shiladi. Refund failed bo'lsa, summa bo'shatiladi.",
+      ru: "Сумма возврата прибавляется к счётчику возвращённого на платеже до вызова провайдера, одним условным update вместе с проверкой лимита. Если возврат не прошёл, резерв снимается.",
+      en: "The refund amount is added to the payment's refunded counter before the provider is called, in one conditional update together with the limit check. If the refund fails, the amount is released.",
+    },
+    lesson: "refunds-and-chargebacks",
+  },
+
+  // ---- document-numbering ----
+  {
+    id: "gapless-numbering",
+    term: { uz: "Uzluksiz raqamlash", ru: "Сквозная нумерация", en: "Gapless numbering" },
+    short: {
+      uz: "Har seriya va yil ichida hujjat raqamlari birorta ham tushib qolmasdan va takrorlanmasdan ketma-ket boradi. Ko'pincha qonun talabi, auditor reyestr bo'yicha tekshiradi.",
+      ru: "Номера документов в каждой серии и году идут подряд, без пропусков и повторов. Часто это требование закона, аудитор проверяет его по реестру.",
+      en: "Document numbers in each series and year follow one another with nothing skipped and nothing repeated. Often a legal requirement that an auditor checks against the register.",
+    },
+    lesson: "document-numbering",
+  },
+  {
+    id: "number-series",
+    term: { uz: "Raqamlar seriyasi", ru: "Серия номеров", en: "Number series" },
+    short: {
+      uz: "Prefiks va yil bilan ajratilgan alohida raqamlar ketma-ketligi, masalan har filial uchun. Har seriyaning o'z hisoblagichi bor, shuning uchun seriyalar bir-birini kutmaydi.",
+      ru: "Отдельная последовательность номеров со своим префиксом и годом, например на филиал. У каждой серии свой счётчик, поэтому серии не ждут друг друга.",
+      en: "A separate run of numbers with its own prefix and year, for example one per branch. Each series has its own counter, so series never wait for each other.",
+    },
+    lesson: "document-numbering",
+  },
+  {
+    id: "counter-row",
+    term: { uz: "Hisoblagich qatori", ru: "Строка-счётчик", en: "Counter row" },
+    short: {
+      uz: "Seriya uchun oxirgi raqamni saqlaydigan qator, hujjat bilan bitta tranzaksiyada UPDATE ... RETURNING bilan oshiriladi. Rollback raqamni qaytaradi, qator lock'i esa yozuvchilarni navbatga qo'yadi.",
+      ru: "Строка с последним номером серии, которую увеличивают через UPDATE ... RETURNING в одной транзакции с документом. Откат возвращает номер, а блокировка строки выстраивает писателей в очередь.",
+      en: "A row holding a series' last number, incremented with UPDATE ... RETURNING in the same transaction as the document. A rollback gives the number back; the row lock makes writers take turns.",
+    },
+    lesson: "document-numbering",
+  },
+  {
+    id: "sequence-gap",
+    term: { uz: "Sequence bo'shlig'i", ru: "Дыра в последовательности", en: "Sequence gap" },
+    short: {
+      uz: "Bazadagi sequence o'tkazib yuborgan qiymat: rollback, kesh yoki yiqilishdan keyin. Sequence'lar tezlik uchun ataylab orqaga qaytmaydi, shuning uchun uzluksiz raqamlarga yaramaydi.",
+      ru: "Значение, пропущенное последовательностью в базе: после отката, кэша или падения. Последовательности ради скорости никогда не идут назад и поэтому не годятся для сквозных номеров.",
+      en: "A value a database sequence skipped: after a rollback, a cache or a crash. Sequences never go back, on purpose, for speed, so they cannot provide gapless numbers.",
+    },
+    lesson: "document-numbering",
   },
 ];
