@@ -73,6 +73,19 @@ const active = "me" as const;
         <a class="mf-btn" href={`/${lang}/#rhythm`} data-me-cert-go hidden>{T.certGo}</a>
       </div>
     </section>
+    {/* Pick the empty or overview card before first paint so the cards below do not jump (CLS). me.js corrects it. */}
+    <script is:inline>
+      (function () {
+        var any = false;
+        try {
+          for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i) || "";
+            if (/^mufassall:v\d+:/.test(k) && k !== "mufassall:v1:keys") { any = true; break; }
+          }
+        } catch (e) {}
+        document.querySelector(any ? "[data-me-overview]" : "[data-me-empty]").hidden = false;
+      })();
+    </script>
 
     <section class="me-card" aria-labelledby="me-sections">
       <h2 id="me-sections">{T.sectionsTitle}</h2>

@@ -21,7 +21,7 @@ const list = order.filter((slug) => lessons[slug]).map((slug) => ({ slug, title:
     <p>{page.lead}</p>
   </header>
   <Author client:only="preact" lang={lang} lessons={list}>
-    <div slot="fallback" class="lab-skeleton" aria-hidden="true"></div>
+    <div slot="fallback" class="lab-skeleton author-skeleton" aria-hidden="true"></div>
   </Author>
   <noscript><p>{page.noscript}</p></noscript>
 </Base>

@@ -13,16 +13,30 @@ import { lessonBounds } from "./iso";
 import { tween, useReducedMotion } from "./motion";
 import { Scene } from "./Scene";
 import { Check } from "./Check";
-import { downloadPng } from "./export";
+import { downloadBlob, downloadPng } from "./export";
 import { encodeDoc, fromScene } from "./lab";
 import { inline, paragraphs, plain } from "./text";
-import { type UiStrings, fill, formatNumber, historyUi, scenarioUi } from "./ui";
+import { type UiStrings, fill, formatNumber, historyUi, scenarioUi, videoUi } from "./ui";
 import { historyOf } from "./history";
 import { HistoryPanel } from "./HistoryPanel";
 import { Wire } from "./Wire";
 import { Feedback, TryPanel, useSpeech, useTry } from "./extras";
 
 const PROGRESS_KEY = "mufassall:v1:progress";
+
+/** What the browser can record a canvas into; null hides the video button (checked after mount). */
+function videoFormat(): "WebM" | "MP4" | null {
+  if (typeof MediaRecorder === "undefined" || typeof HTMLCanvasElement === "undefined") return null;
+  if (typeof HTMLCanvasElement.prototype.captureStream !== "function") return null;
+  const ok = (m: string) => {
+    try {
+      return MediaRecorder.isTypeSupported(m);
+    } catch {
+      return false;
+    }
+  };
+  return ok("video/webm") ? "WebM" : ok("video/mp4") ? "MP4" : null;
+}
 
 function Num({ value, format }: { value: number | undefined; format: (n: number) => string }) {
   const [shown, setShown] = useState(value);
@@ -83,6 +97,17 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
   const [down, setDown] = useState<ReadonlySet<string>>(new Set());
   const speech = useSpeech(lang);
   const [listening, setListening] = useState(false);
+
+  // video export: a second, off-screen scene plays the steps while video.ts records it,
+  // so the reader's own player stays usable
+  const vui = videoUi(ui, lang);
+  const [vFormat, setVFormat] = useState<"WebM" | "MP4" | null>(null);
+  useEffect(() => setVFormat(videoFormat()), []);
+  const [rec, setRec] = useState<{ b: Branch; i: number } | null>(null);
+  const [recMsg, setRecMsg] = useState("");
+  const recAbort = useRef<AbortController | null>(null);
+  const recBox = useRef<HTMLDivElement>(null);
+  useEffect(() => () => recAbort.current?.abort(), []);
 
   // read through a ref: the keyboard handler is registered once and must see the current path
   const go = (i: number) => {
@@ -198,6 +223,45 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
     [lesson, branch, index, text, ui, hui],
   );
 
+  const recordVideo = async () => {
+    if (recAbort.current) {
+      recAbort.current.abort();
+      return;
+    }
+    const b = branch;
+    const n = b.states.length;
+    const titleOf = (i: number) => {
+      const id = b.steps[i]!.id;
+      return plain((baseSteps[id] ?? (b.sc ? scenarioTexts[b.sc]?.steps[id] : undefined))?.title ?? "");
+    };
+    const ctrl = new AbortController();
+    recAbort.current = ctrl;
+    setRec({ b, i: 0 });
+    try {
+      const v = await import("./video");
+      const out = await v.recordLesson({
+        steps: n,
+        show: (i) => setRec({ b, i }),
+        svg: () => recBox.current?.querySelector<SVGSVGElement>("svg.mf-scene") ?? null,
+        caption: (i) => ({ label: fill(ui.step, { n: i + 1, total: n }), title: titleOf(i) }),
+        watermark: v.watermarkText(lang, lesson.slug),
+        signal: ctrl.signal,
+        onStep: (i) => setRecMsg(`${fill(vui.recording, { n: i + 1, total: n })}${reduced ? ` ${vui.still}` : ""}`),
+      });
+      if (!out) setRecMsg(vui.cancelled);
+      else {
+        const file = v.videoFilename(lesson.slug, lang, out.ext, b.sc);
+        downloadBlob(out.blob, file);
+        setRecMsg(fill(vui.done, { file }));
+      }
+    } catch {
+      setRecMsg(ctrl.signal.aborted ? vui.cancelled : vui.fail);
+    } finally {
+      recAbort.current = null;
+      setRec(null);
+    }
+  };
+
   const metricOf = (id: string) => lesson.metrics.find((m) => m.id === id);
   /** `target` decides the decimals, so a tween towards an integer never shows fractions. */
   const fmtMetric = (id: string, v: number, target = v) => {
@@ -307,6 +371,22 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
                 >
                   {ui.savePicture}
                 </button>
+                {vFormat && (
+                  <button
+                    type="button"
+                    className={`mf-btn${rec ? " mf-btn--rec" : ""}`}
+                    title={rec ? undefined : vui.hint}
+                    onClick={() => void recordVideo()}
+                  >
+                    {rec ? vui.cancel : fill(vui.save, { format: vFormat })}
+                  </button>
+                )}
+                {rec && (
+                  <progress className="mf-rec__bar" max={rec.b.states.length} value={rec.i + 1} aria-hidden="true" />
+                )}
+                <p className="mf-rec__status" role="status" aria-live="polite">
+                  {recMsg}
+                </p>
               </div>
             </div>
 
@@ -339,6 +419,21 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
               runKey={runKey}
               active={exchange?.edge}
             />
+
+            {rec && (
+              <div className="mf-rec" ref={recBox} aria-hidden="true" inert>
+                <Scene
+                  state={rec.b.states[rec.i]!}
+                  box={box}
+                  labels={labels}
+                  title=""
+                  paused={false}
+                  reduced={reduced}
+                  runKey={rec.i}
+                  active={rec.b.steps[rec.i]!.exchange?.edge}
+                />
+              </div>
+            )}
 
             <div className="mf-stage__foot">
               <ul className="mf-legend">

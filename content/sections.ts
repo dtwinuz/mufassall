@@ -9,13 +9,13 @@ export interface Section {
 
 export const sections: readonly Section[] = [
   { id: "foundations", lessons: ["request-lifecycle", "latency-throughput", "napkin-math"] },
-  { id: "scaling", lessons: ["vertical-horizontal", "load-balancing", "stateless", "caching", "cdn"] },
+  { id: "scaling", lessons: ["vertical-horizontal", "load-balancing", "stateless", "caching", "cache-invalidation", "cdn"] },
   {
     id: "data",
     lessons: [
       "sql-nosql",
       "indexes",
-      "geo-search",
+      "geo-search", "full-text-search", "vector-search",
       "storage-engines",
       "bloom-filter",
       "replication",
@@ -41,7 +41,7 @@ export const sections: readonly Section[] = [
     id: "business",
     lessons: [
       "payments",
-      "double-entry-ledger",
+      "money-and-rounding", "double-entry-ledger",
       "reconciliation",
       "subscription-billing",
       "digital-signature",
@@ -49,6 +49,8 @@ export const sections: readonly Section[] = [
       "audit-log",
       "notification-delivery",
       "bulk-import",
+      "refunds-and-chargebacks",
+      "document-numbering",
     ],
   },
   { id: "cases", lessons: ["case-discord-messages", "case-figma-multiplayer"] },

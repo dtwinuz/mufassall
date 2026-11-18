@@ -1585,3 +1585,41 @@
   margin: 0;
   color: var(--bad);
 }
+
+/* video export: the recorded scene plays off screen, the reader's own scene stays as it is */
+.mf-rec {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 1280px;
+  height: 576px;
+  background: var(--stage);
+  pointer-events: none;
+}
+.mf-rec .mf-scene {
+  min-height: 0;
+}
+.mf-btn--rec {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+.mf-rec__bar {
+  width: 96px;
+  height: 6px;
+  align-self: center;
+  accent-color: var(--signal);
+}
+.mf-rec__status {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: right;
+}
+.mf-rec__status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}

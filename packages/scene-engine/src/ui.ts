@@ -122,6 +122,8 @@ export interface UiStrings {
   openInLab: string;
   /** download the current step as a PNG picture */
   savePicture: string;
+  /** record every step of the lesson into a video file; optional, falls back to VIDEO_UI */
+  video?: VideoStrings;
   check: { title: string; right: string; wrong: string; keys: string };
   /** "break it" mode on the lesson scene: live traffic model, nodes can be switched off */
   tryIt: {
@@ -176,6 +178,60 @@ export interface UiStrings {
   scenario?: ScenarioStrings;
   /** the "Event history" log under "What changed"; optional, falls back to HISTORY_UI */
   history?: HistoryStrings;
+}
+
+export interface VideoStrings {
+  /** button: "Video ({format})", format is WebM or MP4 */
+  save: string;
+  /** button tooltip */
+  hint: string;
+  /** live status while recording: "Recording video: step {n} / {total}" */
+  recording: string;
+  /** the same button while recording */
+  cancel: string;
+  done: string; // "Video saved: {file}"
+  cancelled: string;
+  fail: string;
+  /** prefers-reduced-motion: the video shows each step without movement */
+  still: string;
+}
+
+/** Built-in video export strings, used when the host's UiStrings has no `video` entry. */
+export const VIDEO_UI: Record<"uz" | "ru" | "en", VideoStrings> = {
+  uz: {
+    save: "Video ({format})",
+    hint: "Darsning barcha qadamlarini video faylga yozadi",
+    recording: "Video yozilmoqda: qadam {n} / {total}",
+    cancel: "Yozishni to'xtatish",
+    done: "Video saqlandi: {file}",
+    cancelled: "Video yozish to'xtatildi.",
+    fail: "Videoni yozib bo'lmadi. Boshqa brauzerda urinib ko'ring.",
+    still: "Qurilmada harakat kamaytirilgan: video har qadamni harakatsiz ko'rsatadi.",
+  },
+  ru: {
+    save: "Видео ({format})",
+    hint: "Записывает все шаги урока в видеофайл",
+    recording: "Запись видео: шаг {n} / {total}",
+    cancel: "Остановить запись",
+    done: "Видео сохранено: {file}",
+    cancelled: "Запись видео остановлена.",
+    fail: "Не удалось записать видео. Попробуйте другой браузер.",
+    still: "На устройстве уменьшено движение: в видео шаги без анимации.",
+  },
+  en: {
+    save: "Video ({format})",
+    hint: "Records every step of the lesson into a video file",
+    recording: "Recording video: step {n} / {total}",
+    cancel: "Stop recording",
+    done: "Video saved: {file}",
+    cancelled: "Video recording stopped.",
+    fail: "Could not record the video. Try another browser.",
+    still: "Reduced motion is on: the video shows each step without movement.",
+  },
+};
+
+export function videoUi(ui: UiStrings, lang: string): VideoStrings {
+  return ui.video ?? VIDEO_UI[lang as keyof typeof VIDEO_UI] ?? VIDEO_UI.en;
 }
 
 /** Built-in event history strings, used when the host's UiStrings has no `history` entry. */
