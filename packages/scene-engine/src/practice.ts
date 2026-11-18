@@ -34,9 +34,13 @@ const MAX_WALK = 20_000;
 
 /** The state after the last step that is not a recap: the design the lesson arrives at. */
 export function finalState(lesson: LessonInput): SceneState | null {
-  const states = resolve(lesson);
-  for (let i = lesson.steps.length - 1; i >= 0; i--) if (lesson.steps[i]!.kind !== "recap") return states[i] ?? null;
-  return null;
+  const i = finalIndex(lesson);
+  return i < 0 ? null : (resolve(lesson)[i] ?? null);
+}
+
+function finalIndex(lesson: LessonInput): number {
+  for (let i = lesson.steps.length - 1; i >= 0; i--) if (lesson.steps[i]!.kind !== "recap") return i;
+  return -1;
 }
 
 /** Kinds along a walk with consecutive repeats folded: service, service → service. */
@@ -47,7 +51,22 @@ export function collapse(kinds: readonly NodeKind[]): NodeKind[] {
 const isRequest = (e: EdgeState) => e.flow === "request";
 
 /**
- * Every distinct kind sequence of a request walk from an entry node to a terminal one:
+ * Where request walks start. A client or actor that sends something is the natural entry;
+ * a design without one (a provider calling you back, a service publishing to a queue,
+ * a cluster of peers) starts where requests originate: nodes that send but receive no request.
+ * A pure request cycle has no such node, so then every sender is a start.
+ */
+export function startNodes(state: SceneState, out: ReadonlyMap<string, readonly string[]>): string[] {
+  const senders = Object.values(state.nodes).filter((n) => (out.get(n.id)?.length ?? 0) > 0);
+  const entries = senders.filter((n) => ENTRY.has(n.kind));
+  if (entries.length) return entries.map((n) => n.id);
+  const received = new Set([...out.values()].flat());
+  const sources = senders.filter((n) => !received.has(n.id));
+  return (sources.length ? sources : senders).map((n) => n.id);
+}
+
+/**
+ * Every distinct kind sequence of a request walk from a start node (see `startNodes`) to a terminal one:
  * a store (db, storage, external, queue) or any block that passes nothing on (a cache that only answers).
  */
 export function kindPaths(state: SceneState): NodeKind[][] {
@@ -67,7 +86,7 @@ export function kindPaths(state: SceneState): NodeKind[][] {
     }
     for (const to of out.get(id) ?? []) if (!trail.includes(to)) walk(to, [...trail, to]);
   };
-  for (const n of Object.values(state.nodes)) if (ENTRY.has(n.kind)) walk(n.id, [n.id]);
+  for (const id of startNodes(state, out)) walk(id, [id]);
   const all = [...found.values()];
   // a walk that reaches further also covers its own beginning
   const kept = all.filter((p) => !all.some((q) => q.length > p.length && p.every((k, i) => q[i] === k)));
@@ -89,28 +108,41 @@ function safeIds(ids: string[]): Map<string, string> {
   return map;
 }
 
-/** Shift a 1-D coordinate range into the Lab grid, or null if it is wider than the grid. */
-function shift(values: number[]): number | null {
-  const lo = Math.min(...values);
-  const hi = Math.max(...values);
-  if (hi - lo > GRID_MAX - GRID_MIN) return null;
-  if (lo < GRID_MIN) return GRID_MIN - lo;
-  if (hi > GRID_MAX) return GRID_MAX - hi;
-  return 0;
+/**
+ * One axis of scene coordinates → Lab grid cells. A range that fits is only shifted, so the
+ * lesson's layout is kept exactly; a wider (or fractional) one is squeezed, keeping the order of
+ * the coordinates and never merging two different ones. Null only if there are more distinct
+ * coordinates than grid cells.
+ */
+export function fitAxis(values: readonly number[]): Map<number, number> | null {
+  const span = GRID_MAX - GRID_MIN;
+  const distinct = [...new Set(values)].sort((a, b) => a - b);
+  if (distinct.length === 0) return new Map();
+  if (distinct.length > span + 1) return null;
+  const lo = distinct[0]!;
+  const hi = distinct[distinct.length - 1]!;
+  if (hi - lo <= span && distinct.every(Number.isInteger)) {
+    const d = lo < GRID_MIN ? GRID_MIN - lo : hi > GRID_MAX ? GRID_MAX - hi : 0;
+    return new Map(distinct.map((v) => [v, v + d]));
+  }
+  // proportional first (keeps relative distances), ranks if rounding would merge two coordinates
+  const scaled = distinct.map((v) => GRID_MIN + Math.round(((v - lo) * span) / (hi - lo || 1)));
+  const cells = scaled.every((c, i) => i === 0 || c > scaled[i - 1]!) ? scaled : distinct.map((_, i) => GRID_MIN + i);
+  return new Map(distinct.map((v, i) => [v, cells[i]!]));
 }
 
 /** The scene as a Lab diagram: ids the Lab accepts, everything inside its 13×13 grid. */
 export function toSolution(state: SceneState, labels: Record<string, string>): LabDoc | null {
   const nodes = Object.values(state.nodes);
-  const dx = shift(nodes.map((n) => n.at[0]));
-  const dy = shift(nodes.map((n) => n.at[1]));
-  if (dx === null || dy === null || nodes.some((n) => !Number.isInteger(n.at[0]) || !Number.isInteger(n.at[1]))) return null;
+  const fx = fitAxis(nodes.map((n) => n.at[0]));
+  const fy = fitAxis(nodes.map((n) => n.at[1]));
+  if (!fx || !fy) return null;
   const nid = safeIds(nodes.map((n) => n.id));
   const eid = safeIds(Object.keys(state.edges));
   const doc = emptyDoc();
   for (const n of nodes) {
     const id = nid.get(n.id)!;
-    doc.nodes[id] = { id, kind: n.kind, at: [n.at[0] + dx, n.at[1] + dy], state: n.state, ...(n.load === undefined ? {} : { load: n.load }) };
+    doc.nodes[id] = { id, kind: n.kind, at: [fx.get(n.at[0])!, fy.get(n.at[1])!], state: n.state, ...(n.load === undefined ? {} : { load: n.load }) };
     doc.labels[id] = (labels[n.id] ?? n.id).slice(0, MAX_LABEL);
   }
   for (const e of Object.values(state.edges)) {
@@ -141,28 +173,70 @@ export function rulesFor(state: SceneState): { rules: Rule[]; hints: PracticeHin
     if (!shortcuts.some((r) => r.kind === "noEdge" && r.from === from && r.to === to)) shortcuts.push({ kind: "noEdge", from, to });
   }
 
+  const acks: Rule[] = [];
+  for (const e of Object.values(state.edges)) {
+    if (e.flow !== "ack") continue;
+    const from = state.nodes[e.from]?.kind;
+    const to = state.nodes[e.to]?.kind;
+    if (from && to && !acks.some((r) => r.kind === "link" && r.from === from && r.to === to)) acks.push({ kind: "link", from, to, flow: "ack" });
+  }
+
   const rules: Rule[] = [
     ...kinds.map(([node, min]): Rule => ({ kind: "count", node, min })),
     ...paths.map((p): Rule => ({ kind: "path", kinds: p })),
     ...shortcuts,
+    ...acks,
   ];
   return { rules, hints: { kinds, links, paths } };
 }
 
 /**
- * The practice task for a lesson, or null when its final scene is too small to rebuild
- * (fewer than 3 blocks, no request path from a client to a store) or does not fit the Lab grid.
+ * The practice task for a lesson: built from its final scene, or, if that one cannot be rebuilt
+ * (see `explainState`), from the richest other step that can. Null when no step can.
  * `labels` are the lesson's node names in one language.
  */
 export function practiceFor(lesson: LessonInput, labels: Record<string, string> = {}): Practice | null {
-  const state = finalState(lesson);
-  if (!state || Object.keys(state.nodes).length < 3) return null;
+  for (const state of designStates(lesson)) {
+    const { practice } = explainState(state, labels);
+    if (practice) return practice;
+  }
+  return null;
+}
+
+/** Fewest rules a task needs to be worth doing; the block counts alone usually reach it. */
+export const MIN_RULES = 3;
+
+export type Blocker = "small" | "no path" | "few rules" | "grid" | "fails own rules";
+
+/** The task for one scene state, or null with the guard that stopped it. */
+export function explainState(state: SceneState, labels: Record<string, string> = {}): { practice: Practice | null; blocker?: Blocker } {
+  if (Object.keys(state.nodes).length < 3) return { practice: null, blocker: "small" };
   const { rules, hints } = rulesFor(state);
-  if (hints.paths.length === 0) return null;
+  if (hints.paths.length === 0) return { practice: null, blocker: "no path" };
+  if (rules.length < MIN_RULES) return { practice: null, blocker: "few rules" };
   const solution = toSolution(state, labels);
+  if (!solution || Object.keys(solution.nodes).length !== Object.keys(state.nodes).length) return { practice: null, blocker: "grid" };
   // never offer a task whose own answer would not pass
-  if (!solution || !rules.every((r) => checkRule(solution, r))) return null;
-  return { rules, hints, solution };
+  if (!rules.every((r) => checkRule(solution, r))) return { practice: null, blocker: "fails own rules" };
+  return { practice: { rules, hints, solution } };
+}
+
+/**
+ * Scene states worth rebuilding, best first: the final design, then the other non-recap steps
+ * from the richest down (a lesson may end on a reduced scene, e.g. one zoomed in on a failure).
+ */
+export function designStates(lesson: LessonInput): SceneState[] {
+  const states = resolve(lesson);
+  const at = finalIndex(lesson);
+  const last = at < 0 ? undefined : states[at];
+  const size = (s: SceneState) => Object.keys(s.nodes).length * 100 + Object.keys(s.edges).length;
+  const rest = states
+    .map((s, i) => ({ s, i }))
+    .filter(({ i }) => i !== at && lesson.steps[i]?.kind !== "recap")
+    // stable on ties: the later step, being closer to the final design, comes first
+    .sort((a, b) => size(b.s) - size(a.s) || b.i - a.i)
+    .map(({ s }) => s);
+  return last ? [last, ...rest] : rest;
 }
 
 /** How many hint levels there are; the UI opens them one at a time. */
@@ -186,6 +260,7 @@ function parseRule(raw: unknown): Rule | null {
   if (r.kind === "path" && Array.isArray(r.kinds) && r.kinds.length >= 2 && r.kinds.length <= 12 && r.kinds.every(isKind))
     return { kind: "path", kinds: [...r.kinds] };
   if (r.kind === "noEdge" && isKind(r.from) && isKind(r.to)) return { kind: "noEdge", from: r.from, to: r.to };
+  if (r.kind === "link" && isKind(r.from) && isKind(r.to) && r.flow === "ack") return { kind: "link", from: r.from, to: r.to, flow: "ack" };
   return null;
 }
 

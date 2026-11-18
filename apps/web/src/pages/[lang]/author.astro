@@ -1,0 +1,27 @@
+---
+import { LANGS, type Lang, lessons, order } from "@mufassall/content";
+import { AUTHOR_PAGE } from "@mufassall/scene-engine/author";
+import "@mufassall/scene-engine/player.css";
+import "@mufassall/scene-engine/author.css";
+import Author from "../../components/Author";
+import Base from "../../layouts/Base.astro";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const page = AUTHOR_PAGE[lang];
+const list = order.filter((slug) => lessons[slug]).map((slug) => ({ slug, title: lessons[slug]!.text[lang].title }));
+---
+
+<Base lang={lang} title={page.title} description={page.lead} active="tools">
+  <header class="page-head">
+    <h1>{page.title}</h1>
+    <p>{page.lead}</p>
+  </header>
+  <Author client:only="preact" lang={lang} lessons={list}>
+    <div slot="fallback" class="lab-skeleton" aria-hidden="true"></div>
+  </Author>
+  <noscript><p>{page.noscript}</p></noscript>
+</Base>

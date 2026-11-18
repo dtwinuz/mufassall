@@ -9,6 +9,7 @@ export interface PracticeStrings {
   /** "{path}" is "Client → Service → Database" */
   rulePath: string;
   ruleNoEdge: string;
+  ruleLink: string;
   /** "{n} of {total} checks pass" */
   progress: string;
   /** screen-reader prefix of a checklist row */
@@ -43,6 +44,7 @@ export const PRACTICE_UI: Record<"uz" | "ru" | "en", PracticeStrings> = {
     loadFail: "Mashqni yuklab bo'lmadi. Internetni tekshiring yoki darsga qayting.",
     rulePath: "So'rov yo'li bor: {path}",
     ruleNoEdge: "{from} {to} bilan to'g'ridan-to'g'ri ulanmagan",
+    ruleLink: "{from} {to} ga javob (ack) chizig'i bilan ulangan",
     progress: "{total} ta tekshiruvdan {n} tasi o'tdi",
     passed: "O'tdi",
     notYet: "Hali yo'q",
@@ -71,6 +73,7 @@ export const PRACTICE_UI: Record<"uz" | "ru" | "en", PracticeStrings> = {
     loadFail: "Не удалось загрузить практику. Проверьте интернет или вернитесь к уроку.",
     rulePath: "Есть путь запроса: {path}",
     ruleNoEdge: "{from} не связан с {to} напрямую",
+    ruleLink: "{from} отвечает {to} линией подтверждения (ack)",
     progress: "Пройдено проверок: {n} из {total}",
     passed: "Выполнено",
     notYet: "Ещё нет",
@@ -99,6 +102,7 @@ export const PRACTICE_UI: Record<"uz" | "ru" | "en", PracticeStrings> = {
     loadFail: "Could not load the practice. Check your connection or go back to the lesson.",
     rulePath: "A request path: {path}",
     ruleNoEdge: "{from} is not wired straight to {to}",
+    ruleLink: "{from} replies to {to} with an ack line",
     progress: "{n} of {total} checks pass",
     passed: "Passed",
     notYet: "Not yet",

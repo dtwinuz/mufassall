@@ -9,7 +9,9 @@
     "./player.css": "./src/player.css",
     "./whatif": "./src/WhatIfPanel.tsx",
     "./whatif-model": "./src/whatif.ts",
-    "./whatif.css": "./src/whatif.css"
+    "./whatif.css": "./src/whatif.css",
+    "./author": "./src/author/AuthorEditor.tsx",
+    "./author.css": "./src/author/author.css"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"

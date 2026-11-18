@@ -727,6 +727,8 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
         return fill(ps.rulePath, { path: r.kinds.map((k) => lab.kinds[k]).join(" → ") });
       case "noEdge":
         return fill(ps.ruleNoEdge, { from: lab.kinds[r.from], to: lab.kinds[r.to] });
+      case "link":
+        return fill(ps.ruleLink, { from: lab.kinds[r.from], to: lab.kinds[r.to] });
     }
   };
 

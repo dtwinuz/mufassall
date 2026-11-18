@@ -797,6 +797,66 @@ export const glossary: Term[] = [
     lesson: "batch-stream",
   },
 
+  {
+    id: "row-level-security",
+    term: { uz: "Row-level security", ru: "Row-level security (RLS)", en: "Row-level security" },
+    short: {
+      uz: "Jadvaldagi har so'rovga joriy tenant kabi shart qo'shadigan baza policy'si: so'rov filtrni unutsa ham boshqa tenant qatorlari ko'rinmaydi.",
+      ru: "Политика базы, которая добавляет к каждому запросу к таблице условие вроде текущего тенанта, так что чужие строки не видны, даже если запрос забыл фильтр.",
+      en: "A database policy that adds a condition such as the current tenant to every query on a table, so rows of other tenants stay invisible even when a query forgets the filter.",
+    },
+    lesson: "multi-tenancy",
+  },
+  {
+    id: "noisy-neighbour",
+    term: { uz: "Shovqinli qo'shni", ru: "Шумный сосед", en: "Noisy neighbour" },
+    short: {
+      uz: "Umumiy tizimdagi bitta tenant CPU, disk yoki ulanishlarni shunchalik ko'p ishlatadiki, qolgan hamma tenant sekinlashadi.",
+      ru: "Один тенант в общей системе забирает столько CPU, диска или соединений, что тормозят все остальные.",
+      en: "One tenant in a shared system using so much CPU, disk or connections that every other tenant slows down.",
+    },
+    lesson: "multi-tenancy",
+  },
+  {
+    id: "pool-silo-bridge",
+    term: { uz: "Pool, silo va bridge", ru: "Pool, silo и bridge", en: "Pool, silo and bridge" },
+    short: {
+      uz: "Tenant izolyatsiyasi modellari: hamma resursni bo'lishadi (pool), tenant o'zinikini oladi (silo) yoki kod umumiy, ma'lumot alohida aralashma (bridge).",
+      ru: "Модели изоляции тенантов: все делят ресурсы (pool), тенант получает свои (silo) или смесь с общим кодом и раздельными данными (bridge).",
+      en: "Tenant isolation models: all tenants share resources (pool), a tenant gets its own (silo), or a mix with shared code and separate data (bridge).",
+    },
+    lesson: "multi-tenancy",
+  },
+  {
+    id: "event-sourcing",
+    term: { uz: "Event sourcing", ru: "Event sourcing", en: "Event sourcing" },
+    short: {
+      uz: "Har o'zgarishni versiyali stream'da o'zgarmas hodisa sifatida saqlash va joriy holatni shu hodisalarni qayta o'ynab hisoblash.",
+      ru: "Хранение каждого изменения как неизменяемого события в потоке с версией; текущее состояние вычисляется проигрыванием событий.",
+      en: "Storing every change as an immutable event in a versioned stream and computing current state by replaying those events.",
+    },
+    lesson: "event-sourcing",
+  },
+  {
+    id: "cqrs",
+    term: { uz: "CQRS", ru: "CQRS", en: "CQRS" },
+    short: {
+      uz: "Yozuv modelini so'rovlar uchun qurilgan va odatda biroz kechikadigan read model'lardan ajratish.",
+      ru: "Разделение модели записи и read-моделей, построенных под запросы и обычно немного отстающих.",
+      en: "Separating the write model from read models that are built for queries and usually lag slightly behind.",
+    },
+    lesson: "event-sourcing",
+  },
+  {
+    id: "crypto-shredding",
+    term: { uz: "Crypto-shredding", ru: "Crypto-shredding", en: "Crypto-shredding" },
+    short: {
+      uz: "O'chirib bo'lmaydigan ma'lumotni, masalan hodisa yoki zaxirani, u shifrlangan har subyekt kalitini yo'q qilib o'chirish.",
+      ru: "Удаление данных, которые нельзя стереть (события, бэкапы), уничтожением ключа субъекта, которым они зашифрованы.",
+      en: "Erasing data that cannot be deleted, such as events or backups, by destroying the per-subject key it was encrypted with.",
+    },
+    lesson: "event-sourcing",
+  },
   // ---- security ----
   {
     id: "password-hashing",
@@ -869,6 +929,36 @@ export const glossary: Term[] = [
     lesson: "encryption",
   },
 
+  {
+    id: "secrets-manager",
+    term: { uz: "Secrets manager", ru: "Менеджер секретов", en: "Secrets manager" },
+    short: {
+      uz: "Secret'larni saqlaydigan, so'rovchini tekshiradigan va faqat unga ruxsat etilganini beradigan, har o'qishni auditga yozadigan servis.",
+      ru: "Сервис, который хранит секреты, проверяет вызывающего и отдаёт только разрешённое ему, записывая каждое чтение в аудит.",
+      en: "A service that stores secrets, checks who is asking and returns only what that caller may read, auditing every read.",
+    },
+    lesson: "secrets-management",
+  },
+  {
+    id: "dynamic-credentials",
+    term: { uz: "Dinamik login", ru: "Динамические доступы", en: "Dynamic credentials" },
+    short: {
+      uz: "So'rov paytida servisga alohida yaratiladigan, lease tugashi bilan o'chiriladigan baza foydalanuvchisi yoki kalit.",
+      ru: "Пользователь БД или ключ, который создаётся для конкретного сервиса по запросу и удаляется по истечении lease.",
+      en: "A database user or key created per service on request and deleted when its lease expires.",
+    },
+    lesson: "secrets-management",
+  },
+  {
+    id: "workload-identity",
+    term: { uz: "Workload identity", ru: "Workload identity", en: "Workload identity" },
+    short: {
+      uz: "Platforma servisga beradigan imzolangan qisqa muddatli token: servis saqlangan secret'siz o'zini isbotlaydi.",
+      ru: "Подписанный короткоживущий токен, который платформа выдаёт сервису, чтобы тот доказал, кто он, без хранимого секрета.",
+      en: "A signed, short-lived token the platform gives a service so it can prove who it is without a stored secret.",
+    },
+    lesson: "secrets-management",
+  },
   // ---- shipping ----
   {
     id: "continuous-integration",
@@ -911,6 +1001,36 @@ export const glossary: Term[] = [
     lesson: "cicd",
   },
 
+  {
+    id: "kill-switch",
+    term: { uz: "Kill switch", ru: "Kill switch", en: "Kill switch" },
+    short: {
+      uz: "Feature'ni deploy'siz, soniyalar ichida hamma uchun o'chiradigan flag.",
+      ru: "Флаг, который выключает фичу для всех за секунды, без деплоя.",
+      en: "A flag that turns a feature off for everyone within seconds, without a deploy.",
+    },
+    lesson: "feature-flags",
+  },
+  {
+    id: "percentage-rollout",
+    term: { uz: "Foizli rollout", ru: "Процентная раскатка", en: "Percentage rollout" },
+    short: {
+      uz: "Feature user id'ning barqaror hash'i bo'yicha foydalanuvchilarning bir ulushiga yoqiladi, har kim doim bir xil javob oladi.",
+      ru: "Фича включается для доли пользователей по стабильному хэшу user id, и каждый всегда получает один и тот же ответ.",
+      en: "A feature turned on for a share of users by a stable hash of the user id, so each user always gets the same answer.",
+    },
+    lesson: "feature-flags",
+  },
+  {
+    id: "guardrail-metric",
+    term: { uz: "Guardrail metrikasi", ru: "Guardrail-метрика", en: "Guardrail metric" },
+    short: {
+      uz: "Rollout paytida flag yoniq va o'chiq guruhlar solishtiriladigan, chegaradan oshsa flag'ni avtomatik o'chiradigan metrika.",
+      ru: "Метрика, по которой во время раскатки сравнивают группы с флагом и без, и при превышении лимита флаг выключается автоматически.",
+      en: "A metric compared between flag-on and flag-off users during a rollout; crossing its limit turns the flag off automatically.",
+    },
+    lesson: "feature-flags",
+  },
   // ---- systems ----
   {
     id: "base62",
@@ -931,6 +1051,66 @@ export const glossary: Term[] = [
       en: "Fan-out on write pushes a new post's id into every follower's feed cache at posting time; fan-out on read builds the feed when it is opened. A hybrid works best: push for most, pull for huge accounts.",
     },
     lesson: "design-news-feed",
+  },
+  {
+    id: "trie",
+    term: { uz: "Trie (prefiks daraxti)", ru: "Trie (префиксное дерево)", en: "Trie (prefix tree)" },
+    short: {
+      uz: "Har prefiksga bitta tugun bo'lgan daraxt; qidiruv narxi yozilgan harflar soniga bog'liq, ma'lumot hajmiga emas.",
+      ru: "Дерево с узлом на каждый префикс; цена поиска зависит от длины префикса, а не от объёма данных.",
+      en: "A tree with one node per prefix; lookup cost depends on the prefix length, not on how much data there is.",
+    },
+    lesson: "design-search-autocomplete",
+  },
+  {
+    id: "top-k",
+    term: { uz: "Top-k", ru: "Top-k", en: "Top-k" },
+    short: {
+      uz: "Eng yaxshi k ta natijaning oldindan hisoblab qo'yilgan ro'yxati, so'rov paytida saralashga hojat qolmaydi.",
+      ru: "Заранее посчитанный список k лучших результатов, чтобы не сортировать во время запроса.",
+      en: "A precomputed list of the k best results, so nothing has to be sorted at request time.",
+    },
+    lesson: "design-search-autocomplete",
+  },
+  {
+    id: "debounce",
+    term: { uz: "Debounce", ru: "Debounce", en: "Debounce" },
+    short: {
+      uz: "Oxirgi hodisadan keyin qisqa pauzani kutib, faqat keyin so'rov yuborish; tez bosishlar bitta so'rovga aylanadi.",
+      ru: "Отправлять запрос только после короткой паузы с последнего события, так серия быстрых нажатий даёт один запрос.",
+      en: "Send the request only after a short pause since the last event, so a burst of keystrokes becomes one request.",
+    },
+    lesson: "design-search-autocomplete",
+  },
+  {
+    id: "skip-locked",
+    term: { uz: "SKIP LOCKED", ru: "SKIP LOCKED", en: "SKIP LOCKED" },
+    short: {
+      uz: "FOR UPDATE ga qo'shimcha: boshqa tranzaksiya qulflagan qatorlarni kutmasdan o'tkazib yuboradi, worker'lar bir-birini to'smaydi.",
+      ru: "Добавка к FOR UPDATE: пропускает строки, заблокированные другой транзакцией, вместо ожидания, и воркеры не мешают друг другу.",
+      en: "An addition to FOR UPDATE that skips rows another transaction has locked instead of waiting, so workers never block each other.",
+    },
+    lesson: "design-job-scheduler",
+  },
+  {
+    id: "lease",
+    term: { uz: "Lease (ijara muddati)", ru: "Лиз (lease)", en: "Lease" },
+    short: {
+      uz: "Ishga vaqtincha egalik huquqi; egasi heartbeat bilan yangilab turmasa, muddati tugaydi va ish boshqasiga o'tadi.",
+      ru: "Временное право владеть задачей; если владелец не продлевает его heartbeat-ом, оно истекает и задача переходит к другому.",
+      en: "A time-limited claim on a job that expires unless the owner renews it with heartbeats, so a dead worker's job is handed to another.",
+    },
+    lesson: "design-job-scheduler",
+  },
+  {
+    id: "time-partition",
+    term: { uz: "Vaqt bo'yicha partitsiya", ru: "Партиции по времени", en: "Time partitioning" },
+    short: {
+      uz: "Jadvalni soat yoki kun bo'yicha bo'laklarga ajratish; so'rovlar faqat joriy bo'lakka tegadi, eskisi butunlay o'chiriladi.",
+      ru: "Деление таблицы на куски по часу или дню; запросы трогают только текущий кусок, старые удаляются целиком.",
+      en: "Splitting a table into hourly or daily pieces; queries touch only the current piece and old pieces are dropped whole.",
+    },
+    lesson: "design-job-scheduler",
   },
   // ---- terms from earlier lessons ----
   {
