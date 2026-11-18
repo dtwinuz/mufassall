@@ -590,6 +590,141 @@
   font-size: 14px;
   color: var(--muted);
 }
+
+/* Event history: the story so far as a trace, newest at the bottom, scrolling inside itself */
+.mf-hist {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.mf-hist__sum {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-radius: 6px;
+  cursor: pointer;
+  list-style: none;
+}
+.mf-hist__sum::-webkit-details-marker {
+  display: none;
+}
+.mf-hist__sum::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+.mf-hist__box[open] > .mf-hist__sum::before {
+  transform: rotate(45deg);
+}
+.mf-hist__sum:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+.mf-hist__sum h3 {
+  margin: 0;
+  font: 600 11px/1.3 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.mf-hist__count {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--code);
+  color: var(--muted);
+  font: 600 11px/1.6 var(--font-mono);
+}
+.mf-hist__list {
+  display: grid;
+  gap: 2px;
+  max-height: 280px;
+  margin: 8px 0 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+.mf-hist__item button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-left: 3px solid var(--line-strong);
+  border-radius: 0 8px 8px 0;
+  background: none;
+  color: var(--fg);
+  font: 13px/1.4 var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+}
+.mf-hist__item--good button { border-left-color: var(--ok); }
+.mf-hist__item--warn button { border-left-color: var(--warn); }
+.mf-hist__item--bad button { border-left-color: var(--bad); }
+.mf-hist__item button:hover {
+  background: var(--code);
+}
+.mf-hist__item button:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: -2px;
+}
+.mf-hist__item--now button {
+  background: color-mix(in srgb, var(--signal) 7%, transparent);
+}
+.mf-hist__item--newest button {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--signal) 45%, transparent);
+  animation: mf-hist-in 0.5s ease-out;
+}
+@keyframes mf-hist-in {
+  from { background: color-mix(in srgb, var(--signal) 22%, transparent); }
+}
+.mf-hist__t {
+  grid-row: span 2;
+  padding-top: 1px;
+  font: 500 12px/1.4 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.mf-hist__what {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mf-hist__kind {
+  font: 600 10px/1 var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.mf-hist__kind--request,
+.mf-hist__kind--response { color: var(--signal); }
+.mf-hist__kind--lost { color: var(--bad); }
+.mf-hist__head {
+  font: 12.5px/1.4 var(--font-mono);
+}
+.mf-hist__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.mf-hist__step {
+  margin-left: auto;
+  font: 500 11px/1.6 var(--font-mono);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mf-hist__sum::before { transition: none; }
+  .mf-hist__item--newest button { animation: none; }
+}
 .mf-nav {
   display: flex;
   gap: 8px;

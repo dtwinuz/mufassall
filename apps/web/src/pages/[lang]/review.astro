@@ -33,11 +33,16 @@ const r = s.review;
     data-empty={r.empty}
     data-stats={r.stats}
     data-next={r.next}
+    data-session={r.session}
+    data-recall={r.recall}
+    data-hard={r.hard}
+    data-easy={r.easy}
     data-add={r.add}
     data-go={r.go}
     data-fail={r.fail}
   >
     <div class="lab-skeleton" aria-hidden="true"></div>
   </section>
+  <script is:inline src="/fsrs.js" defer></script>
   <script is:inline src="/review.js" defer></script>
 </Base>

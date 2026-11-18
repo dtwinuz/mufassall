@@ -170,6 +170,54 @@ const text: LessonText<typeof lesson> = {
       body: "Four rules for work that spans services.\n\n1) There is no transaction across services; avoid 2PC, it blocks everyone on the slowest node. 2) Use a saga: local steps, each with a compensating action, run by an orchestrator or by events. 3) Write events through an outbox in the same transaction as the data. 4) Delivery is at least once, so every consumer dedupes by `event_id`.",
     },
   },
+  scenarios: {
+    "comp-fails": {
+      label: "Refund fails",
+      steps: {
+        "comp-retry": {
+          short: "Refund retry",
+          title: "The compensation itself fails",
+          body: "Inventory said \"out of stock\" and the saga started the refund. But Payments is down now, and the refund gets `503`.\n\nThe orchestrator keeps the saga in `compensating` and retries with backoff and the same idempotency key. The customer's money is still taken.",
+          watch: "A compensation is a call like any other. It can fail, and the saga must survive that.",
+          fields: {
+            "Idempotency-Key": "The same key on every try, so a late success and a retry never refund twice.",
+            "503": "A temporary failure: worth retrying.",
+            "attempt 6": "Six tries so far. The pause grows each time.",
+          },
+        },
+        "comp-stuck": {
+          short: "Stuck",
+          title: "A refund that can never succeed",
+          body: "Payments is back, but now it answers `422`: the customer closed the card after paying. The refund has nowhere to go.\n\nThis error is permanent. Retrying it for a week changes nothing, and the saga stays half done: charged, not reserved, not refunded.",
+          check: {
+            q: "The refund can never go through on its own. What should the orchestrator do with saga `sg_1042`?",
+            options: [
+              "Keep retrying until the bank accepts it",
+              "Stop, mark it for a person and alert",
+              "Delete the order so the saga ends",
+            ],
+            answer: 1,
+            why: "A permanent error needs a decision only a person can make: another refund method, a bank transfer, a call to the customer. The saga stops retrying, records why, and lands in a queue that someone watches.",
+          },
+          fields: {
+            "422": "The request is understood but cannot be done. Not a retry case.",
+            error: "`card_closed`: the money has no way back to the original card.",
+            retryable: "Payments says it plainly: do not try again.",
+          },
+        },
+        "comp-manual": {
+          short: "Outcome",
+          title: "Outcome: sagas that wait for a person",
+          body: "The orchestrator stops retrying and moves the saga to `needs_manual`. An alert fires and support refunds the customer by bank transfer.\n\nCompare with the normal path: there the refund went through in a second. Here 6 sagas a day end with a charged customer and no order, and each one costs a person's time.",
+          watch: "Every saga needs a last state for \"cannot finish\", with an owner and an alert.",
+          fields: {
+            needs_manual: "A final state of its own: the machine is done, a person takes over.",
+            count: "Six today. This number belongs on a dashboard with an alert.",
+          },
+        },
+      },
+    },
+  },
 };
 
 export default text;

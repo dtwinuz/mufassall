@@ -1,0 +1,162 @@
+---
+import { LANGS, type Lang, sections } from "@mufassall/content";
+import "@mufassall/scene-engine/player.css";
+import Base from "../../../layouts/Base.astro";
+import { site } from "../../../i18n/site";
+import { test } from "../../../i18n/learner";
+import { questionsOf } from "./_bank";
+
+export function getStaticPaths() {
+  return LANGS.flatMap((lang) => sections.map((sec) => ({ params: { lang, section: sec.id } })));
+}
+
+const lang = Astro.params.lang as Lang;
+const id = Astro.params.section as string;
+const s = site[lang];
+const T = test[lang];
+const name = s.sections[id]?.title ?? id;
+const n = Math.min(10, questionsOf(id, lang).length);
+const title = T.sectionTitle.replace("{section}", name);
+const lead = T.sectionLead.replace("{n}", String(n)).replace("{pass}", "70");
+// "test" is not yet in Base's `active` union; the cast keeps every nav link unmarked until it is
+const active = "test" as const;
+---
+
+<Base lang={lang} title={title} description={lead} active={active}>
+  <header class="page-head">
+    <p class="test__crumb"><a href={`/${lang}/test/`}>{T.all}</a></p>
+    <h1>{title}</h1>
+    <p>{lead}</p>
+  </header>
+  <section
+    class="review test"
+    data-test={id}
+    aria-live="polite"
+    data-progress={T.progress}
+    data-seed={T.seed}
+    data-next={T.next}
+    data-finish={T.finish}
+    data-keys={T.keys}
+    data-result={T.result}
+    data-passed={T.passed}
+    data-failed={T.failed}
+    data-best-now={T.bestNow}
+    data-yours={T.yours}
+    data-none={T.none}
+    data-correct={T.correct}
+    data-why={T.why}
+    data-right={T.right}
+    data-wrong={T.wrong}
+    data-back={T.back}
+    data-retake={T.retake}
+    data-fresh={T.fresh}
+    data-all={T.all}
+    data-empty={T.empty}
+    data-fail={T.fail}
+  >
+    <div class="lab-skeleton" aria-hidden="true"></div>
+    <noscript><p>{T.noscript}</p></noscript>
+  </section>
+  <script is:inline src="/test-core.js" defer></script>
+  <script is:inline src="/test.js" defer></script>
+</Base>
+
+<style is:global>
+  .test__crumb {
+    font: 500 13px var(--font-mono);
+  }
+  .test__crumb a {
+    color: var(--muted);
+  }
+  .test__seed {
+    opacity: 0.8;
+  }
+  .test__bar {
+    display: block;
+    width: 100%;
+    height: 4px;
+    margin: 0 0 12px;
+    accent-color: var(--signal);
+  }
+  .test__opt[aria-pressed="true"] {
+    border-color: var(--signal);
+    box-shadow: inset 0 0 0 1px var(--signal);
+  }
+  .test__opt[aria-pressed="true"] kbd {
+    border-color: var(--signal);
+    color: var(--signal-strong);
+  }
+  .test__verdict {
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .test__result.is-pass .test__verdict {
+    color: var(--ok);
+  }
+  .test__result.is-fail .test__verdict {
+    color: var(--warn);
+  }
+  .test__review {
+    display: grid;
+    gap: 12px;
+    margin: 16px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .test__item {
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-left-width: 3px;
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .test__item.is-right {
+    border-left-color: var(--ok);
+  }
+  .test__item.is-wrong {
+    border-left-color: var(--bad);
+  }
+  .test__q {
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .test__mark {
+    margin-right: 6px;
+  }
+  .test__item.is-right .test__mark {
+    color: var(--ok);
+  }
+  .test__item.is-wrong .test__mark {
+    color: var(--bad);
+  }
+  .test__answers {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 12px;
+    margin: 0 0 8px;
+    font-size: 14px;
+  }
+  .test__answers dt {
+    color: var(--muted);
+  }
+  .test__answers dd {
+    margin: 0;
+  }
+  .test__src {
+    margin: 0;
+    color: var(--muted);
+    font: 500 13px var(--font-mono);
+  }
+  @media (max-width: 560px) {
+    .test__answers {
+      grid-template-columns: 1fr;
+    }
+    .test__answers dd {
+      margin-bottom: 4px;
+    }
+  }
+  .test .review__summary-title:focus,
+  .test legend:focus {
+    outline: none;
+  }
+</style>

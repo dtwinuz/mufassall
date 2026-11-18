@@ -170,6 +170,54 @@ const text: LessonText<typeof lesson> = {
       body: "Servislar oralig'idagi ish uchun to'rt qoida.\n\n1) Servislar orasida tranzaksiya yo'q; 2PC'dan qoching, u hammani eng sekin node'da to'xtatadi. 2) Saga ishlating: lokal qadamlar, har biri uchun kompensatsiya, orkestrator yoki hodisalar orqali. 3) Hodisalarni ma'lumot bilan bir tranzaksiyada outbox orqali yozing. 4) Yetkazish kamida bir marta, shuning uchun har iste'molchi `event_id` bo'yicha takrorni tashlaydi.",
     },
   },
+  scenarios: {
+    "comp-fails": {
+      label: "Refund o'tmadi",
+      steps: {
+        "comp-retry": {
+          short: "Refund takrori",
+          title: "Kompensatsiyaning o'zi yiqiladi",
+          body: "Inventory \"omborda yo'q\" dedi va saga refund'ni boshladi. Lekin endi Payments ishlamayapti va refund `503` oladi.\n\nOrkestrator saga'ni `compensating` holatida ushlab turadi va backoff bilan, o'sha idempotency key bilan qayta urinadi. Mijozning puli hali ham yechilgan.",
+          watch: "Kompensatsiya ham oddiy chaqiruv. U yiqilishi mumkin va saga bunga chidashi kerak.",
+          fields: {
+            "Idempotency-Key": "Har urinishda bir xil kalit: kechikkan muvaffaqiyat va takror pulni ikki marta qaytarmaydi.",
+            "503": "Vaqtinchalik xato: qayta urinishga arziydi.",
+            "attempt 6": "Hozircha olti urinish. Pauza har safar o'sadi.",
+          },
+        },
+        "comp-stuck": {
+          short: "Tiqilib qoldi",
+          title: "Hech qachon o'tmaydigan refund",
+          body: "Payments qaytdi, lekin endi `422` qaytaradi: mijoz to'lovdan keyin kartasini yopib qo'ygan. Refund'ning boradigan joyi yo'q.\n\nBu xato doimiy. Uni bir hafta qayta urinish hech narsani o'zgartirmaydi va saga yarim yo'lda qoladi: pul yechilgan, tovar band qilinmagan, pul qaytmagan.",
+          check: {
+            q: "Refund o'zi hech qachon o'tmaydi. Orkestrator `sg_1042` saga'si bilan nima qilishi kerak?",
+            options: [
+              "Bank qabul qilguncha qayta urinaverish",
+              "To'xtash, odamga belgilash va alert berish",
+              "Saga tugashi uchun buyurtmani o'chirish",
+            ],
+            answer: 1,
+            why: "Doimiy xato faqat odam qila oladigan qarorni talab qiladi: boshqa qaytarish usuli, bank o'tkazmasi, mijozga qo'ng'iroq. Saga qayta urinishni to'xtatadi, sababini yozadi va kimdir kuzatib turgan navbatga tushadi.",
+          },
+          fields: {
+            "422": "So'rov tushunarli, lekin bajarib bo'lmaydi. Qayta urinish holati emas.",
+            error: "`card_closed`: pulning asl kartaga qaytish yo'li yo'q.",
+            retryable: "Payments ochiq aytadi: qayta urinmang.",
+          },
+        },
+        "comp-manual": {
+          short: "Natija",
+          title: "Natija: odamni kutayotgan saga'lar",
+          body: "Orkestrator qayta urinishni to'xtatadi va saga'ni `needs_manual` holatiga o'tkazadi. Alert ishlaydi, support mijozga pulni bank o'tkazmasi bilan qaytaradi.\n\nOddiy yo'l bilan solishtiring: u yerda refund bir soniyada o'tdi. Bu yerda kuniga 6 ta saga puli yechilgan, buyurtmasi yo'q mijoz bilan tugaydi va har biri odamning vaqtini oladi.",
+          watch: "Har saga'da \"tugatib bo'lmaydi\" degan oxirgi holat bo'lishi kerak: egasi va alert'i bilan.",
+          fields: {
+            needs_manual: "Alohida yakuniy holat: mashina ishini tugatdi, endi odam oladi.",
+            count: "Bugun olti ta. Bu son alert bilan dashboard'da turishi kerak.",
+          },
+        },
+      },
+    },
+  },
 };
 
 export default text;

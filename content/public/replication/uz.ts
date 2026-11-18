@@ -145,6 +145,54 @@ const text: LessonText<typeof lesson> = {
       body: "Replikalar o'qish quvvatini va failover uchun zaxirani beradi. Yangi ma'lumotni bermaydi: asinxron replikalar kechikadi va kechikish yuk bilan o'sadi.\n\n1) Yozish liderga, o'qish replikalarga. 2) Kechikishni o'lchang va yozuvdan so'ng foydalanuvchining o'qishini liderga yo'naltiring. 3) Failover eng yangi replikani ko'taradi va eski liderni izolyatsiya qilishi shart. 4) Asinxron rejim tasdiqlangan commit'larni yo'qotishi mumkin; bitta sinxron replika buni kechikish evaziga oldini oladi.",
     },
   },
+  scenarios: {
+    "split-brain": {
+      label: "Fencing'siz",
+      steps: {
+        "sb-return": {
+          short: "Eski leader",
+          title: "Eski leader ishga tushib, yozuvlarni qabul qiladi",
+          body: "DB A yangi disk oladi va kimdir uni fence qilishidan oldin ishga tushadi. U hali ham o'zini leader deb biladi va yozuvlarni qabul qiladi.\n\nBitta API serverning connection pool'i hali ham DB A ga qaragan. `u_42` foydalanuvchi bio'sini o'zgartiradi, yozuv DB A ga tushadi va API \"saqlandi\" deb javob beradi.",
+          check: {
+            q: "Bir necha daqiqa DB A ham, DB C ham yozuv qabul qiladi. Keyin ikki tarixni birlashtirib bo'ladimi?",
+            options: [
+              "Ha: baza ularni vaqt bo'yicha birlashtiradi",
+              "Ha: replica'lar ikkala log'ni tartib bilan qayta ijro etadi",
+              "Yo'q: bir tomonning yozuvlarini tashlab yuborishga to'g'ri keladi",
+            ],
+            answer: 2,
+            why: "Har leader bir xil ayrilish nuqtasidan o'z log'ini qurdi. Baza qaysi `bio` to'g'ri ekanini bila olmaydi, shuning uchun qayta qo'shilish uchun bir tomon orqaga qaytariladi va u ayrilishdan keyin olgan har yozuv yo'qoladi.",
+          },
+          fields: {
+            "UPDATE 1": "Yozuv muvaffaqiyatli, lekin noto'g'ri leader'da.",
+            leader: "DB A failover haqida eshitmagan. Fence bo'lmasa, u yana leader bo'lib ishga tushadi.",
+            pool: "Eski ulanishlar DNS yoki config o'zgarishiga o'zi ergashmaydi.",
+          },
+        },
+        "sb-diverge": {
+          short: "Split brain",
+          title: "Ikki leader, ikki haqiqat",
+          body: "Endi ikkita leader bor. Qaysi API serverga tushishiga qarab, ba'zi foydalanuvchilar DB C ga, ba'zilari DB A ga yozadi.\n\nBitta profilning ikki tomonda turli ma'lumoti bor. O'qishlarning 18% i foydalanuvchi oxirgi yozmagan narsani yoki yozgan, lekin boshqa tomonda qolgan narsani qaytaradi.",
+          watch: "Split brain avariyadan yomonroq: ma'lumot ikkiga ayrilayotganda ikkala tomon ham sog'lom ko'rinadi.",
+          fields: {
+            bio: "Bitta foydalanuvchi uchun ikki xil qiymat, ikkalasi ham commit qilingan va tasdiqlangan.",
+            updated_at: "DB A dagi yozuv yangiroq, lekin haqiqiy leader DB C. Vaqt hal qilmaydi.",
+          },
+        },
+        "sb-end": {
+          short: "Natija",
+          title: "Natija: olti daqiqalik yozuvlar tashlab yuborildi",
+          body: "Olti daqiqadan keyin kimdir sezadi, DB A ni to'xtatadi va DB C tarixiga qaytaradi. DB A ayrilish nuqtasidan keyin qabul qilgan hamma narsa o'chiriladi.\n\nOddiy yo'l bilan solishtiring: u yerda eski leader fence qilindi va follower bo'lib qaytdi, faqat yiqilishdagi 12 commit yo'qoldi. Bu yerda 322 ta tasdiqlangan yozuv yo'q bo'ldi.",
+          watch: "Avval fence: eski leader ishga tushishidan oldin uning yozuvlarini bloklang, keyin follower qilib qo'shing.",
+          fields: {
+            pg_rewind: "DB A ni yangi leader tarixiga qaytaradi.",
+            removed: "Faqat DB A da bor har commit bekor qilinadi.",
+            "310 after": "Split brain paytida foydalanuvchilar qilgan yozuvlar. Ularga \"saqlandi\" deyilgan edi.",
+          },
+        },
+      },
+    },
+  },
 };
 
 export default text;

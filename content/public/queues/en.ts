@@ -182,6 +182,53 @@ const text: LessonText<typeof lesson> = {
       body: "Six rules for a queue.\n\n1) Slow and limited work leaves the request path and goes through a queue. 2) Scale workers by backlog and the oldest message's age, up to the downstream limit. 3) Ack after the work; extend the lease for long jobs. 4) Retry with exponential backoff and jitter. 5) Poison messages go to a watched dead-letter queue. 6) Bound the queue and let producers slow down.",
     },
   },
+  scenarios: {
+    "auto-ack": {
+      label: "Ack on receive",
+      steps: {
+        "autoack-take": {
+          short: "Auto-ack",
+          title: "Worker 2 acks as soon as it receives",
+          body: "To make the workers faster, someone turned on **auto-ack**: the queue deletes each message the moment it is handed out. Worker 2 also prefetches 40 messages at a time and keeps them in memory.\n\nOn the dashboard nothing changes. Messages leave the queue, emails go out.",
+          check: {
+            q: "Worker 2 dies right now with 40 messages in memory. What happens to them?",
+            options: [
+              "They become visible again after 30 s",
+              "They are gone: the queue already deleted them",
+              "They go to the dead-letter queue",
+            ],
+            answer: 1,
+            why: "With auto-ack the delete was sent on receive. The queue has no copy left, so there is nothing to hide, nothing to redeliver and nothing to dead-letter.",
+          },
+          fields: {
+            "auto-ack": "The queue counts the message as done the moment it leaves.",
+            prefetch: "40 messages are taken at once and held in the worker's memory.",
+            DELETE: "The ack, sent before any work. From now on only worker 2 knows about `m_8812`.",
+          },
+        },
+        "autoack-crash": {
+          short: "Crash",
+          title: "The worker dies, the messages die with it",
+          body: "Worker 2 runs out of memory on a large receipt and is killed. The 40 messages it held were already deleted from the queue.\n\nThe queue has no lease to expire and nothing to give worker 1. Forty buyers will never get their email, and no error is logged anywhere.",
+          watch: "Ack after the work, never before. An early ack turns at-least-once into at-most-once.",
+          fields: {
+            OOMKilled: "The process is killed. Everything in its memory is lost.",
+            "not found": "The queue has no such message: it was deleted on receive.",
+            "nothing to redeliver": "No visibility timeout is running, so the queue cannot help.",
+          },
+        },
+        "autoack-end": {
+          short: "Outcome",
+          title: "Outcome: a healthy queue and missing emails",
+          body: "An hour later the queue is empty, nothing was redelivered and there are no errors. Every graph is green. Worker 2 keeps crashing on large receipts every ten minutes and takes 40 emails with it each time.\n\nCompare with the normal path: there the crashed message came back after 30 s and was sent. Here 240 emails an hour vanish, and you learn about it from buyers.",
+          fields: {
+            redelivered: "Zero. With auto-ack the queue never sees a failure to redo.",
+            "emails sent": "240 fewer than paid orders. The gap is only visible against the orders.",
+          },
+        },
+      },
+    },
+  },
 };
 
 export default text;

@@ -145,6 +145,54 @@ const text: LessonText<typeof lesson> = {
       body: "Replicas give read capacity and a spare for failover. They do not give fresh data: async replicas lag, and lag grows under load.\n\n1) Writes go to the leader, reads to replicas. 2) Measure lag and route a user's reads to the leader right after their write. 3) Failover promotes the most up-to-date replica and must fence the old leader. 4) Async can lose acknowledged commits; one synchronous replica prevents it at the cost of latency.",
     },
   },
+  scenarios: {
+    "split-brain": {
+      label: "No fencing",
+      steps: {
+        "sb-return": {
+          short: "Old leader",
+          title: "The old leader boots and takes writes",
+          body: "DB A gets a new disk and boots before anyone fences it. It still believes it is the leader, so it accepts writes.\n\nOne API server's connection pool still points at DB A. User `u_42` edits their bio, the write lands on DB A, and the API answers \"saved\".",
+          check: {
+            q: "DB A and DB C both accept writes for a few minutes. Can the two histories be merged later?",
+            options: [
+              "Yes: the database merges them by timestamp",
+              "Yes: replicas replay both logs in order",
+              "No: one side's writes will have to be thrown away",
+            ],
+            answer: 2,
+            why: "Each leader built its own log from the same fork point. The database cannot know which `bio` is right, so to rejoin one side must be rewound, and every write it took after the fork is gone.",
+          },
+          fields: {
+            "UPDATE 1": "The write succeeded, on the wrong leader.",
+            leader: "DB A never heard about the failover. Without a fence it starts as leader again.",
+            pool: "Old connections do not follow DNS or config changes on their own.",
+          },
+        },
+        "sb-diverge": {
+          short: "Split brain",
+          title: "Two leaders, two truths",
+          body: "Now there are two leaders. Some users write to DB C, some to DB A, depending on which API server they hit.\n\nThe same profile has different data on each. 18% of reads return something the user did not write last, or did write but on the other side.",
+          watch: "Split brain is worse than downtime: both sides look healthy while the data forks.",
+          fields: {
+            bio: "Two different values for one user, both committed and both acknowledged.",
+            updated_at: "DB A's write is newer, but DB C is the real leader. Time does not decide.",
+          },
+        },
+        "sb-end": {
+          short: "Outcome",
+          title: "Outcome: six minutes of writes thrown away",
+          body: "After six minutes someone notices, stops DB A and rewinds it to DB C's history. Everything DB A accepted after the fork point is deleted.\n\nCompare with the normal path: there the old leader was fenced and came back as a follower, losing only the 12 commits from the crash. Here 322 acknowledged writes are gone.",
+          watch: "Fence first: block the old leader's writes before it can boot, then rejoin it as a follower.",
+          fields: {
+            pg_rewind: "Brings DB A back to the new leader's history.",
+            removed: "Every commit that exists only on DB A is undone.",
+            "310 after": "Writes users made during the split brain. They were told \"saved\".",
+          },
+        },
+      },
+    },
+  },
 };
 
 export default text;

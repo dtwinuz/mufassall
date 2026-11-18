@@ -176,6 +176,52 @@ const text: LessonText<typeof lesson> = {
       body: "Rate limit qolgan hammani bitta klientdan himoya qiladi, «yo'q» deyish esa arzon bo'lishi shart.\n\n1) Fixed window chetlarda teshik beradi; sliding window va token bucket bermaydi. 2) Token bucket halol to'lqinga ruxsat beradi va o'rtachani ushlaydi. 3) `429` ni `Retry-After` bilan qaytaring. 4) Kalit yoki foydalanuvchi bo'yicha cheklang, IP faqat anonim chaqiruvlarga. 5) Server ko'p bo'lsa, hisoblagichni bitta umumiy joyda saqlang va usiz qanday ishlashni oldindan hal qiling.",
     },
   },
+  scenarios: {
+    "fail-closed": {
+      label: "Fail closed",
+      steps: {
+        "closed-down": {
+          short: "Redis yo'q",
+          title: "Redis yo'qoldi va limiter fail closed bo'ladi",
+          body: "Redis javob bermay qoldi. Bu safar limiter qattiq yozilgan: sanay olmasa, \"yo'q\" deydi.\n\nMantiq xavfsizdek eshitiladi. Hisoblagichsiz hech kim client limitdan pastligini isbotlay olmaydi, shuning uchun har so'rov limitdan oshgan deb hisoblanadi.",
+          check: {
+            q: "Redis qaytishi uchun 4 daqiqa kerak. Shu orada hamkor va ofis nimani ko'radi?",
+            options: [
+              "Bo'shroq limitlar bilan oddiy ish",
+              "Faqat skript bloklanadi",
+              "Har so'rovga `429`: API hamma uchun ishlamaydi",
+            ],
+            answer: 2,
+            why: "Fail closed faqat shovqinli client'ni emas, hammani rad etadi. Limiter'ning avariyasi butun API avariyasiga aylanadi, garchi serverlar va baza bo'sh tursa ham.",
+          },
+          fields: {
+            timeout: "20 ms javobsiz: limiter Redis'dan voz kechadi.",
+            "fail closed": "Hisoblagich yo'q, ruxsat ham yo'q. Har so'rov rad etiladi.",
+          },
+        },
+        "closed-reject": {
+          short: "Hammasi rad",
+          title: "Hamma 429 oladi",
+          body: "Hamkor, ofis va skript millisekundlarda `429` oladi. API serverlari va baza deyarli bo'sh turibdi.\n\nLimit mukammal bajariladi: hech kim undan oshmaydi, chunki hech kim o'tmaydi. To'rt daqiqa davomida himoya qatlamining o'zi avariya.",
+          watch: "Limiter so'rov yo'lidagi bog'liqlik. U qanday yiqilishi standart sozlama emas, mahsulot qarori.",
+          fields: {
+            "429": "Javob tez va noto'g'ri: hamkor bunga sabab bo'lmagan.",
+            "X-RateLimit-Reason": "Sababini ochiq aytadi. Client bu bilan hech narsa qila olmaydi.",
+          },
+        },
+        "closed-end": {
+          short: "Natija",
+          title: "Natija: to'rt daqiqa avariya va qaytishda to'lqin",
+          body: "Har client `Retry-After: 1` ga bo'ysunib, har soniya qayta urindi, hamkor ilovasi esa ustiga o'z takrorlarini qo'shdi. Redis qaytganda birinchi soniyada unga 41 000 tekshiruv keladi.\n\nOddiy yo'l bilan solishtiring: fail open API'ni biroz bo'sh limitlar bilan ishlatib turdi. Bu yerda API to'rt daqiqa hamma uchun ishlamadi va Redis o'ziga kelguncha so'rovlarning uchdan biri hali ham yiqiladi.",
+          watch: "Fail closed faqat suiiste'mol avariyadan qimmatroq joyda: login urinishlari yoki SMS.",
+          fields: {
+            "redis up": "Hisoblagich to'rt daqiqadan keyin qaytdi.",
+            EVALSHA: "Bir soniyada odatdagidan 45 barobar ko'p tekshiruv: kutib turgan hamma client birdaniga.",
+          },
+        },
+      },
+    },
+  },
 };
 
 export default text;

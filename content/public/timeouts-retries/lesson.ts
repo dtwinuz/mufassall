@@ -49,9 +49,10 @@ export default defineLesson({
         db: { kind: "db", at: [8, 6] },
       },
       edges: {
-        call: { from: "client", to: "api", rate: 4 },
-        quote: { from: "api", to: "rates", rate: 4 },
-        save: { from: "api", to: "db", rate: 3 },
+        // every hop is a call: the caller holds a thread until the answer comes back
+        call: { from: "client", to: "api", rate: 4, mode: "call" },
+        quote: { from: "api", to: "rates", rate: 4, mode: "call" },
+        save: { from: "api", to: "db", rate: 3, mode: "call" },
       },
       metrics: { p95: 180, errors: 0.2, "rates-rps": 400, double: 0 },
       focus: ["api", "rates"],
@@ -234,7 +235,7 @@ circuit rates: HALF_OPEN -> CLOSED`,
       id: "double-charge",
       kind: "problem",
       nodes: { pay: { kind: "external", at: [3, 8], state: "slow" } },
-      edges: { charge: { from: "api", to: "pay", flow: "dup", rate: 3 } },
+      edges: { charge: { from: "api", to: "pay", flow: "dup", rate: 3, mode: "call" } },
       metrics: { double: 6 },
       focus: ["api", "pay"],
       exchange: {
@@ -276,5 +277,75 @@ circuit rates: HALF_OPEN -> CLOSED`,
       },
     },
     { id: "recap", kind: "recap" },
+  ],
+  scenarios: [
+    {
+      id: "no-jitter",
+      from: "naive-retry",
+      steps: [
+        {
+          id: "nojit-backoff",
+          kind: "fix",
+          nodes: {
+            rates: { state: "slow", load: 85 },
+            api: { state: "ok", load: 50 },
+          },
+          edges: {
+            call: { flow: "request", rate: 4 },
+            quote: { rate: 6 },
+          },
+          metrics: { p95: 1900, errors: 9, "rates-rps": 1100 },
+          focus: ["api", "rates"],
+          exchange: {
+            edge: "quote",
+            request: {
+              format: "text",
+              head: "attempt=1 timeout, sleep 100ms (base 100ms, no jitter)",
+              body: `attempt=2 timeout, sleep 200ms
+attempt=3 timeout, sleep 400ms`,
+            },
+            marks: ["sleep", "no jitter"],
+          },
+        },
+        {
+          id: "nojit-waves",
+          kind: "problem",
+          nodes: { rates: { state: "down", load: 100 } },
+          edges: { quote: { flow: "retry", rate: 12 } },
+          metrics: { p95: 3600, errors: 19, "rates-rps": 5200 },
+          focus: ["api", "rates"],
+          exchange: {
+            edge: "quote",
+            request: {
+              format: "text",
+              head: "10:42:08.000 rates rps=310",
+              body: `10:42:08.100 rates rps=5180 attempt=2
+10:42:08.200 rates rps=40
+10:42:08.300 rates rps=5020 attempt=3
+10:42:08.400 rates rps=60`,
+            },
+            marks: ["rps", "attempt"],
+          },
+        },
+        {
+          id: "nojit-end",
+          kind: "case",
+          nodes: { api: { state: "slow", load: 75 } },
+          metrics: { p95: 3400, errors: 18, "rates-rps": 4800 },
+          focus: ["rates"],
+          exchange: {
+            edge: "quote",
+            request: {
+              format: "text",
+              head: "10:43:00.000 rates-1 ready",
+              body: `10:43:00.400 in-flight 4900, OOMKilled
+10:43:12.000 rates-1 ready
+10:43:12.400 in-flight 5010, OOMKilled`,
+            },
+            marks: ["ready", "OOMKilled"],
+          },
+        },
+      ],
+    },
   ],
 });

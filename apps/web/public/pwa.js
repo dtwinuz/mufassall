@@ -19,6 +19,9 @@
     "/progress.js",
     "/pwa.js",
     "/review.js",
+    "/fsrs.js",
+    "/test.js",
+    "/test-core.js",
     "/lang.js",
     "/activity.js",
     "/compare.js",
@@ -75,7 +78,7 @@
     var pages = Array.prototype.map.call(document.querySelectorAll("a.lesson-card"), function (a) {
       return a.getAttribute("href");
     });
-    pages.push("/" + lang + "/", "/" + lang + "/lab/", "/" + lang + "/search.json", "/" + lang + "/glossary/", "/" + lang + "/review/", "/" + lang + "/review.json", "/review.js", "/" + lang + "/tools/", "/" + lang + "/tools/estimate/", "/" + lang + "/compare/", "/" + lang + "/paths/", "/activity.js", "/estimate.js", "/compare.js", "/share.js", "/sheet.js");
+    pages.push("/" + lang + "/", "/" + lang + "/lab/", "/" + lang + "/search.json", "/" + lang + "/glossary/", "/" + lang + "/review/", "/" + lang + "/test/", "/" + lang + "/review.json", "/fsrs.js", "/review.js", "/" + lang + "/tools/", "/" + lang + "/tools/estimate/", "/" + lang + "/compare/", "/" + lang + "/paths/", "/activity.js", "/estimate.js", "/compare.js", "/share.js", "/sheet.js");
     btn.disabled = true;
     say(btn.getAttribute("data-busy"));
     Promise.all([fetch(pages[0]), fetch("/" + lang + "/lab/")])

@@ -25,8 +25,8 @@ export default defineLesson({
         "db-a": { kind: "db", at: [7, 2], state: "slow", load: 95 },
       },
       edges: {
-        req: { from: "app", to: "api", rate: 8 },
-        sql: { from: "api", to: "db-a", rate: 8 },
+        req: { from: "app", to: "api", rate: 8, mode: "call" },
+        sql: { from: "api", to: "db-a", rate: 8, mode: "call" },
       },
       metrics: { p95: 850, lag: 0, stale: 0, lost: 0 },
       focus: ["db-a"],
@@ -51,10 +51,11 @@ export default defineLesson({
       },
       edges: {
         sql: { rate: 2 },
-        "ship-b": { from: "db-a", to: "db-b", rate: 4 },
-        "ship-c": { from: "db-a", to: "db-c", rate: 4 },
-        rb: { from: "api", to: "db-b", rate: 4 },
-        rc: { from: "api", to: "db-c", rate: 4 },
+        // async streaming: the leader commits without waiting for followers
+        "ship-b": { from: "db-a", to: "db-b", rate: 4, mode: "async" },
+        "ship-c": { from: "db-a", to: "db-c", rate: 4, mode: "async" },
+        rb: { from: "api", to: "db-b", rate: 4, mode: "call" },
+        rc: { from: "api", to: "db-c", rate: 4, mode: "call" },
       },
       metrics: { p95: 45, lag: 40 },
       focus: ["db-a", "db-b", "db-c"],
@@ -166,10 +167,10 @@ export default defineLesson({
         sql: null,
         "ship-b": null,
         "ship-c": null,
-        watch: { from: "sentinel", to: "db-a", flow: "fail", rate: 1 },
-        promote: { from: "sentinel", to: "db-c", rate: 1 },
-        w2: { from: "api", to: "db-c", rate: 2 },
-        "ship-cb": { from: "db-c", to: "db-b", rate: 4 },
+        watch: { from: "sentinel", to: "db-a", flow: "fail", rate: 1, mode: "call" },
+        promote: { from: "sentinel", to: "db-c", rate: 1, mode: "call" },
+        w2: { from: "api", to: "db-c", rate: 2, mode: "call" },
+        "ship-cb": { from: "db-c", to: "db-b", rate: 4, mode: "async" },
       },
       metrics: { p95: 50, lag: 30, lost: 12 },
       focus: ["sentinel", "db-c"],
@@ -187,7 +188,7 @@ export default defineLesson({
       id: "rejoin",
       kind: "case",
       nodes: { "db-a": { state: "ok", load: 20 } },
-      edges: { watch: null, "ship-ca": { from: "db-c", to: "db-a", rate: 3 } },
+      edges: { watch: null, "ship-ca": { from: "db-c", to: "db-a", rate: 3, mode: "async" } },
       focus: ["db-a", "db-c"],
       exchange: {
         edge: "ship-ca",
@@ -203,7 +204,8 @@ export default defineLesson({
     {
       id: "sync",
       kind: "fix",
-      edges: { "ship-cb": { rate: 5 }, w2: { rate: 3 } },
+      // the leader now waits for one follower: replication becomes a call
+      edges: { "ship-cb": { rate: 5, mode: "call" }, w2: { rate: 3 } },
       metrics: { p95: 58, lag: 5, lost: 0 },
       focus: ["db-c", "db-b"],
       exchange: {
@@ -222,5 +224,80 @@ export default defineLesson({
       },
     },
     { id: "recap", kind: "recap" },
+  ],
+  scenarios: [
+    {
+      id: "split-brain",
+      from: "failover",
+      steps: [
+        {
+          id: "sb-return",
+          kind: "problem",
+          nodes: { "db-a": { state: "ok", load: 30 } },
+          edges: {
+            watch: null,
+            sql: { from: "api", to: "db-a", flow: "request", rate: 2, mode: "call" },
+          },
+          focus: ["api", "db-a"],
+          exchange: {
+            edge: "sql",
+            request: {
+              format: "sql",
+              head: "UPDATE profiles SET bio = 'Team lead'",
+              body: "WHERE user_id = 'u_42';",
+            },
+            response: {
+              format: "text",
+              head: "UPDATE 1",
+              body: "-- db-a booted as leader, pool on api-2 still points here",
+            },
+            marks: ["UPDATE 1", "leader", "pool"],
+          },
+        },
+        {
+          id: "sb-diverge",
+          kind: "problem",
+          nodes: { "db-a": { load: 45 }, "db-c": { load: 50 } },
+          edges: { sql: { rate: 3 } },
+          metrics: { stale: 18 },
+          focus: ["db-a", "db-c"],
+          exchange: {
+            edge: "w2",
+            request: {
+              format: "sql",
+              head: "SELECT bio, updated_at FROM profiles",
+              body: "WHERE user_id = 'u_42';",
+            },
+            response: {
+              format: "text",
+              head: " db   | bio            | updated_at",
+              body: " db-c | Backend + SRE  | 2026-11-17 09:21:04\n db-a | Team lead      | 2026-11-17 09:22:40",
+            },
+            marks: ["bio", "updated_at"],
+          },
+        },
+        {
+          id: "sb-end",
+          kind: "case",
+          nodes: { "db-a": { load: 20 } },
+          edges: {
+            sql: null,
+            "ship-ca": { from: "db-c", to: "db-a", rate: 3, mode: "async" },
+          },
+          metrics: { stale: 0, lost: 322 },
+          focus: ["db-a", "db-c"],
+          exchange: {
+            edge: "ship-ca",
+            request: { format: "text", head: "pg_rewind --source-server=db-c" },
+            response: {
+              format: "text",
+              head: "source timeline 8, target timeline 7",
+              body: "removed 322 commits not on the new leader\n(12 from before the crash, 310 after)",
+            },
+            marks: ["pg_rewind", "removed", "310 after"],
+          },
+        },
+      ],
+    },
   ],
 });

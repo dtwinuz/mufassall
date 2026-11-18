@@ -160,6 +160,52 @@ const text: LessonText<typeof lesson> = {
       body: "Yiqilishi mumkin bo'lgan narsani chaqirish uchun besh qoida.\n\n1) Har tarmoq chaqiruvida haqiqiy kechikishdan tanlangan timeout bor. 2) Bitta qatlamda, jitter bilan eksponensial backoff orqali qayta urining. 3) Qayta urinish budjeti ortiqcha yukni cheklaydi. 4) Circuit breaker o'lik servisga chaqiruvni to'xtatadi va half-open'da tekshiradi. 5) Faqat idempotent chaqiruvga qayta urining, qolganiga idempotency kalitini bering.",
     },
   },
+  scenarios: {
+    "no-jitter": {
+      label: "Jitter'siz",
+      steps: {
+        "nojit-backoff": {
+          short: "Oddiy backoff",
+          title: "Backoff bor, lekin hamma bir xil uxlaydi",
+          body: "Endi faqat API qayta urinadi va urinishlar orasida uxlaydi: aynan 100 ms, keyin aynan 200 ms, keyin 400 ms. Pauzada hech qanday tasodif yo'q.\n\nDashboard'da hammasi tuzalgandek: tariflarga o'rtacha yuk soniyasiga 6400 dan 1100 chaqiruvga tushdi.",
+          check: {
+            q: "O'rtacha yuk 1100/s ga tushdi. Minglab buyurtma bir lahzada yiqilgan edi. Tariflar tiklanishga ulguradimi?",
+            options: [
+              "Ha: 1100/s bo'rondan ancha kam",
+              "Yo'q: ularning qayta urinishlari bir millisekundga tushadi, to'lqin bo'lib",
+              "Ha, qayta urinish budjeti ishga tushgach",
+            ],
+            answer: 1,
+            why: "Hamma client bir lahzada yiqildi va bir xil 100 ms uxlaydi, demak qayta urinishlar ham bir lahzaga tushadi. O'rtacha past, lekin har to'lqin butun olomondek katta.",
+          },
+          fields: {
+            sleep: "Qat'iy pauza: har client'da bir xil son.",
+            "no jitter": "Tasodif yo'q. Birga yiqilgan client'lar birga qayta urinadi.",
+          },
+        },
+        "nojit-waves": {
+          short: "To'lqinlar",
+          title: "Qayta urinishlar to'lqin bo'lib keladi",
+          body: "Har 100 ms lik log haqiqatni ko'rsatadi. To'lqinlar orasida tariflar deyarli bo'sh turadi; keyin bir lahzada 5000 qayta urinish keladi, hammasi birga timeout bo'lgan client'lardan.\n\nO'rtacha 1100/s, cho'qqi esa 5200/s. Tariflar o'rtachaga emas, cho'qqiga chidashi kerak, va chidamaydi.",
+          watch: "O'rtacha qiymat sinxron yukni yashiradi. Soniyalik yoki undan mayda cho'qqilarga qarang.",
+          fields: {
+            rps: "Har 100 ms oraliqda tariflarga chaqiruvlar. Deyarli nol, keyin besh ming.",
+            attempt: "Butun to'lqin bir xil urinish raqamida: hamma bir vaqtda 2-urinishda.",
+          },
+        },
+        "nojit-end": {
+          short: "Natija",
+          title: "Natija: tariflar qayta ishga tushib, keyingi to'lqinga tushadi",
+          body: "Tariflar qayta ishga tushadi va bir soniyada tayyor. 400 ms dan keyin navbatdagi sinxron to'lqin keladi, instance'da xotira tugaydi va u o'ladi. O'n ikki soniyadan keyin yana shunday.\n\nOddiy yo'l bilan solishtiring: o'sha backoff jitter bilan qayta urinishlarni yoyadi va tariflar tiklanadi. Bu yerda avariya davom etadi, buyurtmalarning 18% i yiqiladi.",
+          watch: "Jitter'siz backoff bo'ronni faqat vaqtda suradi, uni tarqatmaydi.",
+          fields: {
+            ready: "Yangi instance ko'tarildi va health check'dan o'tdi.",
+            OOMKilled: "Bir vaqtda 4900 ta so'rov: xotira tugadi, yana o'ldirildi.",
+          },
+        },
+      },
+    },
+  },
 };
 
 export default text;

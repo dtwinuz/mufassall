@@ -1130,6 +1130,106 @@ export const glossary: Term[] = [
   },
   // ---- business ----
   {
+    id: "delivery-receipt",
+    term: { uz: "Yetkazish kvitansiyasi (DLR)", ru: "Отчёт о доставке (DLR)", en: "Delivery receipt (DLR)" },
+    short: {
+      uz: "SMS yoki push provayderining xabar telefonga yetdimi yoki yo'qligini keyinroq bildiradigan callback'i. Qabul qilindi degani yetkazildi degani emas.",
+      ru: "Последующий колбэк SMS- или push-провайдера о том, дошло ли сообщение до телефона. Принято не значит доставлено.",
+      en: "A later callback from an SMS or push provider saying whether the message reached the phone. Accepted is not delivered.",
+    },
+    lesson: "notification-delivery",
+  },
+  {
+    id: "channel-fallback",
+    term: { uz: "Kanallar zaxira zanjiri", ru: "Цепочка резервных каналов", en: "Channel fallback chain" },
+    short: {
+      uz: "Xabar turi uchun ketma-ket sinaladigan kanallar (push, SMS, email). Birinchi tasdiqlangan yetkazishda yoki xabar muddati tugaganda to'xtaydi.",
+      ru: "Упорядоченный список каналов (push, SMS, email) для типа сообщения. Останавливается на первой подтверждённой доставке или на дедлайне.",
+      en: "An ordered list of channels (push, SMS, email) per kind of message, stopping at the first confirmed delivery or at the message's deadline.",
+    },
+    lesson: "notification-delivery",
+  },
+  {
+    id: "quiet-hours",
+    term: { uz: "Sokin soatlar", ru: "Тихие часы", en: "Quiet hours" },
+    short: {
+      uz: "Foydalanuvchining mahalliy vaqtidagi oraliq: shoshilinch bo'lmagan xabarlar ertalabgacha ushlab turiladi. Kodlar va xavfsizlik ogohlantirishlari bundan mustasno.",
+      ru: "Окно местного времени пользователя, когда несрочные уведомления откладываются до утра. Коды и оповещения безопасности не откладываются.",
+      en: "A window in the user's local time when non-urgent notifications are held until morning. Codes and security alerts are exempt.",
+    },
+    lesson: "notification-delivery",
+  },
+  {
+    id: "upsert",
+    term: { uz: "Upsert", ru: "Upsert", en: "Upsert" },
+    short: {
+      uz: "Bitta so'rovda qatorni qo'shish yoki shu kalitli qator bor bo'lsa uni yangilash (ON CONFLICT ... DO UPDATE). Qayta yurgizish zararsiz.",
+      ru: "Одним запросом вставить строку или обновить её, если строка с таким ключом уже есть (ON CONFLICT ... DO UPDATE). Повтор безвреден.",
+      en: "Insert a row, or update it if a row with the same key exists, in one statement (ON CONFLICT ... DO UPDATE). Re-running it is harmless.",
+    },
+    lesson: "bulk-import",
+  },
+  {
+    id: "checkpoint",
+    term: { uz: "Checkpoint", ru: "Чекпоинт", en: "Checkpoint" },
+    short: {
+      uz: "Uzun ish har bir commit qilingan batch bilan saqlaydigan joy: qayta ishga tushganda boshidan emas, shu yerdan davom etadi.",
+      ru: "Позиция, которую длинная задача сохраняет с каждой закоммиченной пачкой, чтобы после перезапуска продолжить оттуда, а не начинать заново.",
+      en: "The position a long job saves with each committed batch, so after a restart it resumes from there instead of starting over.",
+    },
+    lesson: "bulk-import",
+  },
+  {
+    id: "double-entry",
+    term: { uz: "Ikki yoqlama yozuv", ru: "Двойная запись", en: "Double-entry ledger" },
+    short: {
+      uz: "Har bir pul harakati posting'lari yig'indisi nolga teng bitta yozuv: debet kreditga teng.",
+      ru: "Каждое движение денег — проводка, сумма строк которой равна нулю: дебет равен кредиту.",
+      en: "Every money movement is one entry whose postings sum to zero: debit equals credit.",
+    },
+    lesson: "double-entry-ledger",
+  },
+  {
+    id: "trial-balance",
+    term: { uz: "Trial balance", ru: "Оборотный баланс", en: "Trial balance" },
+    short: {
+      uz: "Har bir valyuta bo'yicha barcha posting'lar yig'indisi aynan nol ekanini muntazam tekshirish.",
+      ru: "Регулярная проверка, что сумма всех строк по каждой валюте ровно ноль.",
+      en: "A regular check that all postings in each currency sum to exactly zero.",
+    },
+    lesson: "double-entry-ledger",
+  },
+  {
+    id: "reversal-entry",
+    term: { uz: "Teskari yozuv", ru: "Сторнирующая проводка", en: "Reversal entry" },
+    short: {
+      uz: "Avvalgi yozuvni tahrir qilmasdan bekor qiladigan, teskari posting'li yangi yozuv.",
+      ru: "Новая проводка с обратными строками, отменяющая прежнюю без её правки.",
+      en: "A new entry with opposite postings that undoes an earlier one without editing it.",
+    },
+    lesson: "double-entry-ledger",
+  },
+  {
+    id: "dunning",
+    term: { uz: "Dunning", ru: "Даннинг", en: "Dunning" },
+    short: {
+      uz: "O'tmagan obuna to'lovini bir necha kun qayta urinish, mijozga xabar berish va imtiyozli davrdan keyin obunani to'xtatish.",
+      ru: "Повтор неудавшегося продления в течение нескольких дней, уведомления клиенту и приостановка после льготного периода.",
+      en: "Retrying a failed renewal over several days, notifying the customer, then suspending after a grace period.",
+    },
+    lesson: "subscription-billing",
+  },
+  {
+    id: "proration",
+    term: { uz: "Proratsiya", ru: "Прорейт", en: "Proration" },
+    short: {
+      uz: "Davr o'rtasida tarif almashganda eski tarifning ishlatilmagan qismini qaytarish va yangisining qolgan qismini yechish.",
+      ru: "При смене тарифа посреди периода: кредит за неиспользованную часть старого и списание за остаток нового.",
+      en: "On a mid-period plan change, credit the unused part of the old plan and charge the rest of the new one.",
+    },
+    lesson: "subscription-billing",
+  },
+  {
     id: "reconciliation",
     term: { uz: "Solishtirish (reconciliation)", ru: "Сверка (reconciliation)", en: "Reconciliation" },
     short: {

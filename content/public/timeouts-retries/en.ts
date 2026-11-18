@@ -160,6 +160,52 @@ const text: LessonText<typeof lesson> = {
       body: "Five rules for calling something that can fail.\n\n1) Every network call has a timeout set from real latency. 2) Retry in one layer, with exponential backoff and jitter. 3) A retry budget caps the extra load. 4) A circuit breaker stops calls to a dead service and probes it in half-open. 5) Retry only idempotent calls; give the rest an idempotency key.",
     },
   },
+  scenarios: {
+    "no-jitter": {
+      label: "No jitter",
+      steps: {
+        "nojit-backoff": {
+          short: "Plain backoff",
+          title: "Backoff, but every client sleeps the same",
+          body: "Only the API retries now, and it sleeps between tries: exactly 100 ms, then exactly 200 ms, then 400 ms. No randomness in the pause.\n\nOn the dashboard it looks fixed: the average load on rates fell from 6400 to 1100 calls per second.",
+          check: {
+            q: "The average dropped to 1100/s. Thousands of orders failed at the same moment. Does rates get room to recover?",
+            options: [
+              "Yes: 1100/s is far below the storm",
+              "No: their retries land in the same millisecond, as waves",
+              "Yes, once the retry budget kicks in",
+            ],
+            answer: 1,
+            why: "Every client failed at the same moment and sleeps the same 100 ms, so every retry lands at the same moment too. The average is low, but each wave is as big as the whole crowd.",
+          },
+          fields: {
+            sleep: "A fixed pause: the same number on every client.",
+            "no jitter": "Nothing random. Clients that failed together retry together.",
+          },
+        },
+        "nojit-waves": {
+          short: "Waves",
+          title: "Retries arrive as waves",
+          body: "The per-100-ms log shows the truth. Between waves rates is almost idle; then 5000 retries hit it in the same instant, all from clients that timed out together.\n\nThe average says 1100/s, the peak is 5200/s. Rates has to survive the peak, not the average, and it does not.",
+          watch: "Averages hide synchronised load. Look at per-second or finer peaks.",
+          fields: {
+            rps: "Calls to rates in each 100 ms slot. Almost zero, then five thousand.",
+            attempt: "The whole wave is the same try number: everyone is on attempt 2 at once.",
+          },
+        },
+        "nojit-end": {
+          short: "Outcome",
+          title: "Outcome: rates restarts into the next wave",
+          body: "Rates restarts and is ready in a second. 400 ms later the next synchronised wave arrives, the instance runs out of memory and dies. Twelve seconds later the same thing again.\n\nCompare with the normal path: the same backoff with jitter spreads retries out and rates recovers. Here the outage keeps going with 18% failed checkouts.",
+          watch: "Backoff without jitter only moves the storm in time; it does not break it up.",
+          fields: {
+            ready: "The fresh instance is up and passes its health check.",
+            OOMKilled: "4900 requests in flight at once: out of memory, killed again.",
+          },
+        },
+      },
+    },
+  },
 };
 
 export default text;

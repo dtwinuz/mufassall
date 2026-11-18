@@ -39,7 +39,17 @@ export const sections: readonly Section[] = [
   },
   {
     id: "business",
-    lessons: ["payments", "reconciliation", "digital-signature", "document-lifecycle", "audit-log"],
+    lessons: [
+      "payments",
+      "double-entry-ledger",
+      "reconciliation",
+      "subscription-billing",
+      "digital-signature",
+      "document-lifecycle",
+      "audit-log",
+      "notification-delivery",
+      "bulk-import",
+    ],
   },
   { id: "cases", lessons: ["case-discord-messages", "case-figma-multiplayer"] },
 ];

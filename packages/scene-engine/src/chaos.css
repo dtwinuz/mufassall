@@ -1,0 +1,186 @@
+/* Lab chaos experiments, SLO and cost tiles. Colours come from the host's tokens, like player.css. */
+
+.mf-chaos h2 {
+  margin: 0 0 8px;
+}
+.mf-chaos h3 {
+  margin: 10px 0 4px;
+  font: 600 12px var(--font-mono);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mf-chaos--on {
+  border-color: var(--warn);
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+.mf-chaos .mf-lab__form {
+  margin-bottom: 8px;
+}
+.mf-chaos select,
+.mf-chaos input {
+  max-width: 100%;
+}
+.mf-chaos__about {
+  margin: 0 0 8px;
+}
+.mf-chaos__formula {
+  margin: 8px 0 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.mf-chaos__bad {
+  color: var(--bad);
+}
+
+/* the banner on the stage while an experiment runs: it must be impossible to miss */
+.mf-chaos__active {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px dashed var(--warn);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  font-size: 14px;
+}
+.mf-chaos__active strong {
+  color: var(--fg);
+}
+
+.mf-chaos__report {
+  margin-top: 10px;
+}
+.mf-chaos__verdict {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font: 600 14px var(--font-mono);
+}
+.mf-chaos__verdict.is-ok {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+}
+.mf-chaos__verdict.is-bad {
+  color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 10%, transparent);
+}
+.mf-chaos__findings {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+}
+.mf-chaos__finding--overload,
+.mf-chaos__finding--down,
+.mf-chaos__finding--stranded,
+.mf-chaos__finding--cut {
+  color: var(--bad);
+}
+.mf-chaos__finding--slow,
+.mf-chaos__finding--cold,
+.mf-chaos__finding--latency {
+  color: var(--warn);
+}
+
+/* SLO tile */
+.mf-slo--ok {
+  border-color: var(--ok);
+}
+.mf-slo--bad {
+  border-color: var(--bad);
+}
+.mf-slo__targets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+.mf-slo__stats {
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.mf-lab__simstats .is-ok dd {
+  color: var(--ok);
+}
+.mf-slo__verdict {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+.mf-slo--ok .mf-slo__verdict {
+  color: var(--ok);
+}
+.mf-slo--bad .mf-slo__verdict {
+  color: var(--bad);
+}
+
+/* cost tile */
+.mf-cost__note {
+  margin: 0 0 8px;
+  padding: 4px 8px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.mf-cost__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.mf-cost__table th,
+.mf-cost__table td {
+  padding: 3px 4px;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+}
+.mf-cost__table th:first-child {
+  text-align: left;
+  font-weight: 500;
+}
+.mf-cost__table thead th {
+  font: 500 11px var(--font-mono);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mf-cost__total {
+  margin: 8px 0;
+  font: 600 16px var(--font-mono);
+}
+.mf-cost__trade {
+  padding: 8px 10px;
+  border: 1px solid var(--signal);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--signal) 6%, transparent);
+}
+.mf-cost__trade p {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+.mf-cost__prices {
+  margin-top: 8px;
+  font-size: 13px;
+}
+.mf-cost__prices summary {
+  cursor: pointer;
+}
+.mf-cost__prices ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.mf-chaos summary:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mf-chaos,
+  .mf-chaos__active {
+    transition:
+      border-color 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+}

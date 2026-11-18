@@ -16,7 +16,9 @@ import { Check } from "./Check";
 import { downloadPng } from "./export";
 import { encodeDoc, fromScene } from "./lab";
 import { inline, paragraphs, plain } from "./text";
-import { type UiStrings, fill, formatNumber, scenarioUi } from "./ui";
+import { type UiStrings, fill, formatNumber, historyUi, scenarioUi } from "./ui";
+import { historyOf } from "./history";
+import { HistoryPanel } from "./HistoryPanel";
 import { Wire } from "./Wire";
 import { Feedback, TryPanel, useSpeech, useTry } from "./extras";
 
@@ -188,6 +190,13 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
     }
   }, [listening, speech.speaking]);
   const wireEdge = exchange ? state.edges[exchange.edge] : undefined;
+  const hui = historyUi(ui, lang);
+  const history = useMemo(
+    () => historyOf(lesson, branch, index, { nodes: labels, states: ui.states, flows: ui.flows, strings: hui, scenarios: scenarioTexts }),
+    // labels and scenario texts come from `text`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lesson, branch, index, text, ui, hui],
+  );
 
   const metricOf = (id: string) => lesson.metrics.find((m) => m.id === id);
   /** `target` decides the decimals, so a tween towards an integer never shows fractions. */
@@ -414,6 +423,7 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
                   </ul>
                 )}
               </div>
+              <HistoryPanel entries={history} current={index} path={branch.sc ?? ""} ui={hui} onJump={go} />
               <div className="mf-nav">
                 <button type="button" className="mf-btn" onClick={() => go(index - 1)} disabled={index === 0}>
                   ← {ui.back}
