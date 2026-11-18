@@ -1,4 +1,5 @@
 import type { EdgeMode, Flow, NodeKind, NodeStatus, StepKind } from "@mufassall/scene-schema";
+import type { HistoryStrings } from "./history";
 
 /** Lab (diagram editor) strings, per language. */
 export interface LabStrings {
@@ -173,6 +174,58 @@ export interface UiStrings {
   };
   /** scenario switcher and edge modes; optional so a host without them falls back to SCENARIO_UI */
   scenario?: ScenarioStrings;
+  /** the "Event history" log under "What changed"; optional, falls back to HISTORY_UI */
+  history?: HistoryStrings;
+}
+
+/** Built-in event history strings, used when the host's UiStrings has no `history` entry. */
+export const HISTORY_UI: Record<"uz" | "ru" | "en", HistoryStrings> = {
+  uz: {
+    title: "Voqealar tarixi",
+    empty: "Hali hech narsa sodir bo'lmadi.",
+    step: "Qadam {n}",
+    now: "joriy qadam",
+    jump: "{n}-qadamga o'tish: {label}",
+    added: "Tarixga qo'shildi: {list}",
+    kinds: { request: "so'rov", response: "javob", state: "holat", flow: "oqim", lost: "yo'qoldi", branch: "ssenariy" },
+    branch: "Ssenariy: {name}",
+    state: "{node}: {state}",
+    flow: "{from} → {to}: {flow}",
+    restored: "{from} → {to}: xabarlar yana yetib boryapti",
+    lost: "{head} — yetib bormadi",
+  },
+  ru: {
+    title: "История событий",
+    empty: "Пока ничего не произошло.",
+    step: "Шаг {n}",
+    now: "текущий шаг",
+    jump: "Перейти к шагу {n}: {label}",
+    added: "Добавлено в историю: {list}",
+    kinds: { request: "запрос", response: "ответ", state: "состояние", flow: "поток", lost: "потеряно", branch: "сценарий" },
+    branch: "Сценарий: {name}",
+    state: "{node}: {state}",
+    flow: "{from} → {to}: {flow}",
+    restored: "{from} → {to}: сообщения снова доходят",
+    lost: "{head} — не дошло",
+  },
+  en: {
+    title: "Event history",
+    empty: "Nothing has happened yet.",
+    step: "Step {n}",
+    now: "current step",
+    jump: "Go to step {n}: {label}",
+    added: "Added to the history: {list}",
+    kinds: { request: "request", response: "response", state: "state", flow: "flow", lost: "lost", branch: "scenario" },
+    branch: "Scenario: {name}",
+    state: "{node}: {state}",
+    flow: "{from} → {to}: {flow}",
+    restored: "{from} → {to}: messages arrive again",
+    lost: "{head} — never arrived",
+  },
+};
+
+export function historyUi(ui: UiStrings, lang: string): HistoryStrings {
+  return ui.history ?? HISTORY_UI[lang as keyof typeof HISTORY_UI] ?? HISTORY_UI.en;
 }
 
 export interface ScenarioStrings {

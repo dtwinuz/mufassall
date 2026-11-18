@@ -27,8 +27,8 @@ export default defineLesson({
         mail: { kind: "external", at: [12, 4] },
       },
       edges: {
-        order: { from: "buyers", to: "api", rate: 3 },
-        direct: { from: "api", to: "mail", rate: 3 },
+        order: { from: "buyers", to: "api", rate: 3, mode: "call" },
+        direct: { from: "api", to: "mail", rate: 3, mode: "call" },
       },
       metrics: { p95: 950, backlog: 0, delay: 1, lost: 0 },
       focus: ["api", "mail"],
@@ -92,9 +92,9 @@ export default defineLesson({
       },
       edges: {
         direct: null,
-        publish: { from: "api", to: "queue", rate: 12 },
-        take1: { from: "queue", to: "w1", rate: 3 },
-        send1: { from: "w1", to: "mail", rate: 3 },
+        publish: { from: "api", to: "queue", rate: 12, mode: "async" },
+        take1: { from: "queue", to: "w1", rate: 3, mode: "async" },
+        send1: { from: "w1", to: "mail", rate: 3, mode: "call" },
       },
       metrics: { p95: 35, backlog: 42000, delay: 840, lost: 0 },
       focus: ["api", "queue", "w1"],
@@ -125,8 +125,8 @@ export default defineLesson({
         queue: { load: 30 },
       },
       edges: {
-        take2: { from: "queue", to: "w2", rate: 3 },
-        send2: { from: "w2", to: "mail", rate: 3 },
+        take2: { from: "queue", to: "w2", rate: 3, mode: "async" },
+        send2: { from: "w2", to: "mail", rate: 3, mode: "call" },
       },
       metrics: { backlog: 9000, delay: 95 },
       focus: ["queue", "w1", "w2"],
@@ -244,7 +244,7 @@ export default defineLesson({
       id: "dlq",
       kind: "fix",
       nodes: { dlq: { kind: "queue", at: [6, 8] } },
-      edges: { dead: { from: "queue", to: "dlq", flow: "fail", rate: 1 } },
+      edges: { dead: { from: "queue", to: "dlq", flow: "fail", rate: 1, mode: "async" } },
       focus: ["queue", "dlq"],
       exchange: {
         edge: "dead",
@@ -268,7 +268,7 @@ export default defineLesson({
       id: "backpressure",
       kind: "fix",
       nodes: { campaign: { kind: "worker", at: [2, 8], load: 50 } },
-      edges: { flood: { from: "campaign", to: "queue", rate: 4 } },
+      edges: { flood: { from: "campaign", to: "queue", rate: 4, mode: "async" } },
       metrics: { backlog: 20000, delay: 60 },
       focus: ["campaign", "queue"],
       exchange: {
@@ -282,5 +282,65 @@ export default defineLesson({
       },
     },
     { id: "recap", kind: "recap" },
+  ],
+  scenarios: [
+    {
+      id: "auto-ack",
+      from: "scale-out",
+      steps: [
+        {
+          id: "autoack-take",
+          kind: "case",
+          focus: ["queue", "w2"],
+          exchange: {
+            edge: "take2",
+            request: {
+              format: "text",
+              head: "RECEIVE emails (auto-ack)",
+              body: `message_id: m_8812
+prefetch: 40`,
+            },
+            response: { format: "text", head: "DELETE m_8812", body: "-- sent on receive, before the email is built" },
+            marks: ["auto-ack", "prefetch", "DELETE"],
+          },
+        },
+        {
+          id: "autoack-crash",
+          kind: "problem",
+          nodes: { w2: { state: "down", load: 0 } },
+          edges: { take2: { cut: true }, send2: { rate: 0 } },
+          metrics: { lost: 40 },
+          focus: ["queue", "w2"],
+          exchange: {
+            edge: "take2",
+            request: {
+              format: "text",
+              head: "10:03:12 w2 OOMKilled, 40 messages in memory",
+              body: `10:03:13 queue: m_8812 not found
+10:03:13 queue: nothing to redeliver`,
+            },
+            marks: ["OOMKilled", "not found", "nothing to redeliver"],
+          },
+        },
+        {
+          id: "autoack-end",
+          kind: "case",
+          nodes: { w2: { state: "ok", load: 95 } },
+          edges: { take2: { cut: false }, send2: { rate: 3 } },
+          metrics: { backlog: 0, delay: 2, lost: 240 },
+          focus: ["queue", "w1", "w2"],
+          exchange: {
+            edge: "take1",
+            request: {
+              format: "text",
+              head: "queue emails: depth=0 redelivered=0",
+              body: `orders paid in the last hour: 2400
+emails sent in the last hour: 2160`,
+            },
+            marks: ["redelivered", "emails sent"],
+          },
+        },
+      ],
+    },
   ],
 });

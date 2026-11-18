@@ -57,6 +57,143 @@ export const diagram: Record<"uz" | "ru" | "en", DiagramStrings> = {
     words: { retry: "retry", dup: "duplicate", lost: "lost", call: "call", async: "async" },
   },
 };
+/** Test mode: a short exam per section from the lessons' checks. Checked by pages/[lang]/test/_core.test.ts. */
+export interface TestStrings {
+  nav: string;
+  title: string;
+  lead: string;
+  questionsN: string; // "{n} questions"
+  best: string; // "Best: {p}%"
+  notTaken: string;
+  open: string;
+  sectionTitle: string; // "Test: {section}"
+  sectionLead: string; // {n} questions, {pass} percent
+  progress: string; // "{i} / {n}"
+  seed: string; // "Test #{seed}"
+  next: string;
+  finish: string;
+  keys: string;
+  result: string; // {right} {n} {p}
+  passed: string;
+  failed: string; // {pass}
+  bestNow: string; // {p}
+  yours: string;
+  none: string; // no answer given
+  correct: string;
+  why: string;
+  right: string;
+  wrong: string;
+  back: string;
+  retake: string;
+  fresh: string;
+  all: string;
+  empty: string;
+  fail: string;
+  noscript: string;
+}
+
+export const test: Record<"uz" | "ru" | "en", TestStrings> = {
+  uz: {
+    nav: "Test",
+    title: "Bo'lim testlari",
+    lead: "Darslardagi savollardan tuzilgan qisqa imtihon: maslahatsiz, javoblar oxirida ko'rsatiladi. O'tish bali 70%. Natijalar faqat shu brauzerda saqlanadi.",
+    questionsN: "{n} ta savol",
+    best: "Eng yaxshi: {p}%",
+    notTaken: "Hali topshirilmagan",
+    open: "Testni boshlash",
+    sectionTitle: "Test: {section}",
+    sectionLead: "Bo'lim darslaridan {n} ta savol, maslahatsiz. To'g'ri javoblar va izohlar oxirida chiqadi. O'tish bali {pass}%.",
+    progress: "{i} / {n}",
+    seed: "Test #{seed}",
+    next: "Keyingisi",
+    finish: "Yakunlash",
+    keys: "Klavishlar: 1-4 tanlash, Enter keyingisi",
+    result: "{right} / {n} to'g'ri · {p}%",
+    passed: "O'tdingiz",
+    failed: "Hali o'tilmadi: {pass}% kerak",
+    bestNow: "Eng yaxshi natija: {p}%",
+    yours: "Sizning javobingiz",
+    none: "javob berilmagan",
+    correct: "To'g'ri javob",
+    why: "Nega",
+    right: "to'g'ri",
+    wrong: "xato",
+    back: "Qadamga qaytish",
+    retake: "Shu testni qayta topshirish",
+    fresh: "Yangi savollar to'plami",
+    all: "Barcha testlar",
+    empty: "Bu bo'limda hali savollar yo'q.",
+    fail: "Savollar yuklanmadi. Internetni tekshirib, sahifani yangilang.",
+    noscript: "Test JavaScript bilan ishlaydi.",
+  },
+  ru: {
+    nav: "Тест",
+    title: "Тесты по разделам",
+    lead: "Короткий экзамен из вопросов уроков: без подсказок, ответы показываются в конце. Проходной балл 70%. Результаты хранятся только в этом браузере.",
+    questionsN: "Вопросов: {n}",
+    best: "Лучший: {p}%",
+    notTaken: "Ещё не пройден",
+    open: "Пройти тест",
+    sectionTitle: "Тест: {section}",
+    sectionLead: "Вопросы из уроков раздела, без подсказок (всего: {n}). Правильные ответы и пояснения появятся в конце. Проходной балл {pass}%.",
+    progress: "{i} / {n}",
+    seed: "Тест #{seed}",
+    next: "Дальше",
+    finish: "Завершить",
+    keys: "Клавиши: 1-4 выбор, Enter дальше",
+    result: "Верно {right} из {n} · {p}%",
+    passed: "Тест пройден",
+    failed: "Пока не пройден: нужно {pass}%",
+    bestNow: "Лучший результат: {p}%",
+    yours: "Ваш ответ",
+    none: "нет ответа",
+    correct: "Правильный ответ",
+    why: "Почему",
+    right: "верно",
+    wrong: "неверно",
+    back: "Вернуться к шагу",
+    retake: "Пройти этот же тест снова",
+    fresh: "Новый набор вопросов",
+    all: "Все тесты",
+    empty: "В этом разделе пока нет вопросов.",
+    fail: "Не удалось загрузить вопросы. Проверьте соединение и обновите страницу.",
+    noscript: "Тест работает с JavaScript.",
+  },
+  en: {
+    nav: "Test",
+    title: "Section tests",
+    lead: "A short exam built from the lessons' questions: no hints, answers at the end. Pass mark 70%. Results stay in this browser only.",
+    questionsN: "{n} questions",
+    best: "Best: {p}%",
+    notTaken: "Not taken yet",
+    open: "Take the test",
+    sectionTitle: "Test: {section}",
+    sectionLead: "{n} questions from this section's lessons, no hints. Right answers and explanations come at the end. Pass mark {pass}%.",
+    progress: "{i} / {n}",
+    seed: "Test #{seed}",
+    next: "Next",
+    finish: "Finish",
+    keys: "Keys: 1-4 choose, Enter next",
+    result: "{right} of {n} right · {p}%",
+    passed: "Passed",
+    failed: "Not passed yet: {pass}% needed",
+    bestNow: "Best result: {p}%",
+    yours: "Your answer",
+    none: "no answer",
+    correct: "Right answer",
+    why: "Why",
+    right: "right",
+    wrong: "wrong",
+    back: "Back to the step",
+    retake: "Retake the same test",
+    fresh: "New set of questions",
+    all: "All tests",
+    empty: "This section has no questions yet.",
+    fail: "Could not load the questions. Check the connection and reload the page.",
+    noscript: "The test needs JavaScript.",
+  },
+};
+
 export interface LearnerStrings {
   nav: { tools: string; paths: string };
   tools: { title: string; lead: string; open: string; items: Record<"estimate" | "compare" | "lab" | "paths", { title: string; text: string }> };

@@ -39,10 +39,10 @@ export default defineLesson({
         inventory: { kind: "service", at: [9, 7] },
       },
       edges: {
-        place: { from: "client", to: "orders", rate: 3 },
-        save: { from: "orders", to: "odb", rate: 3 },
-        charge: { from: "orders", to: "payments", rate: 3 },
-        reserve: { from: "orders", to: "inventory", rate: 3 },
+        place: { from: "client", to: "orders", rate: 3, mode: "call" },
+        save: { from: "orders", to: "odb", rate: 3, mode: "call" },
+        charge: { from: "orders", to: "payments", rate: 3, mode: "call" },
+        reserve: { from: "orders", to: "inventory", rate: 3, mode: "call" },
       },
       metrics: { p95: 320, orphans: 0, lost: 0 },
       focus: ["orders", "payments", "inventory"],
@@ -178,7 +178,7 @@ export default defineLesson({
       edges: {
         charge: null,
         reserve: { flow: "fail" },
-        refund: { from: "orders", to: "payments", rate: 2 },
+        refund: { from: "orders", to: "payments", rate: 2, mode: "call" },
       },
       focus: ["orders", "payments", "inventory"],
       exchange: {
@@ -210,10 +210,10 @@ export default defineLesson({
       edges: {
         refund: null,
         reserve: null,
-        publish: { from: "orders", to: "bus", rate: 3 },
-        pay: { from: "bus", to: "payments", rate: 3 },
-        paid: { from: "payments", to: "bus", flow: "ack", rate: 2 },
-        stock: { from: "bus", to: "inventory", rate: 2 },
+        publish: { from: "orders", to: "bus", rate: 3, mode: "async" },
+        pay: { from: "bus", to: "payments", rate: 3, mode: "async" },
+        paid: { from: "payments", to: "bus", flow: "ack", rate: 2, mode: "async" },
+        stock: { from: "bus", to: "inventory", rate: 2, mode: "async" },
       },
       metrics: { p95: 180 },
       focus: ["orders", "bus"],
@@ -251,8 +251,8 @@ export default defineLesson({
       },
       edges: {
         publish: null,
-        poll: { from: "relay", to: "odb", rate: 2 },
-        forward: { from: "relay", to: "bus", rate: 3 },
+        poll: { from: "relay", to: "odb", rate: 2, mode: "call" },
+        forward: { from: "relay", to: "bus", rate: 3, mode: "async" },
       },
       metrics: { lost: 0, p95: 190 },
       focus: ["orders", "odb", "relay"],
@@ -291,5 +291,87 @@ export default defineLesson({
       },
     },
     { id: "recap", kind: "recap" },
+  ],
+  scenarios: [
+    {
+      id: "comp-fails",
+      from: "compensate",
+      steps: [
+        {
+          id: "comp-retry",
+          kind: "problem",
+          nodes: { payments: { state: "down", load: 0 } },
+          edges: { refund: { flow: "retry", rate: 4 } },
+          metrics: { orphans: 2 },
+          focus: ["orders", "payments"],
+          exchange: {
+            edge: "refund",
+            request: {
+              format: "json",
+              head: "POST /charges/ch_88/refunds HTTP/1.1",
+              headers: [["Idempotency-Key", "sg_1042-refund"]],
+              body: `{
+  "amount": 500000,
+  "reason": "out_of_stock"
+}`,
+            },
+            response: {
+              format: "http",
+              head: "HTTP/1.1 503 Service Unavailable",
+              body: "saga sg_1042: refund attempt 6, next in 320 s",
+            },
+            marks: ["Idempotency-Key", "503", "attempt 6"],
+          },
+        },
+        {
+          id: "comp-stuck",
+          kind: "problem",
+          nodes: { payments: { state: "ok", load: 30 } },
+          edges: { refund: { flow: "fail", rate: 2 } },
+          metrics: { orphans: 4 },
+          focus: ["orders", "payments"],
+          exchange: {
+            edge: "refund",
+            request: {
+              format: "json",
+              head: "POST /charges/ch_88/refunds HTTP/1.1",
+              headers: [["Idempotency-Key", "sg_1042-refund"]],
+              body: `{
+  "amount": 500000,
+  "reason": "out_of_stock"
+}`,
+            },
+            response: {
+              format: "json",
+              head: "HTTP/1.1 422 Unprocessable Entity",
+              body: `{
+  "error": "card_closed",
+  "retryable": false
+}`,
+            },
+            marks: ["422", "error", "retryable"],
+          },
+        },
+        {
+          id: "comp-manual",
+          kind: "case",
+          edges: { refund: { rate: 0 } },
+          metrics: { orphans: 6 },
+          focus: ["orders", "odb"],
+          exchange: {
+            edge: "save",
+            request: {
+              format: "sql",
+              head: "UPDATE sagas SET status = 'needs_manual'",
+              body: `WHERE id = 'sg_1042';
+SELECT count(*) FROM sagas
+ WHERE status = 'needs_manual';`,
+            },
+            response: { format: "text", head: "count: 6 (today)" },
+            marks: ["needs_manual", "count"],
+          },
+        },
+      ],
+    },
   ],
 });

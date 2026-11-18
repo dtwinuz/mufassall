@@ -1,19 +1,28 @@
-// Spaced review of the lessons' prediction checks (Leitner boxes), on /<lang>/review/.
+// Spaced review of the lessons' prediction checks, on /<lang>/review/, scheduled by FSRS (/fsrs.js).
 // Cards come from /<lang>/review.json; state lives only in this browser:
 //   mufassall:v1:checks   first answer in a lesson, id -> right? (written by the lesson player)
-//   mufassall:v1:review   id -> { b: box 0..5, d: due time in ms }
+//   mufassall:v2:review   id -> { s: stability days, d: difficulty 1..10, due: ms, last: ms, reps, lapses, st }
+//   mufassall:v1:review   the old Leitner boxes { b, d }: read once to fill v2, never written or deleted
 //   mufassall:v1:progress lesson -> furthest step reached (written by the lesson player)
 //   mufassall:v1:review:known  ids present in review.json, so the nav badge (search.js) skips removed cards
 //   mufassall:v1:keys     "off" = the reader switched single-key shortcuts off (WCAG 2.1.4)
 (function () {
   var root = document.querySelector("[data-review]");
   if (!root) return;
+  var F = window.MufassallFSRS;
   var DAY = 864e5;
-  var GAP = [0, 1, 3, 7, 16, 35]; // days until a card in box n comes back
-  var KEY = "mufassall:v1:review";
+  var KEY = "mufassall:v2:review";
+  var AGAIN = 1;
+  var HARD = 2;
+  var GOOD = 3;
+  var EASY = 4;
   var t = function (k) {
     return root.getAttribute("data-" + k) || "";
   };
+  if (!F) {
+    root.textContent = t("fail");
+    return;
+  }
   var read = function (k) {
     try {
       var v = JSON.parse(localStorage.getItem(k) || "{}");
@@ -29,18 +38,25 @@
       return true;
     }
   };
-  var state = read(KEY);
+  var stored = null;
+  try {
+    stored = localStorage.getItem(KEY);
+  } catch (e) {}
+  // first visit after the switch to FSRS: Leitner boxes become stabilities, due dates stay
+  var state = stored === null ? F.migrate(read("mufassall:v1:review"), Date.now()) : read(KEY);
   var save = function () {
     try {
       localStorage.setItem(KEY, JSON.stringify(state));
     } catch (e) {}
   };
 
-  // answers given in lessons become cards: a miss is due now, a hit tomorrow
+  // answers given in lessons become cards: a hit is scheduled as Good, a miss is due now
   var checks = read("mufassall:v1:checks");
   Object.keys(checks).forEach(function (id) {
     if (state[id]) return;
-    state[id] = checks[id] === true ? { b: 1, d: Date.now() + DAY } : { b: 0, d: 0 };
+    var now = Date.now();
+    state[id] = F.next(F.newCard(), checks[id] === true ? GOOD : AGAIN, now, id);
+    if (checks[id] !== true) state[id].due = now;
   });
   save();
 
@@ -78,6 +94,9 @@
   var cards = {};
   var queue = [];
   var done = 0;
+  var seen = {}; // ids answered in this session
+  var reviewed = 0;
+  var firstRight = 0;
 
   var stats = function () {
     var ids = Object.keys(state).filter(function (id) {
@@ -86,7 +105,7 @@
     var at = Date.now();
     var next = ids
       .map(function (id) {
-        return state[id].d;
+        return state[id].due;
       })
       .filter(function (d) {
         return d > at;
@@ -97,13 +116,31 @@
     return {
       total: ids.length,
       due: ids.filter(function (id) {
-        return state[id].d <= at;
+        return state[id].due <= at;
       }),
+      // a week of stability: about the old box 3
       learned: ids.filter(function (id) {
-        return state[id].b >= 3;
+        return state[id].st === 2 && state[id].s >= 7;
       }).length,
       next: next,
+      recall: recall(ids, at),
     };
+  };
+
+  // FSRS's estimate of the share of started cards the reader would get right now, in %
+  var recall = function (ids, at) {
+    var rs = ids
+      .filter(function (id) {
+        return state[id].st && state[id].s > 0 && state[id].last;
+      })
+      .map(function (id) {
+        return F.retrievability((at - state[id].last) / DAY, state[id].s);
+      });
+    if (!rs.length) return null;
+    var sum = rs.reduce(function (a, b) {
+      return a + b;
+    }, 0);
+    return Math.round((100 * sum) / rs.length);
   };
 
   // checks the reader passed in a lesson without answering
@@ -124,7 +161,9 @@
     var title = el("h2", "review__summary-title", done > 0 ? t("done") : s.total ? t("none-due") : t("empty"));
     title.tabIndex = -1;
     box.appendChild(title);
+    if (reviewed) box.appendChild(el("p", "review__meta", fill(t("session"), { n: reviewed, right: firstRight })));
     if (s.total) box.appendChild(el("p", "review__meta", fill(t("stats"), { total: s.total, learned: s.learned })));
+    if (s.recall !== null) box.appendChild(el("p", "review__meta", fill(t("recall"), { r: s.recall })));
     if (s.next) box.appendChild(el("p", "review__meta", fill(t("next"), { date: day(s.next) })));
     var extra = fresh();
     if (extra.length) {
@@ -132,7 +171,7 @@
       b.type = "button";
       b.addEventListener("click", function () {
         extra.slice(0, 10).forEach(function (id) {
-          state[id] = { b: 0, d: 0 };
+          state[id] = F.newCard();
         });
         save();
         start(true);
@@ -177,15 +216,24 @@
       document.removeEventListener("keydown", onKey);
       show(true);
     };
+    // a right pick counts as Good; "I guessed" (Hard) or "Easy" re-scores it from the same snapshot
+    var before = state[id] || F.newCard();
+    var at = 0;
+    var rate = function (g) {
+      state[id] = F.next(before, g, at, id);
+      save();
+    };
     var pick = function (i) {
       if (answered) return;
       answered = true;
       var right = i === c[5];
-      var s = state[id] || { b: 0, d: 0 };
-      s.b = right ? Math.min(5, s.b + 1) : 0;
-      s.d = Date.now() + GAP[s.b] * DAY;
-      state[id] = s;
-      save();
+      at = Date.now();
+      rate(right ? GOOD : AGAIN);
+      if (!seen[id]) {
+        seen[id] = 1;
+        reviewed++;
+        if (right) firstRight++;
+      }
       if (window.mufassallActivity) window.mufassallActivity.card(); // streak and daily goal (/activity.js)
       list.querySelectorAll("button").forEach(function (b, j) {
         b.disabled = true;
@@ -203,6 +251,19 @@
       next.type = "button";
       next.addEventListener("click", advance);
       row.appendChild(next);
+      if (right)
+        [
+          [HARD, "hard"],
+          [EASY, "easy"],
+        ].forEach(function (r) {
+          var b = el("button", "mf-btn", t(r[1]));
+          b.type = "button";
+          b.addEventListener("click", function () {
+            rate(r[0]);
+            advance();
+          });
+          row.appendChild(b);
+        });
       var open = el("a", "mf-btn", t("open"));
       open.href = c[2];
       row.appendChild(open);
@@ -210,7 +271,7 @@
       next.focus();
       queue.shift();
       if (right) done++;
-      else queue.push(id); // a miss comes back once more in this session
+      else queue.push(id); // a miss is a learning step: it comes back in this session
     };
     var onKey = function (e) {
       if (e.altKey || e.ctrlKey || e.metaKey || !keysOn()) return;
@@ -249,9 +310,12 @@
 
   var start = function (focus) {
     queue = stats().due.sort(function (a, b) {
-      return state[a].d - state[b].d;
+      return state[a].due - state[b].due;
     });
     done = 0;
+    seen = {};
+    reviewed = 0;
+    firstRight = 0;
     show(focus);
   };
 

@@ -1,0 +1,95 @@
+---
+import { LANGS, type Lang, sections } from "@mufassall/content";
+import Base from "../../../layouts/Base.astro";
+import { site } from "../../../i18n/site";
+import { test } from "../../../i18n/learner";
+import { questionsOf } from "./_bank";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const s = site[lang];
+const T = test[lang];
+const list = sections
+  .map((sec) => ({ id: sec.id, title: s.sections[sec.id]?.title ?? sec.id, n: questionsOf(sec.id, lang).length }))
+  .filter((x) => x.n > 0);
+// "test" is not yet in Base's `active` union; the cast keeps every nav link unmarked until it is
+const active = "test" as const;
+---
+
+<Base lang={lang} title={T.title} description={T.lead} active={active}>
+  <header class="page-head">
+    <h1>{T.title}</h1>
+    <p>{T.lead}</p>
+  </header>
+  <ul class="test-list" data-test-list data-best={T.best} data-pass="70">
+    {
+      list.map((x) => (
+        <li class="test-list__item">
+          <a href={`/${lang}/test/${x.id}/`} class="test-list__link">
+            <span class="test-list__title">{x.title}</span>
+            <span class="test-list__meta">{T.questionsN.replace("{n}", String(Math.min(10, x.n)))}</span>
+          </a>
+          <span class="test-badge" data-test-best={x.id}>{T.notTaken}</span>
+        </li>
+      ))
+    }
+  </ul>
+  <script is:inline src="/test.js" defer></script>
+</Base>
+
+<style is:global>
+  .test-list {
+    display: grid;
+    gap: 10px;
+    max-width: 720px;
+    margin: 0 0 64px;
+    padding: 0;
+    list-style: none;
+  }
+  .test-list__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .test-list__link {
+    display: grid;
+    gap: 2px;
+    color: inherit;
+    text-decoration: none;
+  }
+  .test-list__link:hover .test-list__title,
+  .test-list__link:focus-visible .test-list__title {
+    text-decoration: underline;
+  }
+  .test-list__title {
+    font-weight: 600;
+  }
+  .test-list__meta {
+    color: var(--muted);
+    font: 500 13px var(--font-mono);
+  }
+  .test-badge {
+    flex: none;
+    padding: 2px 8px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+    font: 500 12px var(--font-mono);
+  }
+  .test-badge.is-pass {
+    border-color: var(--ok, #2f9e6a);
+    color: var(--ok, #2f9e6a);
+  }
+  .test-badge.is-fail {
+    border-color: var(--warn, #c98a1a);
+    color: var(--warn, #c98a1a);
+  }
+</style>

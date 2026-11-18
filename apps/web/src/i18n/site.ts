@@ -44,6 +44,10 @@ export interface SiteStrings {
     empty: string;
     stats: string;
     next: string;
+    session: string;
+    recall: string;
+    hard: string;
+    easy: string;
     add: string;
     go: string;
     fail: string;
@@ -108,7 +112,7 @@ export const site: Record<Lang, SiteStrings> = {
     },
     review: {
       title: "Takrorlash",
-      lead: "Darslardagi savollar kun oralatib qaytadi: xato javob ertaga, to'g'risi 3, 7, 16 kundan keyin. Shunda o'qilgan narsa esdan chiqmaydi.",
+      lead: "Darslardagi savollar unutishga yaqin qolganda qaytadi: xato javob shu zahoti, to'g'risi esa har safar uzoqroq oraliqdan keyin. Jadvalni FSRS algoritmi tuzadi, shunda kamroq takrorlab ko'proq eslab qolasiz.",
       left: "Qoldi: {n}",
       right: "To'g'ri.",
       wrong: "Unchalik emas.",
@@ -120,6 +124,10 @@ export const site: Record<Lang, SiteStrings> = {
       empty: "Hali karta yo'q",
       stats: "Kartalar: {total}, mustahkam o'zlashtirilgan: {learned}",
       next: "Keyingi karta: {date}",
+      session: "Takrorlangan kartalar: {n}, birinchi urinishda to'g'ri: {right}",
+      recall: "Hozir taxminan {r}% ini eslaysiz",
+      hard: "Taxmin qildim",
+      easy: "Juda oson",
       add: "{n} ta yangi savol qo'shish",
       go: "Darslarga o'tish",
       fail: "Kartalarni yuklab bo'lmadi. Internetni tekshiring.",
@@ -315,7 +323,7 @@ export const site: Record<Lang, SiteStrings> = {
     },
     review: {
       title: "Повторение",
-      lead: "Вопросы из уроков возвращаются с интервалами: ошибка — завтра, верный ответ — через 3, 7, 16 дней. Так прочитанное не забывается.",
+      lead: "Вопросы из уроков возвращаются, когда вы вот-вот их забудете: ошибка — сразу же, верный ответ — через всё более длинные промежутки. Расписание строит алгоритм FSRS: меньше повторений, а помнится больше.",
       left: "Осталось: {n}",
       right: "Верно.",
       wrong: "Не совсем.",
@@ -327,6 +335,10 @@ export const site: Record<Lang, SiteStrings> = {
       empty: "Карточек пока нет",
       stats: "Карточек: {total}, усвоено прочно: {learned}",
       next: "Следующая карточка: {date}",
+      session: "Повторено карточек: {n}, верно с первой попытки: {right}",
+      recall: "Сейчас вы помните примерно {r}%",
+      hard: "Угадал",
+      easy: "Слишком легко",
       add: "Добавить новых вопросов: {n}",
       go: "К урокам",
       fail: "Не удалось загрузить карточки. Проверьте интернет.",
@@ -519,7 +531,7 @@ export const site: Record<Lang, SiteStrings> = {
     },
     review: {
       title: "Review",
-      lead: "Questions from the lessons come back at growing gaps: a miss tomorrow, a hit after 3, 7, then 16 days. That way what you read sticks.",
+      lead: "Questions from the lessons come back just before you would forget them: a miss right away, a hit after ever longer gaps. The FSRS algorithm plans the schedule, so fewer reviews keep more in memory.",
       left: "Left: {n}",
       right: "Right.",
       wrong: "Not quite.",
@@ -531,6 +543,10 @@ export const site: Record<Lang, SiteStrings> = {
       empty: "No cards yet",
       stats: "Cards: {total}, well learned: {learned}",
       next: "Next card: {date}",
+      session: "Cards reviewed: {n}, right on the first try: {right}",
+      recall: "You recall about {r}% of them right now",
+      hard: "I guessed",
+      easy: "Too easy",
       add: "Add {n} new questions",
       go: "Go to the lessons",
       fail: "Could not load the cards. Check your connection.",

@@ -23,13 +23,31 @@ import {
 } from "./lab";
 import { KeyHint, useShortcuts } from "./keys";
 import { Scene, type SceneEdit } from "./Scene";
-import { simView, simulate } from "./sim";
+import { UNIT_PRICES, addReplica, checkSlo, monthlyCost, replicaTradeoff, simView, simulate } from "./sim";
+import {
+  EXPERIMENT_KINDS,
+  type Experiment,
+  type ExperimentKind,
+  type Finding,
+  SLOW_FACTOR,
+  SPIKE_FACTOR,
+  applyExperiment,
+  chaosView,
+  defaultExperiment,
+  explain,
+  isValid,
+  kindTargets,
+  linkTargets,
+  nodeTargets,
+} from "./chaos";
+import { chaosStrings } from "./chaos-ui";
 import { CHALLENGES, type Rule, checkRule } from "./challenges";
 import { type LabStrings, type UiStrings, fill, formatNumber } from "./ui";
 import { PRACTICE_KEY, parsePractice, practiceSlug, recordSolved, today } from "./practice";
 import { practiceStrings } from "./practice-ui";
 import { type PracticeLoad, PracticePanel } from "./PracticePanel";
 import "./practice.css";
+import "./chaos.css";
 
 const STORE_KEY = "mufassall:v1:lab";
 const SOLVED_KEY = "mufassall:v1:lab:solved";
@@ -37,6 +55,9 @@ const SOLVED_KEY = "mufassall:v1:lab:solved";
 const PREV_KEY = "mufassall:v1:lab:prev";
 /** encoded copy of the last diagram that came from outside (link, example, challenge); anything else is the reader's own */
 const LINKED_KEY = "mufassall:v1:lab:linked";
+/** the reader's SLO targets, a per-viewer convenience */
+const SLO_KEY = "mufassall:v1:lab:slo";
+const SLO_TARGETS = [0.99, 0.995, 0.999, 0.9995, 0.9999];
 const MAX_IMPORT = 256_000;
 const BOX = gridBounds(GRID_MIN, GRID_MAX);
 const CENTER: [number, number] = [6, 6];
@@ -281,7 +302,21 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
   const viewRef = useRef<Box>(BOX);
   const [sim, setSim] = useState(false);
   const [rps, setRps] = useState(800);
-  const [spike, setSpike] = useState(false);
+  /** the running chaos experiment: an overlay on the diagram, never part of it or of the undo history */
+  const [experiment, setExperiment] = useState<Experiment | null>(null);
+  const [chaosKind, setChaosKind] = useState<ExperimentKind>("killNode");
+  const [chaosTarget, setChaosTarget] = useState("");
+  const [slo, setSlo] = useState<{ availability: number; p95: number }>(() => {
+    try {
+      const v = JSON.parse(store.get(SLO_KEY) ?? "null") as { availability?: unknown; p95?: unknown } | null;
+      const a = SLO_TARGETS.includes(v?.availability as number) ? (v!.availability as number) : 0.999;
+      const p = typeof v?.p95 === "number" && v.p95 >= 1 && v.p95 <= 60000 ? v.p95 : 300;
+      return { availability: a, p95: p };
+    } catch {
+      return { availability: 0.999, p95: 300 };
+    }
+  });
+  useEffect(() => store.set(SLO_KEY, JSON.stringify(slo)), [slo]);
   const lang = (typeof document !== "undefined" && document.documentElement.lang) || "en";
   const estimateHref = `/${lang}/tools/estimate/`;
   const [challengeId, setChallengeId] = useState("");
@@ -656,7 +691,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
     for (const n of Object.values(d.nodes)) d.labels[n.id] = lab.kinds[n.kind];
     replaceDoc(d);
     setSim(true);
-    setSpike(false);
+    setExperiment(null);
     // the traffic slider starts at the load the challenge asks for
     const target = c.rules.find((r) => r.kind === "load" || r.kind === "survive");
     if (target && "rps" in target) setRps(target.rps);
@@ -695,9 +730,95 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
     }
   };
 
-  const result = useMemo(() => (sim ? simulate(doc, spike ? rps * 10 : rps) : null), [doc, sim, rps, spike]);
-  const scene = useMemo(() => toScene(result ? simView(doc, result) : doc), [doc, result]);
+  const cs = chaosStrings(lang);
+  const running = sim && experiment && isValid(doc, experiment) ? experiment : null;
+  const spike = running?.kind === "spike";
+  // an edit or undo that removes the experiment's target, or switching the model off, ends it
+  useEffect(() => {
+    if (experiment && (!sim || !isValid(doc, experiment))) setExperiment(null);
+  }, [experiment, sim, doc]);
+  const calm = useMemo(() => (sim ? simulate(doc, rps) : null), [doc, sim, rps]);
+  const applied = useMemo(() => (running ? applyExperiment(doc, running, rps) : null), [doc, running, rps]);
+  const result = useMemo(() => (applied ? simulate(applied.doc, applied.rps, applied.opts) : calm), [applied, calm]);
+  const report = useMemo(() => (applied && calm && result ? explain(applied, calm, result) : null), [applied, calm, result]);
+  const scene = useMemo(
+    () => toScene(result ? (applied ? chaosView(simView(applied.doc, result), applied) : simView(doc, result)) : doc),
+    [doc, result, applied],
+  );
+  const verdict = result ? checkSlo(result, slo) : null;
+  const cost = useMemo(() => (result ? monthlyCost(doc, result) : null), [doc, result]);
+  // under an experiment the trade-off answers "would one more node have saved it?"
+  const trade = useMemo(
+    () => (sim ? replicaTradeoff(applied?.doc ?? doc, applied?.rps ?? rps, applied?.opts ?? {}) : null),
+    [sim, applied, doc, rps],
+  );
   const num = (v: number, d = 0) => formatNumber(v, lang, d);
+  const pctOf = (v: number) => num(v * 100, v > 0 && v < 1 ? (v >= 0.99 ? 2 : 1) : 0);
+  const money = (v: number) => num(v, v > 0 && v < 10 ? 2 : 0);
+  const name = (id: string) => doc.labels[id] ?? id;
+
+  /** what the picker would run now: the chosen target if it still exists, else the busiest one */
+  const pick = useMemo((): Experiment | null => {
+    const fallback = defaultExperiment(doc, chaosKind, calm ?? undefined);
+    if (!fallback || !chaosTarget) return fallback;
+    const exp: Experiment =
+      chaosKind === "killKind"
+        ? { kind: "killKind", node: chaosTarget as NodeKind }
+        : chaosKind === "killNode" || chaosKind === "slowNode" || chaosKind === "cutLink"
+          ? { kind: chaosKind, target: chaosTarget }
+          : fallback;
+    return isValid(doc, exp) ? exp : fallback;
+  }, [doc, chaosKind, chaosTarget, calm]);
+  const targetOf = (e: Experiment | null) => (!e ? "" : "target" in e ? e.target : e.kind === "killKind" ? e.node : "");
+  const targetOptions: { value: string; text: string }[] =
+    chaosKind === "killNode" || chaosKind === "slowNode"
+      ? nodeTargets(doc).map((id) => ({ value: id, text: name(id) }))
+      : chaosKind === "cutLink"
+        ? linkTargets(doc).map((id) => ({ value: id, text: `${name(doc.edges[id]!.from)} → ${name(doc.edges[id]!.to)}` }))
+        : chaosKind === "killKind"
+          ? kindTargets(doc).map((k) => ({ value: k, text: lab.kinds[k] }))
+          : [];
+  const runPicked = () => {
+    if (!pick) return;
+    if (!sim) setSim(true);
+    setExperiment(pick);
+  };
+  const toggleSpike = () => setExperiment(spike ? null : { kind: "spike" });
+  const findingText = (f: Finding) => {
+    switch (f.type) {
+      case "down":
+        return f.lost > 0 ? fill(cs.down, { name: name(f.id), lost: num(f.lost) }) : fill(cs.downRouted, { name: name(f.id) });
+      case "cold":
+        return fill(cs.cold, { name: name(f.id), rps: num(f.through) });
+      case "slow":
+        return fill(cs.slow, { name: name(f.id), x: SLOW_FACTOR, ms: num(f.ms) });
+      case "spike":
+        return fill(cs.spike, { x: SPIKE_FACTOR, rps: num(f.rps) });
+      case "cut": {
+        const e = doc.edges[f.edge];
+        return fill(cs.cut, { from: e ? name(e.from) : "?", to: e ? name(e.to) : "?", lost: num(f.lost) });
+      }
+      case "overload":
+        return fill(cs.overload, { name: name(f.id), pct: num(f.rho * 100) });
+      case "stranded":
+        return fill(cs.stranded, { name: name(f.id), lost: num(f.lost) });
+      case "latency":
+        return fill(cs.latency, { before: num(f.before), after: num(f.after) });
+      case "nothing":
+        return cs.nothing;
+    }
+  };
+  /** a real edit (undoable), unlike the experiment overlay */
+  const addTradeReplica = () => {
+    const t = trade && doc.nodes[trade.target];
+    if (!trade || !t) return;
+    const n = Object.values(doc.nodes).filter((x) => x.kind === t.kind).length + 1;
+    const copy = addReplica(doc, trade.target, `${lab.kinds[t.kind]} ${n}`);
+    if (!copy) return flash(lab.limit);
+    commit(copy.doc);
+    setSel({ type: "node", id: copy.id });
+  };
+
   const node = sel?.type === "node" ? doc.nodes[sel.id] : undefined;
   const edgeSel = sel?.type === "edge" ? doc.edges[sel.id] : undefined;
   const count = nodeCount(doc);
@@ -788,10 +909,10 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
         {sim && result && (
           <div className="mf-lab__sim">
             <label className="mf-lab__traffic">
-              <span>{fill(lab.traffic, { n: num(spike ? rps * 10 : rps) })}</span>
+              <span>{fill(lab.traffic, { n: num(applied?.rps ?? rps) })}</span>
               <input name="traffic" type="range" min={0} max={100} step={1} value={fromRps(rps)} onChange={(e) => setRps(toRps(Number(e.currentTarget.value)))} />
             </label>
-            <button type="button" className="mf-btn" aria-pressed={spike} onClick={() => setSpike((v) => !v)}>
+            <button type="button" className="mf-btn" aria-pressed={spike} onClick={toggleSpike}>
               {lab.spike}
             </button>
             <dl className="mf-lab__simstats" aria-live="polite">
@@ -807,7 +928,25 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
                 <dt>{lab.simLatency}</dt>
                 <dd>~{num(result.ms)} ms</dd>
               </div>
+              {verdict && (
+                <div className={verdict.ok ? "is-ok" : "is-bad"}>
+                  <dt>SLO</dt>
+                  <dd>
+                    {verdict.ok ? "✓" : "✗"} {pctOf(result.availability)}%
+                  </dd>
+                </div>
+              )}
             </dl>
+            {applied && running && (
+              <div className="mf-chaos__active" role="status">
+                <span>
+                  <strong>{fill(cs.active, { name: cs.names[running.kind] })}</strong> {cs.activeNote}
+                </span>
+                <button type="button" className="mf-btn mf-btn--danger" onClick={() => setExperiment(null)}>
+                  {cs.stop}
+                </button>
+              </div>
+            )}
             {result.hot.length > 0 && <p className="mf-lab__simhot">{fill(lab.simHot, { list: result.hot.map((id) => doc.labels[id] ?? id).join(", ") })}</p>}
             <p className="mf-lab__muted mf-lab__simnote">{lab.simNote}</p>
           </div>
@@ -876,6 +1015,208 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
             </>
           )}
         </div>
+        )}
+        {sim && result && (
+          <section className={`mf-panel__card mf-chaos${applied ? " mf-chaos--on" : ""}`} aria-labelledby="mf-chaos-h">
+            <h2 id="mf-chaos-h">{cs.heading}</h2>
+            <p className="mf-lab__muted">{cs.lead}</p>
+            <div className="mf-lab__form">
+              <label>
+                <span>{cs.experiment}</span>
+                <select
+                  name="chaos-kind"
+                  value={chaosKind}
+                  onChange={(e) => {
+                    setChaosKind(e.currentTarget.value as ExperimentKind);
+                    setChaosTarget("");
+                  }}
+                >
+                  {EXPERIMENT_KINDS.map((k) => (
+                    <option key={k} value={k}>
+                      {cs.names[k]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {targetOptions.length > 0 && (
+                <label>
+                  <span>{cs.target}</span>
+                  <select name="chaos-target" value={targetOf(pick)} onChange={(e) => setChaosTarget(e.currentTarget.value)}>
+                    {targetOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.text}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+            <p className="mf-lab__muted mf-chaos__about">{cs.about[chaosKind]}</p>
+            <div className="mf-lab__seg">
+              <button type="button" className="mf-btn mf-btn--primary" disabled={!pick} onClick={runPicked}>
+                {cs.run}
+              </button>
+              {applied && (
+                <button type="button" className="mf-btn" onClick={() => setExperiment(null)}>
+                  {cs.stop}
+                </button>
+              )}
+            </div>
+            {!pick && <p className="mf-lab__muted">{cs.noTargets}</p>}
+            {report && (
+              <div className="mf-chaos__report" aria-live="polite">
+                <p className={`mf-chaos__verdict ${report.survived ? "is-ok" : "is-bad"}`}>
+                  {fill(report.survived ? cs.survived : cs.broke, { err: pctOf(report.errorRate), av: pctOf(report.availability) })}
+                </p>
+                <h3>{cs.whatBroke}</h3>
+                <ul className="mf-chaos__findings">
+                  {report.findings.map((f, i) => (
+                    <li key={i} className={`mf-chaos__finding mf-chaos__finding--${f.type}`}>
+                      {findingText(f)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        )}
+        {sim && result && verdict && (
+          <section className={`mf-panel__card mf-chaos mf-slo ${verdict.ok ? "mf-slo--ok" : "mf-slo--bad"}`} aria-labelledby="mf-slo-h">
+            <h2 id="mf-slo-h">{cs.sloHeading}</h2>
+            <div className="mf-lab__form mf-slo__targets">
+              <label>
+                <span>{cs.sloTarget}</span>
+                <select
+                  name="slo-availability"
+                  value={String(slo.availability)}
+                  onChange={(e) => setSlo((s) => ({ ...s, availability: Number(e.currentTarget.value) }))}
+                >
+                  {SLO_TARGETS.map((t) => (
+                    <option key={t} value={String(t)}>
+                      {pctOf(t)}%
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{cs.sloP95}</span>
+                <input
+                  name="slo-p95"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={60000}
+                  step={10}
+                  value={slo.p95}
+                  onChange={(e) => {
+                    const v = Math.round(Number(e.currentTarget.value));
+                    if (Number.isFinite(v) && v >= 1 && v <= 60000) setSlo((s) => ({ ...s, p95: v }));
+                  }}
+                />
+              </label>
+            </div>
+            <dl className="mf-lab__simstats mf-slo__stats">
+              <div className={verdict.availabilityOk ? "is-ok" : "is-bad"}>
+                <dt>{cs.sloAvail}</dt>
+                <dd>
+                  {verdict.availabilityOk ? "✓" : "✗"} {pctOf(result.availability)}%
+                </dd>
+              </div>
+              <div className={verdict.latencyOk ? "is-ok" : "is-bad"}>
+                <dt>{cs.sloLatency}</dt>
+                <dd>
+                  {verdict.latencyOk ? "✓" : "✗"} {result.ok > 0 ? `~${num(result.p95)} ms` : "–"}
+                </dd>
+              </div>
+            </dl>
+            <p className="mf-slo__verdict" role="status">
+              {verdict.ok ? cs.sloPass : cs.sloFail}
+            </p>
+            <p className="mf-lab__muted">
+              {fill(cs.sloBudget, { min: num(verdict.budget, verdict.budget < 10 ? 1 : 0) })}
+              {verdict.burn > 0 && (
+                <>
+                  <br />
+                  <span className={verdict.burn > verdict.budget ? "mf-chaos__bad" : undefined}>
+                    {fill(cs.sloBurn, { min: num(verdict.burn, verdict.burn < 10 ? 1 : 0) })}
+                  </span>
+                </>
+              )}
+            </p>
+            <p className="mf-lab__muted mf-chaos__formula">
+              {fill(cs.sloFormula, { path: result.path.map(name).join(" → ") || "–" })}
+              {applied ? ` ${cs.sloUnderChaos}` : ""}
+            </p>
+          </section>
+        )}
+        {sim && result && cost && (
+          <section className="mf-panel__card mf-chaos mf-cost" aria-labelledby="mf-cost-h">
+            <h2 id="mf-cost-h">{cs.costHeading}</h2>
+            <p className="mf-cost__note">{cs.costNote}</p>
+            {cost.lines.length > 0 && (
+              <table className="mf-cost__table">
+                <thead>
+                  <tr>
+                    <th scope="col">{cs.costKind}</th>
+                    <th scope="col">{cs.costCount}</th>
+                    <th scope="col">{cs.costMonth}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cost.lines.map((l) => (
+                    <tr key={l.kind}>
+                      <th scope="row">{lab.kinds[l.kind]}</th>
+                      <td>{l.count}</td>
+                      <td>${money(l.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <p className="mf-cost__total">{fill(cs.costTotal, { n: money(cost.total) })}</p>
+            {trade ? (
+              <div className="mf-cost__trade">
+                <p>
+                  {fill(cs.tradeoff, {
+                    name: lab.kinds[doc.nodes[trade.target]?.kind ?? "service"],
+                    cost: money(trade.after.cost - trade.before.cost),
+                    a1: pctOf(trade.before.availability),
+                    a2: pctOf(trade.after.availability),
+                    p1: num(trade.before.p95),
+                    p2: num(trade.after.p95),
+                  })}
+                </p>
+                <button type="button" className="mf-btn" onClick={addTradeReplica}>
+                  {cs.tradeoffAdd}
+                </button>
+              </div>
+            ) : (
+              <p className="mf-lab__muted">{cs.tradeoffNone}</p>
+            )}
+            <p className="mf-lab__muted mf-chaos__formula">{cs.costFormula}</p>
+            <details className="mf-cost__prices">
+              <summary>{cs.costPrices}</summary>
+              <ul>
+                {NODE_KINDS.filter((k) => {
+                  const p = UNIT_PRICES[k];
+                  return p.node > 0 || !!p.perMillion || !!p.perGb || !!p.perGbStored;
+                }).map((k) => {
+                  const p = UNIT_PRICES[k];
+                  const parts = [
+                    p.node > 0 ? fill(cs.priceNode, { n: money(p.node) }) : "",
+                    p.perMillion ? fill(cs.priceMillion, { n: money(p.perMillion) }) : "",
+                    p.perGb ? fill(cs.priceGb, { n: money(p.perGb), kb: p.kbPerRequest ?? 0 }) : "",
+                    p.perGbStored ? fill(cs.priceStored, { n: num(p.perGbStored, 3), gb: num(p.gbStored ?? 0) }) : "",
+                  ].filter(Boolean);
+                  return (
+                    <li key={k}>
+                      <strong>{lab.kinds[k]}</strong>: {parts.join(" + ")}
+                    </li>
+                  );
+                })}
+              </ul>
+            </details>
+          </section>
         )}
         <div className="mf-panel__card">
           {node ? (

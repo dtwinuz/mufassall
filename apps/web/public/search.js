@@ -179,7 +179,16 @@
 // due review cards next to the "Review" link (state written by /review.js)
 (function () {
   try {
-    var st = JSON.parse(localStorage.getItem("mufassall:v1:review") || "{}");
+    var st = JSON.parse(localStorage.getItem("mufassall:v2:review") || "null");
+    var dueOf = function (c) {
+      return c.due;
+    };
+    if (!st) {
+      st = JSON.parse(localStorage.getItem("mufassall:v1:review") || "{}");
+      dueOf = function (c) {
+        return c.d;
+      };
+    }
     // ids still in review.json (review.js writes the list): a card dropped from the course is not due
     var known = JSON.parse(localStorage.getItem("mufassall:v1:review:known") || "null");
     var live = Array.isArray(known)
@@ -190,7 +199,7 @@
       : null;
     var now = Date.now();
     var n = Object.keys(st).filter(function (k) {
-      return st[k] && st[k].d <= now && (!live || live[k]);
+      return st[k] && dueOf(st[k]) <= now && (!live || live[k]);
     }).length;
     if (!n) return;
     document.querySelectorAll("[data-review-badge]").forEach(function (b) {

@@ -176,6 +176,52 @@ const text: LessonText<typeof lesson> = {
       body: "A rate limit protects everyone else from one client, and it must be cheap to say no.\n\n1) Fixed windows leak at the edges; sliding windows and token buckets do not. 2) Token buckets allow honest bursts and hold the average. 3) Answer `429` with `Retry-After`. 4) Limit by key or user, use IP only for anonymous calls. 5) With many servers, keep the counter in one shared place and decide how to fail without it.",
     },
   },
+  scenarios: {
+    "fail-closed": {
+      label: "Fail closed",
+      steps: {
+        "closed-down": {
+          short: "Redis down",
+          title: "Redis is gone, and the limiter fails closed",
+          body: "Redis stops answering. This time the limiter was written to be strict: if it cannot count, it says no.\n\nThe logic sounds safe. Without a counter nobody can prove a client is under the limit, so every request is treated as over it.",
+          check: {
+            q: "Redis needs 4 minutes to come back. What do the partner and the office see meanwhile?",
+            options: [
+              "Normal service with looser limits",
+              "Only the script is blocked",
+              "`429` on every request: the API is down for everyone",
+            ],
+            answer: 2,
+            why: "Failing closed rejects everyone, not just the noisy client. The limiter's outage becomes an outage of the whole API, even though the servers and the database are idle.",
+          },
+          fields: {
+            timeout: "20 ms without an answer: the limiter gives up on Redis.",
+            "fail closed": "No counter means no permission. Every request is refused.",
+          },
+        },
+        "closed-reject": {
+          short: "All rejected",
+          title: "Everyone gets 429",
+          body: "The partner, the office and the script all get `429` within milliseconds. The API servers and the database sit almost idle.\n\nThe limit is enforced perfectly: nobody is over it, because nobody gets through. For four minutes the protection layer is the outage.",
+          watch: "A limiter is a dependency on the request path. Its failure mode is a product decision, not a default.",
+          fields: {
+            "429": "The answer is fast and wrong: the partner did nothing to deserve it.",
+            "X-RateLimit-Reason": "Honest about why. The client cannot do anything about it.",
+          },
+        },
+        "closed-end": {
+          short: "Outcome",
+          title: "Outcome: four minutes down and a wave on return",
+          body: "Every client obeyed `Retry-After: 1` and retried each second, and the partner app added its own retries on top. When Redis comes back, 41 000 checks arrive in its first second.\n\nCompare with the normal path: failing open kept the API working with limits a little loose. Here the API was down for everyone for four minutes, and a third of requests still fail while Redis digs out.",
+          watch: "Fail closed only where abuse costs more than an outage, like login attempts or SMS.",
+          fields: {
+            "redis up": "The counter is back after four minutes.",
+            EVALSHA: "45 times the normal number of checks in one second: every waiting client at once.",
+          },
+        },
+      },
+    },
+  },
 };
 
 export default text;

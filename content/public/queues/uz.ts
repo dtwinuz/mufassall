@@ -182,6 +182,53 @@ const text: LessonText<typeof lesson> = {
       body: "Navbat uchun olti qoida.\n\n1) Sekin va cheklangan ish so'rov yo'lidan chiqib, navbat orqali boradi. 2) Worker'larni backlog va eng eski xabar yoshi bo'yicha, quyi limitgacha kengaytiring. 3) Ack ishdan keyin; uzun ishlarda lease'ni uzaytiring. 4) Eksponensial backoff va jitter bilan qayta urining. 5) Zaharli xabarlar kuzatiladigan dead-letter navbatga. 6) Navbatni cheklang va producer'larga sekinlashishga imkon bering.",
     },
   },
+  scenarios: {
+    "auto-ack": {
+      label: "Olishda ack",
+      steps: {
+        "autoack-take": {
+          short: "Auto-ack",
+          title: "Worker 2 xabarni olishi bilan ack qiladi",
+          body: "Worker'larni tezlatish uchun kimdir **auto-ack** ni yoqdi: navbat har xabarni berishi bilan o'chiradi. Worker 2 bundan tashqari bir yo'la 40 ta xabarni oldindan olib, xotirada saqlaydi.\n\nDashboard'da hech narsa o'zgarmaydi. Xabarlar navbatdan chiqadi, xatlar ketadi.",
+          check: {
+            q: "Worker 2 xotirasida 40 ta xabar bilan aynan hozir o'ladi. Ularga nima bo'ladi?",
+            options: [
+              "30 s dan keyin yana ko'rinadigan bo'ladi",
+              "Yo'qoladi: navbat ularni allaqachon o'chirgan",
+              "Dead-letter navbatga o'tadi",
+            ],
+            answer: 1,
+            why: "Auto-ack bilan o'chirish buyrug'i olish paytida ketdi. Navbatda nusxa qolmagan: yashiradigan ham, qayta beradigan ham, DLQ ga yuboradigan ham narsa yo'q.",
+          },
+          fields: {
+            "auto-ack": "Navbat xabarni chiqib ketishi bilan bajarilgan deb hisoblaydi.",
+            prefetch: "40 ta xabar bir yo'la olinadi va worker xotirasida turadi.",
+            DELETE: "Ack, hech qanday ishdan oldin. Endi `m_8812` haqida faqat worker 2 biladi.",
+          },
+        },
+        "autoack-crash": {
+          short: "Yiqilish",
+          title: "Worker o'ladi, xabarlar ham u bilan ketadi",
+          body: "Worker 2 katta chekda xotirasi tugab, o'ldiriladi. U ushlab turgan 40 ta xabar navbatdan allaqachon o'chirilgan edi.\n\nNavbatda tugaydigan lease ham, worker 1 ga beradigan narsa ham yo'q. Qirq xaridor xatini hech qachon olmaydi va hech qayerda xato yozilmaydi.",
+          watch: "Ack ishdan keyin, hech qachon oldin emas. Erta ack at-least-once ni at-most-once ga aylantiradi.",
+          fields: {
+            OOMKilled: "Jarayon o'ldirildi. Xotiradagi hamma narsa yo'qoldi.",
+            "not found": "Navbatda bunday xabar yo'q: u olishda o'chirilgan.",
+            "nothing to redeliver": "Hech qanday visibility timeout ishlamayapti, navbat yordam berolmaydi.",
+          },
+        },
+        "autoack-end": {
+          short: "Natija",
+          title: "Natija: navbat sog'lom, xatlar esa yo'q",
+          body: "Bir soatdan keyin navbat bo'sh, hech narsa qayta berilmagan, xato yo'q. Hamma grafik yashil. Worker 2 har o'n daqiqada katta chekda yiqiladi va har safar 40 ta xatni o'zi bilan olib ketadi.\n\nOddiy yo'l bilan solishtiring: u yerda yiqilgan xabar 30 s dan keyin qaytib keldi va yuborildi. Bu yerda soatiga 240 ta xat izsiz yo'qoladi va bu haqda xaridorlardan bilasiz.",
+          fields: {
+            redelivered: "Nol. Auto-ack bilan navbat qayta qilish kerak bo'lgan xatoni ko'rmaydi.",
+            "emails sent": "To'langan buyurtmalardan 240 ta kam. Farq faqat buyurtmalar bilan solishtirganda ko'rinadi.",
+          },
+        },
+      },
+    },
+  },
 };
 
 export default text;
