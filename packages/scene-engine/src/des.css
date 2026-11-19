@@ -1,0 +1,180 @@
+/* Lab simulation over time. Colours come from the host's tokens, like player.css and chaos.css. */
+
+.mf-des__form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+.mf-des input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 14px var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+.mf-des input:focus-visible,
+.mf-des select:focus-visible,
+.mf-des__scroll:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+.mf-des__seed {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: end;
+  gap: 6px;
+}
+.mf-des__seed label {
+  flex: 1;
+  min-width: 0;
+}
+.mf-des__seed .mf-btn {
+  white-space: nowrap;
+}
+.mf-des__status {
+  align-self: center;
+  font: 500 12px var(--font-mono);
+  color: var(--muted);
+}
+
+.mf-des__result {
+  margin-top: 10px;
+}
+.mf-des__watch {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+  font: 500 13px var(--font-sans);
+  color: var(--muted);
+}
+.mf-des__watch select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 14px var(--font-sans);
+}
+
+.mf-des__chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.mf-des__title {
+  font: 600 12px var(--font-mono);
+  fill: var(--muted);
+}
+.mf-des__tick {
+  font: 500 11px var(--font-mono);
+  fill: var(--muted);
+}
+.mf-des__base {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.mf-des__cap {
+  stroke: var(--fg);
+  stroke-width: 1.25;
+  stroke-dasharray: 5 4;
+  opacity: 0.7;
+}
+.mf-des__cap--bad {
+  stroke: var(--bad);
+}
+.mf-des__line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.mf-des__line--load {
+  stroke: var(--signal);
+}
+.mf-des__line--queue {
+  stroke: var(--warn);
+}
+.mf-des__area {
+  fill: color-mix(in srgb, var(--warn) 22%, transparent);
+}
+.mf-des__line--p95 {
+  stroke: var(--bad);
+}
+.mf-des__band rect {
+  stroke: none;
+}
+.mf-des__band--spike rect {
+  fill: color-mix(in srgb, var(--signal) 9%, transparent);
+}
+.mf-des__band--down rect {
+  fill: color-mix(in srgb, var(--bad) 10%, transparent);
+}
+
+.mf-des__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font: 500 12px var(--font-mono);
+  color: var(--muted);
+}
+.mf-des__legend li::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border-radius: 2px;
+  vertical-align: -1px;
+}
+.mf-des__legend .mf-des__band--spike::before {
+  background: color-mix(in srgb, var(--signal) 35%, transparent);
+}
+.mf-des__legend .mf-des__band--down::before {
+  background: color-mix(in srgb, var(--bad) 35%, transparent);
+}
+
+.mf-des__summary {
+  margin: 8px 0 4px;
+  font: 600 14px var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.mf-des__latency {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--warn);
+}
+.mf-des__data {
+  margin-top: 8px;
+  font-size: 13px;
+}
+.mf-des__data summary {
+  cursor: pointer;
+}
+.mf-des__scroll {
+  max-height: 260px;
+  margin-top: 6px;
+  overflow: auto;
+}
+.mf-des__scroll thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mf-des__line,
+  .mf-des__area {
+    transition: d 0.25s ease;
+  }
+}

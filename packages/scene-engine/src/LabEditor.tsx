@@ -41,6 +41,7 @@ import {
   nodeTargets,
 } from "./chaos";
 import { chaosStrings } from "./chaos-ui";
+import { DesPanel } from "./DesPanel";
 import { CHALLENGES, type Rule, checkRule } from "./challenges";
 import { type LabStrings, type UiStrings, fill, formatNumber } from "./ui";
 import { PRACTICE_KEY, parsePractice, practiceSlug, recordSolved, today } from "./practice";
@@ -1220,6 +1221,7 @@ export function LabEditor({ ui, lab }: LabEditorProps) {
             </details>
           </section>
         )}
+        {sim && <DesPanel doc={doc} lang={lang} rps={rps} />}
         <div className="mf-panel__card">
           {node ? (
             <form className="mf-lab__form" onSubmit={(e) => e.preventDefault()}>
