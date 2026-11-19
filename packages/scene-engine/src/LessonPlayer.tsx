@@ -63,9 +63,11 @@ export interface LessonPlayerProps<T extends LessonInput> {
   next?: { title: string; href: string };
   /** Lab page URL; when set, the current step can be opened there for editing */
   labHref?: string;
+  /** a person's own system: nothing that talks to the server (the feedback form) is rendered */
+  privateContent?: boolean;
 }
 
-export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, crumbs, next, labHref }: LessonPlayerProps<T>) {
+export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, crumbs, next, labHref, privateContent = false }: LessonPlayerProps<T>) {
   const [sc, setSc] = useState<string | null>(null);
   const branch = useMemo(() => branchOf(lesson, sc), [lesson, sc]);
   const states = branch.states;
@@ -535,7 +537,7 @@ export function LessonPlayer<T extends LessonInput>({ lesson, text, ui, lang, cr
                   <span className="mf-btn mf-btn--done">{ui.finish}</span>
                 )}
               </div>
-              <Feedback ui={ui.feedback} lesson={lesson.slug} step={step.id} lang={lang} />
+              {!privateContent && <Feedback ui={ui.feedback} lesson={lesson.slug} step={step.id} lang={lang} />}
               <KeyHint text={ui.keys} on={keysOn} toggle={toggleKeys} labels={{ on: ui.keysOn, off: ui.keysOff }} />
             </div>
 

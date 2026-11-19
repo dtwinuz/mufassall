@@ -534,6 +534,22 @@ export function simulateDes(doc: LabDoc, input: DesInput): DesResult {
   };
 }
 
+/**
+ * A base rate at `share` of the tightest node's capacity (steady model), rounded to a tidy number.
+ * Under it a spike of x3 overloads the bottleneck and the queue drains afterwards, which is the
+ * story worth seeing; null when nothing in the diagram has a finite capacity.
+ */
+export function comfortableRps(doc: LabDoc, rps: number, share = 0.6): number | null {
+  const probe = Math.max(1, rps);
+  const sim = simulate(doc, probe);
+  let rho = 0;
+  for (const n of Object.values(sim.nodes)) if (Number.isFinite(n.rho) && n.rho > rho) rho = n.rho;
+  if (rho <= 0) return null;
+  const raw = (probe * share) / rho;
+  const step = raw >= 1000 ? 100 : raw >= 100 ? 10 : 1;
+  return Math.max(1, Math.floor(raw / step) * step);
+}
+
 /** The node worth watching: the deepest queue, else the highest load against capacity. */
 export function busiestNode(r: DesResult): string | undefined {
   let best: string | undefined;

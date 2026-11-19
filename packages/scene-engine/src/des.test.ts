@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { type LabDoc, sanitize } from "./lab";
-import { type DesInput, busiestNode, mulberry32, queueStory, simulateDes, spikeWindow, trafficAt } from "./des";
+import { type DesInput, busiestNode, comfortableRps, mulberry32, queueStory, simulateDes, spikeWindow, trafficAt } from "./des";
 
 const chain = (): LabDoc =>
   sanitize({
@@ -33,6 +33,21 @@ const balanced = (): LabDoc =>
 
 const base = (over: Partial<DesInput> = {}): DesInput => ({ profile: "constant", rps: 200, factor: 1, duration: 60, seed: 42, ...over });
 const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
+
+describe("comfortableRps", () => {
+  it("puts the bottleneck at about 60% and a x3 spike then drains", () => {
+    const doc = chain();
+    const r = comfortableRps(doc, 800)!;
+    expect(r).toBe(360); // service capacity 600 x 0.6
+    const story = queueStory(simulateDes(doc, base({ profile: "spike", rps: r, factor: 3 })), "s")!;
+    expect(story.peak).toBeGreaterThan(0);
+    expect(story.drain).not.toBeNull();
+  });
+  it("is null when no node has a capacity", () => {
+    const doc = sanitize({ nodes: { u: { kind: "client", at: [0, 0] } }, edges: {}, labels: {} });
+    expect(comfortableRps(doc, 800)).toBeNull();
+  });
+});
 
 describe("des primitives", () => {
   it("mulberry32 is seeded and stays in [0, 1)", () => {

@@ -532,7 +532,7 @@ export const me: Record<"uz" | "ru" | "en", MeStrings> = {
 };
 
 export interface LearnerStrings {
-  nav: { tools: string; paths: string };
+  nav: { tools: string; paths: string; my: string };
   tools: { title: string; lead: string; open: string; items: Record<"estimate" | "compare" | "lab" | "paths" | "author", { title: string; text: string }> };
   estimate: {
     title: string;

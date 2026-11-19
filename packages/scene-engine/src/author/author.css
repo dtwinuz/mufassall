@@ -337,6 +337,150 @@
   white-space: nowrap;
 }
 
+/* the editor names the system it edits and links back to the library */
+.mf-author__system {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  min-width: 0;
+}
+.mf-author__back {
+  font: 500 14px var(--font-sans);
+  color: var(--signal);
+}
+.mf-author__back:focus-visible,
+.mf-lib a:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+.mf-author__sysname {
+  margin: 0;
+  min-width: 0;
+  font: 600 15px/1.3 var(--font-sans);
+  overflow-wrap: anywhere;
+}
+
+/* "My systems" library */
+.mf-lib__privacy {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--signal);
+  background: var(--surface);
+  font-size: 14px;
+  color: var(--muted);
+}
+.mf-lib__new .mf-lab__seg {
+  flex-wrap: wrap;
+}
+.mf-lib__lesson {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.mf-lib__lesson label {
+  display: grid;
+  gap: 4px;
+  flex: 1 1 220px;
+  min-width: 0;
+  font: 500 13px var(--font-sans);
+  color: var(--muted);
+}
+.mf-lib__lesson select {
+  min-height: 36px;
+  max-width: 100%;
+}
+.mf-lib__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+.mf-lib__head h2 {
+  margin: 0;
+}
+.mf-lib__head small {
+  font-weight: 400;
+}
+.mf-lib__items {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mf-lib__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 16px;
+}
+.mf-lib__info {
+  min-width: 0;
+}
+.mf-lib .mf-lib__title {
+  margin: 0;
+  font: 600 16px/1.3 var(--font-sans);
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+.mf-lib__title a {
+  color: inherit;
+  text-decoration: none;
+}
+.mf-lib__title a:hover {
+  text-decoration: underline;
+}
+.mf-lib__meta {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+.mf-lib__actions,
+.mf-lib__confirm .mf-lab__seg,
+.mf-lib__rename .mf-lab__seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: end;
+}
+.mf-lib__confirm,
+.mf-lib__rename {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.mf-lib__confirm p {
+  margin: 0;
+  font-weight: 600;
+}
+.mf-lib__rename label {
+  display: grid;
+  gap: 4px;
+  font: 500 13px var(--font-sans);
+  color: var(--muted);
+}
+.mf-lib__rename input {
+  min-height: 36px;
+  min-width: 0;
+}
+.mf-lib__empty {
+  margin: 0;
+  color: var(--muted);
+}
+@media (max-width: 900px) {
+  .mf-lib__item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mf-lib__actions,
+  .mf-lib__confirm .mf-lab__seg,
+  .mf-lib__rename .mf-lab__seg {
+    justify-content: start;
+  }
+}
+
 @media (max-width: 1100px) {
   .mf-author__grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

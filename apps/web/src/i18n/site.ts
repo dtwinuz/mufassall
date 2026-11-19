@@ -152,7 +152,7 @@ export const site: Record<Lang, SiteStrings> = {
     footer: "dtwin loyihasi. Kod MIT, darslar CC BY-SA 4.0.",
     notFound: { title: "Sahifa topilmadi", text: "Havola eskirgan yoki manzilda xato bor. Darslar ro'yxatidan yoki qidiruvdan boshlang.", home: "Bosh sahifaga" },
     learner: {
-      nav: { tools: "Asboblar", paths: "Yo'llar" },
+      nav: { tools: "Asboblar", paths: "Yo'llar", my: "Tizimlarim" },
       tools: {
         title: "Asboblar",
         lead: "Darsdan tashqari mashq: hisob-kitob, darslarni solishtirish va o'z diagrammangiz.",
@@ -364,7 +364,7 @@ export const site: Record<Lang, SiteStrings> = {
     footer: "Проект dtwin. Код MIT, уроки CC BY-SA 4.0.",
     notFound: { title: "Страница не найдена", text: "Ссылка устарела или в адресе ошибка. Начните со списка уроков или с поиска.", home: "На главную" },
     learner: {
-      nav: { tools: "Инструменты", paths: "Треки" },
+      nav: { tools: "Инструменты", paths: "Треки", my: "Мои системы" },
       tools: {
         title: "Инструменты",
         lead: "Практика вне уроков: оценки на салфетке, сравнение уроков и своя схема.",
@@ -573,7 +573,7 @@ export const site: Record<Lang, SiteStrings> = {
     footer: "A dtwin project. Code MIT, lessons CC BY-SA 4.0.",
     notFound: { title: "Page not found", text: "The link is out of date or the address has a typo. Start from the lesson list or the search.", home: "Go to the home page" },
     learner: {
-      nav: { tools: "Tools", paths: "Paths" },
+      nav: { tools: "Tools", paths: "Paths", my: "My systems" },
       tools: {
         title: "Tools",
         lead: "Practice outside the lessons: estimates, side-by-side lessons and your own diagram.",
