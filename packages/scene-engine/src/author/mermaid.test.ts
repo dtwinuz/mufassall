@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { LessonInput, LessonText } from "@mufassall/scene-schema";
 import { lessons } from "../../../../content/index";
 import { designState, toMermaidFlowchart, toMermaidSequence } from "../textexport";
-import { IMPORT_MAX_NODES, IMPORT_MAX_STEPS } from "./importkit";
+import { COURSE_LIMITS, assertPlayable } from "./fixtures/playable";
+import { IMPORT_MAX_NODES } from "./importkit";
 import { type MermaidErrorCode, type MermaidImport, importMermaid, mermaidLabel, parseMermaid, wireOf } from "./mermaid";
 import { type Draft, ID_RE, sanitizeDraft } from "./model";
 import { checkDraft, hasCyrillic } from "./validation";
@@ -18,17 +19,6 @@ const errorOf = (text: string): MermaidErrorCode | undefined => {
 };
 const nodesOf = (d: Draft) => Object.values(d.steps[0]!.nodes);
 const kindOf = (d: Draft, label: string) => nodesOf(d).find((n) => d.labels.en[n.id] === label)?.kind;
-
-function assertPlayable(d: Draft) {
-  expect(checkDraft(d).filter((i) => i.level === "error")).toEqual([]);
-  const cells = nodesOf(d).map((n) => n.at.join(","));
-  expect(new Set(cells).size).toBe(cells.length);
-  expect(nodesOf(d).length).toBeLessThanOrEqual(IMPORT_MAX_NODES);
-  expect(d.steps.length).toBeLessThanOrEqual(IMPORT_MAX_STEPS);
-  for (const id of [...d.steps.map((s) => s.id), ...nodesOf(d).map((n) => n.id), ...Object.keys(d.steps[0]!.edges)]) expect(id).toMatch(ID_RE);
-  for (const l of ["uz", "en"] as const) expect(hasCyrillic(JSON.stringify([d.labels[l], d.title[l], d.summary[l], d.steps.map((s) => s.text[l])]))).toBe(false);
-  expect(sanitizeDraft(JSON.parse(JSON.stringify(d)))).toEqual(d);
-}
 
 const FLOW = `---
 title: Checkout
@@ -46,6 +36,43 @@ flowchart LR
   W --x S3
   classDef hot fill:#f00
   class API hot
+`;
+
+const FLOW_CASES = `flowchart LR
+  U([Customer]) --> P[Pay]
+  P --> D{Card ok?}
+  D -->|yes| C[Charge card] --> R[Receipt]
+  D -->|declined| E[Show error]
+  D -->|3-D Secure| B[Ask the bank]
+  B -->|ok| C
+  B -->|no| X[Bank says no]
+`;
+
+const SEQ_CASES = `sequenceDiagram
+  participant W as Web
+  participant P as Payments
+  participant DB as Orders DB
+  W->>P: POST /pay
+  alt card ok
+    P->>W: charge 10 USD
+    W->>P: Paid
+  else card declined
+    P->>W: Declined
+    W->>W: log
+    W->>P: Payment failed
+  end
+  W->>DB: save order
+  opt with a coupon
+    W->>DB: apply coupon
+  end
+  break
+    DB->>W: rollback
+  end
+  critical fraud check
+    P->>DB: check
+  option fraud check fails
+    P->>DB: block order
+  end
 `;
 
 describe("flowchart", () => {
@@ -125,10 +152,12 @@ describe("flowchart", () => {
     const chain = Array.from({ length: 50 }, (_, k) => `n${k} --> n${k + 1}`).join("\n");
     const { draft, warnings } = ok(`flowchart LR\n${chain}\n n3 --> n1\n n2 --> n2\n ??? what`);
     const codes = warnings.map((w) => w.code);
-    expect(codes).toEqual(expect.arrayContaining(["maxNodes", "maxSteps", "cycle", "selfLoop", "unsupported"]));
+    expect(codes).toEqual(expect.arrayContaining(["maxNodes", "cycle", "selfLoop", "unsupported"]));
+    // a full workflow: every kept block gets its step, nothing is cut at 16
+    expect(codes).not.toContain("maxSteps");
     expect(nodesOf(draft)).toHaveLength(IMPORT_MAX_NODES);
-    expect(draft.steps).toHaveLength(IMPORT_MAX_STEPS);
-    expect(checkDraft(draft).filter((i) => i.level === "error")).toEqual([]);
+    expect(draft.steps).toHaveLength(IMPORT_MAX_NODES + 1);
+    assertPlayable(draft);
   });
   it("Cyrillic names stay Russian in ru and become Latin in uz/en", () => {
     const { draft } = ok("flowchart LR\n a[Клиент] --> b[(База заказов)] --> c[Отчёт]");
@@ -189,6 +218,41 @@ describe("sequenceDiagram", () => {
   });
 });
 
+describe("cases", () => {
+  it("flowchart: a decision keeps its first way in the story, the other ways are cases", () => {
+    const { draft } = ok(FLOW_CASES);
+    // five blocks on the main path, then the usual padding up to the course minimum
+    expect(draft.steps.map((s) => s.id)).toEqual(["customer", "pay", "card-ok", "charge-card", "receipt", "overview", "recap"]);
+    expect(draft.cases.map((c) => [c.id, c.from, c.steps.map((s) => s.focus[0])])).toEqual([
+      ["declined", "card-ok", ["show-error"]],
+      ["d-secure", "card-ok", ["ask-the-bank", "bank-says-no"]],
+    ]);
+    expect(draft.cases[0]!.label).toEqual({ uz: "declined", ru: "declined", en: "declined" });
+    // the branch that comes back joins the base story: "Charge card" is not repeated in the case
+    expect(draft.cases[1]!.steps.some((s) => s.focus[0] === "charge-card")).toBe(false);
+    assertPlayable(draft);
+  });
+  it("flowchart: a loop back from a decision stays a loop, an unlabelled split is not a decision", () => {
+    const { draft } = ok("flowchart LR\n a[Edit] --> b{Review}\n b -->|approve| c[Publish]\n b -->|changes| a\n c --> d{{Cache}}\n c --> e[(Store)]");
+    expect(draft.cases).toEqual([]);
+    const plain = ok("flowchart LR\n a{Balancer} --> b[App 1]\n a --> c[App 2]");
+    expect(plain.draft.cases).toEqual([]);
+  });
+  it("sequence: alt/else, critical/option and break become cases from the right message", () => {
+    const { draft, warnings } = ok(SEQ_CASES);
+    const heads = (steps: Draft["steps"]) => steps.map((s) => s.exchange?.request.head);
+    expect(heads(draft.steps.filter((s) => s.kind !== "recap")).slice(0, 4)).toEqual(["POST /pay", "charge 10 USD", "Paid", "save order"]);
+    expect(draft.cases.map((c) => [c.label.en, c.from, heads(c.steps)])).toEqual([
+      ["card declined", draft.steps[0]!.id, ["Declined", "Payment failed"]],
+      ["Break 2", draft.steps[4]!.id, ["rollback"]],
+      ["fraud check fails", draft.steps[4]!.id, ["block order"]],
+    ]);
+    expect(draft.cases[1]!.label).toEqual({ en: "Break 2", ru: "Прерывание 2", uz: "To'xtatish 2" });
+    expect(warnings.find((w) => w.code === "blocks")?.x).toBe("opt");
+    assertPlayable(draft);
+  });
+});
+
 describe("round trip: our own Mermaid export", () => {
   const entries = Object.entries(lessons).slice(0, 5);
   it("has five built-in lessons to try", () => expect(entries).toHaveLength(5));
@@ -206,11 +270,11 @@ describe("round trip: our own Mermaid export", () => {
         const back = nodesOf(f.draft).find((x) => f.draft.labels.en[x.id] === (text.nodes as Record<string, string>)[n.id]);
         if (back && !["storage", "service", "worker"].includes(n.kind)) expect(back.kind, n.id).toBe(n.kind);
       }
-      expect(checkDraft(f.draft).filter((i) => i.level === "error")).toEqual([]);
+      expect(checkDraft(f.draft).filter((i) => i.level === "error" && !COURSE_LIMITS.has(i.code))).toEqual([]);
       const seq = toMermaidSequence(lesson, text as never);
       const s = ok(seq);
       expect(s.warnings.map((w) => w.code)).not.toContain("unsupported");
-      expect(checkDraft(s.draft).filter((i) => i.level === "error")).toEqual([]);
+      expect(checkDraft(s.draft).filter((i) => i.level === "error" && !COURSE_LIMITS.has(i.code))).toEqual([]);
     });
   }
 });

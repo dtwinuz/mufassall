@@ -1,5 +1,19 @@
 import type { EdgeState, NodeKind, NodeState } from "@mufassall/scene-schema";
-import { AUTHOR_LANGS, type AuthorLang, type Draft, type DraftStep, GRID_MAX, blankStep, normalize } from "./model";
+import {
+  AUTHOR_LANGS,
+  type AuthorLang,
+  type Draft,
+  type DraftCase,
+  type DraftStep,
+  GRID_MAX,
+  MAX_CASE_STEPS,
+  MAX_CASES,
+  MAX_NODES,
+  MAX_BASE_STEPS,
+  type PerLang,
+  blankStep,
+  normalize,
+} from "./model";
 
 /*
  * One-way BPMN 2.0 import: a `.bpmn` file from Camunda Modeler / bpmn.io becomes a draft skeleton.
@@ -12,10 +26,10 @@ export const BPMN_MAX_XML_ELEMENTS = 100_000;
 export const BPMN_MAX_DEPTH = 200;
 /** model elements kept from one file; the rest is reported, not read */
 export const BPMN_MAX_ELEMENTS = 2_000;
-/** blocks in the draft: 7 x 7 free lattice cells two apart fit 49, keep air */
-export const BPMN_MAX_NODES = 30;
-/** the course allows 16 steps; one is the recap */
-export const BPMN_MAX_STEPS = 16;
+/** blocks in the draft: the system cap; 7 x 7 free lattice cells two apart fit 49 */
+export const BPMN_MAX_NODES = MAX_NODES;
+/** base steps of a full workflow, the recap included (the course limit of 16 is a separate check) */
+export const BPMN_MAX_STEPS = MAX_BASE_STEPS;
 
 const MODEL_NS = "http://www.omg.org/spec/BPMN/20100524/MODEL";
 const DI_NS = "http://www.omg.org/spec/BPMN/20100524/DI";
@@ -265,6 +279,10 @@ export interface BpmnElement {
   lane?: string;
   doc?: string;
   bounds?: BpmnBounds;
+  /** gateway: id of its `default` sequence flow */
+  defaultFlow?: string;
+  /** boundary event: the activity it sits on */
+  attachedTo?: string;
 }
 
 export interface BpmnFlow {
@@ -273,6 +291,8 @@ export interface BpmnFlow {
   source: string;
   target: string;
   name: string;
+  /** `conditionExpression` text of a sequence flow */
+  condition?: string;
 }
 
 export interface BpmnParticipant {
@@ -390,8 +410,14 @@ export function parseBpmn(xml: string): BpmnParseResult {
       const base = { id, type: t, name: clean(c.attrs.name ?? ""), process };
       const doc = childText(c, "documentation").join("\n\n");
       const withDoc = doc ? { doc } : {};
-      if (t === "boundaryEvent") warn("boundary", label(c));
-      else if (SUBPROCESSES.has(t)) {
+      if (t === "boundaryEvent") {
+        // a branch of its own: becomes a case from the step of the activity it sits on
+        const def = c.children.find((k) => k.ns === MODEL_NS && k.local.endsWith("EventDefinition"));
+        const eventKind = def ? def.local.slice(0, -"EventDefinition".length) : undefined;
+        const attachedTo = c.attrs.attachedToRef ?? "";
+        if (attachedTo) addElement({ ...base, category: "event", attachedTo, ...(eventKind ? { eventKind } : {}), ...withDoc });
+        else warn("boundary", label(c));
+      } else if (SUBPROCESSES.has(t)) {
         if (c.attrs.triggeredByEvent === "true") {
           warn("eventSubprocess", label(c));
           continue;
@@ -401,7 +427,7 @@ export function parseBpmn(xml: string): BpmnParseResult {
         addElement({ ...base, category: "subprocess", ...withDoc });
       } else if (TASKS.has(t)) addElement({ ...base, category: "task", ...withDoc });
       else if (t === "callActivity") addElement({ ...base, category: "call", ...withDoc });
-      else if (GATEWAYS.has(t)) addElement({ ...base, category: "gateway", ...withDoc });
+      else if (GATEWAYS.has(t)) addElement({ ...base, category: "gateway", ...(c.attrs.default ? { defaultFlow: c.attrs.default } : {}), ...withDoc });
       else if (EVENTS.has(t)) {
         const def = c.children.find((k) => k.ns === MODEL_NS && k.local.endsWith("EventDefinition"));
         const eventKind = def ? def.local.slice(0, -"EventDefinition".length) : undefined;
@@ -410,7 +436,8 @@ export function parseBpmn(xml: string): BpmnParseResult {
       else if (!QUIET.has(t)) warn("unsupported", t);
 
       if (t === "sequenceFlow") {
-        flows.push({ id, kind: "sequence", source: c.attrs.sourceRef ?? "", target: c.attrs.targetRef ?? "", name: clean(c.attrs.name ?? "") });
+        const condition = clean(childText(c, "conditionExpression").join(" "));
+        flows.push({ id, kind: "sequence", source: c.attrs.sourceRef ?? "", target: c.attrs.targetRef ?? "", name: clean(c.attrs.name ?? ""), ...(condition ? { condition } : {}) });
       }
       // data associations live inside the activity: output goes activity -> data, input data -> activity
       for (const a of kids(c, MODEL_NS, "dataOutputAssociation")) {
@@ -557,6 +584,41 @@ const DEFAULT_NAMES: Record<AuthorLang, Record<Named, string>> = {
   uz: { start: "Boshlanish", end: "Tugash", event: "Hodisa", task: "Vazifa", gateway: "Tanlov", subprocess: "Ichki jarayon", call: "Chaqiruv", store: "Ma'lumotlar ombori", data: "Ma'lumot", participant: "Ishtirokchi", recap: "Xulosa" },
 };
 
+/** gateways where only one (or some) of the outgoing paths is taken */
+const DECISIONS = new Set(["exclusiveGateway", "inclusiveGateway", "eventBasedGateway", "complexGateway"]);
+
+type BranchText = "when" | "error" | "timer" | "event" | "errorBody" | "timerBody" | "eventBody";
+/** `{x}`: the condition (when) or the activity the boundary event sits on */
+const BRANCH_TEXT: Record<AuthorLang, Record<BranchText, string>> = {
+  en: {
+    when: "This path is taken when: {x}.",
+    error: "Error in {x}",
+    timer: "Timeout: {x}",
+    event: "Event during {x}",
+    errorBody: "{x} fails with an error: the normal flow stops here and this path takes over.",
+    timerBody: "{x} takes too long: the timer fires and this path takes over.",
+    eventBody: "An event arrives while {x} is under way: this path takes over.",
+  },
+  ru: {
+    when: "Этот путь выбирается, когда: {x}.",
+    error: "Ошибка: {x}",
+    timer: "Тайм-аут: {x}",
+    event: "Событие: {x}",
+    errorBody: "{x} завершается ошибкой: обычный поток здесь останавливается, и дальше идёт этот путь.",
+    timerBody: "{x} длится слишком долго: срабатывает таймер, и дальше идёт этот путь.",
+    eventBody: "Пока идёт {x}, приходит событие, и дальше идёт этот путь.",
+  },
+  uz: {
+    when: "Bu yo'l shu holatda tanlanadi: {x}.",
+    error: "Xato: {x}",
+    timer: "Vaqt tugadi: {x}",
+    event: "Hodisa: {x}",
+    errorBody: "{x} xato bilan tugaydi: oddiy oqim shu yerda to'xtaydi va bu yo'l davom etadi.",
+    timerBody: "{x} juda uzoq cho'ziladi: taymer ishlaydi va bu yo'l davom etadi.",
+    eventBody: "{x} davom etayotganda hodisa keladi va bu yo'l davom etadi.",
+  },
+};
+
 function namedAs(e: BpmnElement): Named {
   if (e.type === "startEvent") return "start";
   if (e.type === "endEvent") return "end";
@@ -654,6 +716,79 @@ export function walkOrder(g: Graph, starts: readonly string[]): { order: string[
   return { order, backEdges, reached };
 }
 
+/** Nodes reachable from `from` along `out`, skipping `skip` edges and never entering `stop`. */
+function reach(out: Map<string, string[]>, from: readonly string[], skip: ReadonlySet<string>, stop: ReadonlySet<string> = new Set()): Set<string> {
+  const seen = new Set<string>();
+  const todo = from.filter((id) => !stop.has(id));
+  for (const id of todo) seen.add(id);
+  for (let k = 0; k < todo.length; k++) {
+    const id = todo[k]!;
+    for (const to of out.get(id) ?? []) {
+      if (seen.has(to) || stop.has(to) || skip.has(`${id}\u0000${to}`)) continue;
+      seen.add(to);
+      todo.push(to);
+    }
+  }
+  return seen;
+}
+
+export interface Branch {
+  /** the node the branch leaves from (a decision, or the activity a boundary event sits on) */
+  from: string;
+  /** first node of the branch */
+  to: string;
+  /** the branch's own nodes, in walk order, up to where it joins the base story */
+  nodes: string[];
+}
+
+/**
+ * Splits a graph into the base story and alternative branches. `alt` edges (`from\0to`) are left
+ * out of the base walk: the base is what the starts reach without them, plus what no start
+ * reaches at all (told as before). Each alt edge into a node off the base opens a branch: the
+ * nodes reachable from its target without entering the base. Linear in nodes + edges per branch.
+ */
+export function splitBranches(
+  g: { ids: string[]; out: Map<string, string[]> },
+  starts: readonly string[],
+  order: readonly string[],
+  alt: ReadonlySet<string>,
+): { base: Set<string>; branches: Branch[] } {
+  const all = reach(g.out, starts, new Set());
+  const main = reach(g.out, starts, alt);
+  const base = new Set(g.ids.filter((id) => main.has(id) || !all.has(id)));
+  const pos = new Map(order.map((id, k) => [id, k]));
+  const branches: Branch[] = [];
+  for (const key of alt) {
+    const cut = key.indexOf("\u0000");
+    const from = key.slice(0, cut);
+    const to = key.slice(cut + 1);
+    if (!base.has(from) || base.has(to)) continue;
+    const nodes = [...reach(g.out, [to], new Set(), base)].sort((a, b) => (pos.get(a) ?? 0) - (pos.get(b) ?? 0));
+    branches.push({ from, to, nodes });
+  }
+  return { base, branches };
+}
+
+/**
+ * Which outgoing edge of a decision stays in the base story: the preferred one (BPMN `default`)
+ * when it leads to an end, else the first that does, else the preferred or first one. A path that
+ * only loops back is a rework branch, not the story. Back edges never count.
+ */
+export function mainChoice(
+  out: Map<string, string[]>,
+  from: string,
+  targets: readonly string[],
+  preferred: string | undefined,
+  back: ReadonlySet<string>,
+  isEnd: (id: string) => boolean,
+): string | undefined {
+  const forward = targets.filter((t) => !back.has(`${from}\u0000${t}`));
+  if (!forward.length) return undefined;
+  const ends = (t: string) => [...reach(out, [t], back, new Set([from]))].some(isEnd);
+  const ordered = preferred && forward.includes(preferred) ? [preferred, ...forward.filter((t) => t !== preferred)] : forward;
+  return ordered.find(ends) ?? ordered[0];
+}
+
 /* ---------- layout ---------- */
 
 /** Ranks of values, close values sharing a rank, then squeezed into `0..slots-1`. */
@@ -747,6 +882,14 @@ export function bpmnToDraft(model: BpmnModel, lang: AuthorLang): BpmnImport {
     flows.push({ ...f, source, target });
   }
   if (dangling.length) warn("danglingFlow", dangling.length > 5 ? `${dangling.slice(0, 5).join(", ")}, +${dangling.length - 5}` : dangling.join(", "));
+  // a boundary event hangs off its activity: a line from the activity, which the walk follows last
+  const attachFlows = new Set<BpmnFlow>();
+  for (const e of model.elements) {
+    if (!e.attachedTo || !els.has(e.attachedTo) || e.attachedTo === e.id) continue;
+    const f: BpmnFlow = { id: `${e.id}-on`, kind: "sequence", source: e.attachedTo, target: e.id, name: "" };
+    attachFlows.add(f);
+    flows.push(f);
+  }
 
   // steps follow flow elements only: a data store or a pool has no step, and as an order root it
   // would push an unreachable element ahead of the start event
@@ -768,6 +911,32 @@ export function bpmnToDraft(model: BpmnModel, lang: AuthorLang): BpmnImport {
   if (loops.length) warn("loop", list([...new Set(loops.map(([, b]) => b))]));
   const unreachable = flowNodes.filter((id) => !reached.has(id));
   if (unreachable.length && starts.length) warn("unreachable", list(unreachable));
+
+  // alternative paths: boundary events, and every decision branch but the one the story follows
+  const back = new Set(backEdges.map(([a, b]) => `${a}\u0000${b}`));
+  const alt = new Set<string>();
+  const altInfo = new Map<string, { boundary?: BpmnElement; flow?: BpmnFlow }>();
+  for (const f of attachFlows) {
+    const key = `${f.source}\u0000${f.target}`;
+    alt.add(key);
+    altInfo.set(key, { boundary: els.get(f.target)! });
+  }
+  const skip = new Set([...back, ...alt]);
+  const isEnd = (id: string) => els.get(id)!.type === "endEvent" || !(out.get(id) ?? []).length;
+  for (const e of model.elements) {
+    if (e.category !== "gateway" || !DECISIONS.has(e.type)) continue;
+    const outs = flows.filter((f) => f.kind === "sequence" && f.source === e.id && isStep(f.target) && !attachFlows.has(f));
+    const targets = [...new Set(outs.map((f) => f.target))];
+    if (targets.length < 2) continue;
+    const main = mainChoice(out, e.id, targets, outs.find((f) => f.id === e.defaultFlow)?.target, skip, isEnd);
+    for (const f of outs) {
+      const key = `${e.id}\u0000${f.target}`;
+      if (f.target === main || back.has(key) || alt.has(key)) continue;
+      alt.add(key);
+      altInfo.set(key, { flow: f });
+    }
+  }
+  const { base, branches } = splitBranches({ ids, out }, starts, flowNodes, alt);
 
   // blocks: flow elements in order first, then data and pools
   const others = model.elements.map((e) => e.id).filter((id) => !isStep(id));
@@ -835,7 +1004,8 @@ export function bpmnToDraft(model: BpmnModel, lang: AuthorLang): BpmnImport {
     const from = idOf[f.source]!;
     const to = idOf[f.target]!;
     const eid = uniqueSlug(f.name || `${from.slice(0, 15)}-${to.slice(0, 15)}`, "line", edgeIds);
-    edges[eid] = { id: eid, from, to, flow: "request", rate: 1, cut: false, ...(f.kind === "message" ? { mode: "async" as const } : {}) };
+    const fail = attachFlows.has(f) && els.get(f.target)!.eventKind === "error";
+    edges[eid] = { id: eid, from, to, flow: fail ? "fail" : "request", rate: 1, cut: false, ...(f.kind === "message" ? { mode: "async" as const } : {}) };
   }
 
   const labels = {} as Record<AuthorLang, Record<string, string>>;
@@ -847,13 +1017,14 @@ export function bpmnToDraft(model: BpmnModel, lang: AuthorLang): BpmnImport {
     }
   }
 
-  const stepNodes = flowNodes.filter((id) => keptSet.has(id));
+  const stepNodes = flowNodes.filter((id) => keptSet.has(id) && base.has(id));
   const stepped = stepNodes.slice(0, BPMN_MAX_STEPS - 1);
-  if (stepNodes.length > stepped.length) warn("maxSteps", String(stepNodes.length - stepped.length));
+  let noStep = stepNodes.length - stepped.length;
+  // step ids are unique across the base story and every case
   const stepIds = new Set<string>(["recap"]);
-  const steps: DraftStep[] = stepped.map((id, k) => {
+  const stepFor = (id: string, kind: DraftStep["kind"]): DraftStep => {
     const e = els.get(id)!;
-    const s = blankStep(uniqueSlug(idOf[id]!, "step", stepIds), k === 0 ? "problem" : "case");
+    const s = blankStep(uniqueSlug(idOf[id]!, "step", stepIds), kind);
     s.nodes = JSON.parse(JSON.stringify(nodes)) as Record<string, NodeState>;
     s.edges = JSON.parse(JSON.stringify(edges)) as Record<string, EdgeState>;
     s.focus = [idOf[id]!];
@@ -864,7 +1035,48 @@ export function bpmnToDraft(model: BpmnModel, lang: AuthorLang): BpmnImport {
     }
     if (e.doc) s.text[lang].body = e.doc.slice(0, 4000);
     return s;
-  });
+  };
+  const steps: DraftStep[] = stepped.map((id, k) => stepFor(id, k === 0 ? "problem" : "case"));
+  const stepOf = new Map(stepped.map((id, k) => [id, steps[k]!.id]));
+
+  // one case per branch, from the step of the decision (or of the activity a boundary event sits on)
+  const cases: DraftCase[] = [];
+  const caseIds = new Set<string>();
+  for (const b of branches) {
+    const from = stepOf.get(b.from);
+    const own = b.nodes.filter((id) => keptSet.has(id));
+    if (!from || !own.length) continue;
+    if (cases.length >= MAX_CASES) {
+      noStep += own.length;
+      continue;
+    }
+    const info = altInfo.get(`${b.from}\u0000${b.to}`) ?? {};
+    const host = els.get(b.from)!;
+    const hostName = (l: AuthorLang) => nameFor(host.name || DEFAULT_NAMES[l][namedAs(host)], l);
+    const ev = info.boundary;
+    const evKind = ev?.eventKind === "error" || ev?.eventKind === "timer" ? ev.eventKind : "event";
+    const label: PerLang<string> = { uz: "", ru: "", en: "" };
+    for (const l of AUTHOR_LANGS) {
+      const raw = ev ? ev.name || BRANCH_TEXT[l][evKind].split("{x}").join(hostName(l)) : info.flow?.name || info.flow?.condition || display(els.get(b.to)!);
+      label[l] = cut(nameFor(clean(raw), l), 60);
+    }
+    const inCase = own.slice(0, MAX_CASE_STEPS);
+    noStep += own.length - inCase.length;
+    const caseSteps = inCase.map((id, k) => {
+      const s = stepFor(id, k === 0 && ev ? "problem" : "case");
+      if (k === 0) {
+        if (ev && evKind !== "event") s.nodes[idOf[b.from]!]!.state = evKind === "error" ? "down" : "slow";
+        if (ev) s.focus = [idOf[b.from]!, idOf[id]!];
+        for (const l of AUTHOR_LANGS) {
+          const why = ev ? BRANCH_TEXT[l][`${evKind}Body`] : BRANCH_TEXT[l].when;
+          if (!s.text[l].body) s.text[l].body = why.split("{x}").join(ev ? hostName(l) : label[l]);
+        }
+      }
+      return s;
+    });
+    cases.push({ id: uniqueSlug(label.en, "case", caseIds), from, label, steps: caseSteps });
+  }
+  if (noStep > 0) warn("maxSteps", String(noStep));
   const recap = blankStep("recap", "recap");
   recap.nodes = JSON.parse(JSON.stringify(nodes)) as Record<string, NodeState>;
   recap.edges = JSON.parse(JSON.stringify(edges)) as Record<string, EdgeState>;
@@ -877,7 +1089,7 @@ export function bpmnToDraft(model: BpmnModel, lang: AuthorLang): BpmnImport {
   const title = model.name;
   const slug = slugify(title, 40) || "bpmn-lesson";
   const draft: Draft = {
-    v: 1,
+    v: 2,
     slug,
     level: "beginner",
     minutes: Math.max(3, Math.min(30, steps.length)),
@@ -887,6 +1099,7 @@ export function bpmnToDraft(model: BpmnModel, lang: AuthorLang): BpmnImport {
     labels,
     metrics: [],
     steps,
+    cases,
   };
   if (kept.some((id) => els.get(id)!.name)) warn("translate");
   return { draft: normalize(draft), warnings, ids: idOf };

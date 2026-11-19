@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import cyrillicXml from "./fixtures/cyrillic.bpmn?raw";
 import orderXml from "./fixtures/order-process.bpmn?raw";
 import poolsXml from "./fixtures/two-pools.bpmn?raw";
+import claimXml from "./fixtures/claim-cases.bpmn?raw";
+import { COURSE_LIMITS } from "./fixtures/playable";
 import { AUTHOR_UI } from "./author-ui";
 import {
   BPMN_MAX_CHARS,
@@ -139,7 +141,12 @@ describe("order process (gateway, loop, data store, diagram)", () => {
   });
   it("walks the flow in order, the loop back does not block it", () => {
     const { draft, warnings, ids } = bpmnToDraft(m, "en");
-    expect(draft.steps.map((s) => s.id)).toEqual(["order-placed", "check-the-order", "order-valid", "charge-the-card", "order-paid", "ask-to-fix-details", "recap"]);
+    // the "no" branch (the default flow) only loops back to the check: it is a case, not the story
+    expect(draft.steps.map((s) => s.id)).toEqual(["order-placed", "check-the-order", "order-valid", "charge-the-card", "order-paid", "recap"]);
+    expect(draft.cases.map((c) => [c.id, c.from, c.steps.map((s) => s.id)])).toEqual([["no", "order-valid", ["ask-to-fix-details"]]]);
+    expect(draft.cases[0]!.label).toEqual({ uz: "no", ru: "no", en: "no" });
+    expect(draft.cases[0]!.steps[0]!.text.en.body).toBe("This path is taken when: no.");
+    expect(draft.cases[0]!.steps[0]!.focus).toEqual([ids.Task_fix]);
     expect(draft.steps[0]!.kind).toBe("problem");
     expect(draft.steps.at(-1)!.kind).toBe("recap");
     expect(draft.steps[1]!.focus).toEqual([ids.Task_check]);
@@ -179,16 +186,26 @@ describe("two pools with message flows, lanes, no diagram", () => {
     expect(m.lanes.map((l) => l.name)).toEqual(["Sales", "Support"]);
     expect(m.elements.find((e) => e.id === "C_shipped")).toMatchObject({ lane: "L_support", participant: "P_shop", eventKind: "message" });
     expect(m.elements.find((e) => e.id === "P_bank")).toMatchObject({ category: "participant" });
-    expect(m.elements.some((e) => e.id === "SP_t" || e.id === "B_timeout")).toBe(false);
-    expect(codes(m.warnings)).toEqual(new Set(["boundary", "subprocess"]));
+    expect(m.elements.some((e) => e.id === "SP_t")).toBe(false);
+    expect(m.elements.find((e) => e.id === "B_timeout")).toMatchObject({ type: "boundaryEvent", attachedTo: "C_shipped", eventKind: "timer" });
+    expect(codes(m.warnings)).toEqual(new Set(["subprocess"]));
   });
   it("orders both pools along the messages, a message line is async", () => {
     const { draft, warnings, ids } = bpmnToDraft(m, "uz");
     const order = draft.steps.map((s) => s.focus[0]);
     const pos = (bpmn: string) => order.indexOf(ids[bpmn]);
-    // the story opens at the start event; the unreachable task comes last, before the recap
+    // the story opens at the start event; the timer path is a case from "Shipped"
     expect(pos("S_shop")).toBe(0);
-    expect(pos("T_apology")).toBe(order.length - 2);
+    expect(pos("T_apology")).toBe(-1);
+    expect(pos("B_timeout")).toBe(-1);
+    const shipped = draft.steps.find((s) => s.focus[0] === ids.C_shipped)!;
+    expect(draft.cases).toHaveLength(1);
+    const c = draft.cases[0]!;
+    expect(c.from).toBe(shipped.id);
+    expect(c.label).toEqual({ uz: "2 days", ru: "2 days", en: "2 days" });
+    expect(c.steps.map((s) => s.focus.at(-1))).toEqual([ids.B_timeout, ids.T_apology]);
+    expect(c.steps[0]!.kind).toBe("problem");
+    expect(c.steps[0]!.nodes[ids.C_shipped!]!.state).toBe("slow");
     expect(pos("T_send")).toBeLessThan(pos("S_wh"));
     expect(pos("E_wh_done")).toBeLessThan(pos("C_shipped"));
     expect(pos("G_join")).toBeGreaterThan(Math.max(pos("T_pick"), pos("SP_pack")));
@@ -197,8 +214,7 @@ describe("two pools with message flows, lanes, no diagram", () => {
     // a pool-to-pool message lands on the pool's start event
     expect(edges.find((e) => e.from === ids.P_bank)).toMatchObject({ to: ids.S_shop, mode: "async" });
     expect(draft.steps[0]!.nodes[ids.P_bank!]!.kind).toBe("external");
-    // the boundary path is cut off, so its task is kept as a block but reported
-    expect(warnings.find((w) => w.code === "unreachable")?.x).toBe("Say sorry");
+    expect(codes(warnings)).not.toContain("unreachable");
     expect(draft.labels.uz[ids.G_split!]).toBe("Tanlov");
     expect(draft.labels.ru[ids.G_split!]).toBe("Развилка");
   });
@@ -245,10 +261,12 @@ describe("limits and odd shapes", () => {
   it("caps blocks and steps with warnings instead of failing", () => {
     const { draft, warnings } = bpmnToDraft(model(chain(300)), "en");
     expect(Object.keys(draft.steps[0]!.nodes)).toHaveLength(BPMN_MAX_NODES);
-    expect(draft.steps).toHaveLength(BPMN_MAX_STEPS);
+    // a full workflow: every kept block gets its step (the step cap is above the block cap)
+    expect(BPMN_MAX_STEPS).toBe(60);
+    expect(draft.steps).toHaveLength(BPMN_MAX_NODES + 1);
     expect(warnings.find((w) => w.code === "maxNodes")?.x).toBe(String(301 - BPMN_MAX_NODES));
-    expect(codes(warnings)).toContain("maxSteps");
-    expect(structuralErrors(draft).filter((i) => i.code !== "crossing")).toEqual([]);
+    expect(codes(warnings)).not.toContain("maxSteps");
+    expect(structuralErrors(draft).filter((i) => i.code !== "crossing" && !COURSE_LIMITS.has(i.code))).toEqual([]);
     expect(checkDraft(draft).filter((i) => i.code === "sameCell")).toEqual([]);
   });
   it("caps elements read from a huge file", () => {
@@ -303,5 +321,44 @@ describe("strings", () => {
     const keys = (l: (typeof AUTHOR_LANGS)[number]) => Object.keys(AUTHOR_UI[l].bpmn).sort();
     expect(keys("uz")).toEqual(keys("en"));
     expect(keys("ru")).toEqual(keys("en"));
+  });
+});
+
+describe("cases: gateways and boundary events", () => {
+  it("claim process: the main path stays, other branches and the error become cases", () => {
+    const { draft, ids, warnings } = bpmnToDraft(model(claimXml), "en");
+    expect(draft.steps.map((s) => s.id)).toEqual(["claim-received", "check-claim", "amount", "pay-out", "claim-closed", "recap"]);
+    expect(draft.cases.map((c) => [c.id, c.from])).toEqual([
+      ["error-in-check-claim", "check-claim"],
+      ["amount-10000", "amount"],
+      ["rejected", "amount"],
+    ]);
+    const err = draft.cases[0]!;
+    expect(err.label).toEqual({ en: "Error in Check claim", ru: "Ошибка: Check claim", uz: "Xato: Check claim" });
+    expect(err.steps.map((s) => s.focus.at(-1))).toEqual([ids.B_err, ids.T_manual, ids.E_manual]);
+    expect(err.steps[0]!.kind).toBe("problem");
+    expect(err.steps[0]!.nodes[ids.T_check!]!.state).toBe("down");
+    expect(err.steps[0]!.text.ru.body).toBe("Check claim завершается ошибкой: обычный поток здесь останавливается, и дальше идёт этот путь.");
+    expect(Object.values(err.steps[0]!.edges).find((e) => e.to === ids.B_err)!.flow).toBe("fail");
+    // the condition expression labels an unnamed flow; both paths join the base at the end event
+    const big = draft.cases[1]!;
+    expect(big.label.en).toBe("${amount > 10000}");
+    expect(big.steps.map((s) => s.focus[0])).toEqual([ids.T_approve]);
+    expect(draft.cases[2]!.label.uz).toBe("Rejected");
+    expect(draft.cases[2]!.steps.map((s) => s.focus[0])).toEqual([ids.T_reject, ids.E_rejected]);
+    expect(codes(warnings)).not.toContain("boundary");
+    expect(structuralErrors(draft).filter((i) => !COURSE_LIMITS.has(i.code))).toEqual([]);
+    expect(sanitizeDraft(JSON.parse(JSON.stringify(draft)))).toEqual(draft);
+  });
+  it("Cyrillic branch names: ru as written, uz/en Latin; ids are Latin", () => {
+    const { draft } = bpmnToDraft(model(cyrillicXml), "ru");
+    expect(draft.cases).toHaveLength(1);
+    expect(draft.cases[0]!.label).toEqual({ ru: "нет", uz: "net", en: "net" });
+    expect(draft.cases[0]!.id).toBe("net");
+    for (const id of draft.cases[0]!.steps.map((s) => s.id)) expect(id).toMatch(ID_RE);
+  });
+  it("a parallel gateway keeps every path in the base story", () => {
+    const { draft } = bpmnToDraft(model(poolsXml), "en");
+    expect(draft.cases.every((c) => c.label.en === "2 days")).toBe(true);
   });
 });
