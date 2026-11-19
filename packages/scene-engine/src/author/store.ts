@@ -103,7 +103,9 @@ export function slugify(title: string): string {
       if (out.length >= 30) break;
     } else if (ch === " " || ch === "-" || ch === "_" || ch === "." || ch === "/") dash = true;
   }
-  return out.replace(/-+$/, "") || "system";
+  let end = out.length;
+  while (end > 0 && out[end - 1] === "-") end--;
+  return out.slice(0, end) || "system";
 }
 
 /** A fresh id: slug of the title plus a short random suffix, checked against the index and the keys. */
