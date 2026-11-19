@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- An insurance claim: a decision with three ways out and an error boundary event. -->
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="d" name="Insurance claim">
+  <bpmn:process id="p" isExecutable="false">
+    <bpmn:startEvent id="S" name="Claim received"/>
+    <bpmn:serviceTask id="T_check" name="Check claim"/>
+    <bpmn:boundaryEvent id="B_err" name="" attachedToRef="T_check">
+      <bpmn:errorEventDefinition/>
+    </bpmn:boundaryEvent>
+    <bpmn:exclusiveGateway id="G" name="Amount?" default="F_ok"/>
+    <bpmn:serviceTask id="T_pay" name="Pay out"/>
+    <bpmn:userTask id="T_approve" name="Manager approves"/>
+    <bpmn:task id="T_reject" name="Send rejection"/>
+    <bpmn:userTask id="T_manual" name="Check by hand"/>
+    <bpmn:endEvent id="E" name="Claim closed"/>
+    <bpmn:endEvent id="E_rejected" name="Claim rejected"/>
+    <bpmn:endEvent id="E_manual" name="Handed to an expert"/>
+    <bpmn:sequenceFlow id="F1" sourceRef="S" targetRef="T_check"/>
+    <bpmn:sequenceFlow id="F2" sourceRef="T_check" targetRef="G"/>
+    <bpmn:sequenceFlow id="F_ok" sourceRef="G" targetRef="T_pay"/>
+    <bpmn:sequenceFlow id="F_big" sourceRef="G" targetRef="T_approve">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${amount &gt; 10000}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="F_no" name="Rejected" sourceRef="G" targetRef="T_reject"/>
+    <bpmn:sequenceFlow id="F3" sourceRef="T_approve" targetRef="T_pay"/>
+    <bpmn:sequenceFlow id="F4" sourceRef="T_pay" targetRef="E"/>
+    <bpmn:sequenceFlow id="F5" sourceRef="T_reject" targetRef="E_rejected"/>
+    <bpmn:sequenceFlow id="F6" sourceRef="B_err" targetRef="T_manual"/>
+    <bpmn:sequenceFlow id="F7" sourceRef="T_manual" targetRef="E_manual"/>
+  </bpmn:process>
+</bpmn:definitions>

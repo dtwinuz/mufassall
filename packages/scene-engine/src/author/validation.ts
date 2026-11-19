@@ -10,6 +10,7 @@ import {
   GRID_MAX,
   ID_RE,
   allNodeIds,
+  allSteps,
   exchangeOut,
   toLessonInput,
 } from "./model";
@@ -45,14 +46,70 @@ export type IssueCode =
   | "title"
   | "resolve"
   | "loadSpot"
-  | "crossing";
+  | "crossing"
+  | CaseIssueCode;
+
+/** Issues about cases (alternative paths); every one but `manyCases` carries `Issue.case`. */
+export type CaseIssueCode =
+  | "caseId"
+  | "caseDup"
+  | "caseEmpty"
+  | "caseFrom"
+  | "caseFromLast"
+  | "caseNode"
+  | "caseLabel"
+  | "manyCases"
+  | "manyCaseSteps";
+
+/** The course limits for scenarios (`lessonSchema`); a system may hold more (MAX_CASES...) but then is not a course lesson. */
+export const COURSE_MAX_CASES = 4;
+export const COURSE_MAX_CASE_STEPS = 6;
+
+/** Messages for the case codes, `{x}` filled like the other issue texts. */
+export const CASE_ISSUE_TEXT: Record<AuthorLang, Record<CaseIssueCode, string>> = {
+  en: {
+    caseId: "Case ID “{x}”: lowercase Latin letters, digits and dashes, starting with a letter.",
+    caseDup: "Case ID “{x}” is used twice.",
+    caseEmpty: "Case “{x}” has no steps.",
+    caseFrom: "The case branches from step “{x}”, which does not exist.",
+    caseFromLast: "A case cannot branch from the last step (“{x}”).",
+    caseNode: "In the case, “{x}” points to a block that is not on the scene.",
+    caseLabel: "The case “{x}” has no name for the switch.",
+    manyCases: "A lesson has at most 4 cases (now {x}).",
+    manyCaseSteps: "A case in a lesson has at most 6 steps (now {x}).",
+  },
+  ru: {
+    caseId: "ID случая «{x}»: строчные латинские буквы, цифры и дефис, в начале буква.",
+    caseDup: "ID случая «{x}» повторяется.",
+    caseEmpty: "В случае «{x}» нет шагов.",
+    caseFrom: "Случай ответвляется от шага «{x}», которого нет.",
+    caseFromLast: "Случай не может ответвляться от последнего шага («{x}»).",
+    caseNode: "В случае «{x}» указывает на блок, которого нет на сцене.",
+    caseLabel: "У случая «{x}» нет названия для переключателя.",
+    manyCases: "В уроке не больше 4 случаев (сейчас {x}).",
+    manyCaseSteps: "В случае урока не больше 6 шагов (сейчас {x}).",
+  },
+  uz: {
+    caseId: "“{x}” holat ID: kichik lotin harflari, raqam va chiziqcha, boshida harf.",
+    caseDup: "“{x}” holat ID ikki marta ishlatilgan.",
+    caseEmpty: "“{x}” holatida qadam yo'q.",
+    caseFrom: "Holat “{x}” qadamidan ajraladi, bunday qadam yo'q.",
+    caseFromLast: "Holat oxirgi qadamdan (“{x}”) ajrala olmaydi.",
+    caseNode: "Holatda “{x}” sahnada yo'q blokka ishora qiladi.",
+    caseLabel: "“{x}” holatining almashtirgich uchun nomi yo'q.",
+    manyCases: "Darsda ko'pi bilan 4 holat bo'ladi (hozir {x}).",
+    manyCaseSteps: "Darsdagi holatda ko'pi bilan 6 qadam bo'ladi (hozir {x}).",
+  },
+};
 
 /** `error`: the exported lesson would fail the course tests; `warn`: it passes but reads badly. */
 export interface Issue {
   level: "error" | "warn";
   code: IssueCode;
-  /** zero-based step index */
+  /** zero-based step index; inside `case` when that is set */
   step?: number;
+  /** id of the case (alternative path) the issue is in */
+  case?: string;
   lang?: AuthorLang;
   /** the field, node, metric or mark the issue is about */
   x?: string;
@@ -88,7 +145,8 @@ export function checkWire(x: DraftExchange): WireReport {
   };
 }
 
-function stepIssues(s: DraftStep, i: number, d: Draft, out: Issue[]) {
+function stepIssues(s: DraftStep, i: number, d: Draft, all: Issue[], caseId?: string) {
+  const out = caseId === undefined ? all : { push: (x: Issue) => all.push({ ...x, case: caseId }) };
   const nodes = Object.values(s.nodes);
   if (!ID_RE.test(s.id)) out.push({ level: "error", code: "stepId", step: i });
   if (nodes.length > MAX_NODES_ADVICE) out.push({ level: "warn", code: "manyNodes", step: i, x: String(nodes.length) });
@@ -154,7 +212,16 @@ export function crossings(s: DraftStep, names: (id: string) => string[]): string
 }
 
 /** Every rule of `content/lessons.test.ts` that can be checked on a draft, plus the readability advice. */
-export function checkDraft(d: Draft): Issue[] {
+export function checkDraft(d: Draft, opts: { course?: boolean } = {}): Issue[] {
+  const out = checkAll(d);
+  if (opts.course !== false) return out;
+  // A system in "My systems" may hold the full workflow; the course limits only matter on export.
+  return out.map((i) => (COURSE_ONLY.has(i.code) ? { ...i, level: "warn" as const } : i));
+}
+
+const COURSE_ONLY: ReadonlySet<IssueCode> = new Set<IssueCode>(["manySteps", "manyCases", "manyCaseSteps"]);
+
+function checkAll(d: Draft): Issue[] {
   const out: Issue[] = [];
   if (!ID_RE.test(d.slug)) out.push({ level: "error", code: "slug" });
   if (!Number.isInteger(d.minutes) || d.minutes < 1 || d.minutes > 30) out.push({ level: "error", code: "minutes" });
@@ -166,6 +233,7 @@ export function checkDraft(d: Draft): Issue[] {
     if (seen.has(s.id)) out.push({ level: "error", code: "stepDup", step: i, x: s.id });
     seen.add(s.id);
   });
+  caseIssues(d, seen, out);
   if (d.metrics.length > 6) out.push({ level: "error", code: "manyMetrics" });
   const mids = new Set<string>();
   for (const m of d.metrics) {
@@ -175,6 +243,7 @@ export function checkDraft(d: Draft): Issue[] {
   }
 
   d.steps.forEach((s, i) => stepIssues(s, i, d, out));
+  for (const c of d.cases ?? []) c.steps.forEach((s, i) => stepIssues(s, i, d, out, c.id));
 
   const work = d.steps.filter((s) => s.kind !== "recap");
   if (work.filter((s) => s.exchange).length * 2 < work.length) out.push({ level: "error", code: "wireShare" });
@@ -198,6 +267,39 @@ export function checkDraft(d: Draft): Issue[] {
   return out;
 }
 
+/** Case-level rules; `seen` holds the base step ids and collects the case step ids. */
+function caseIssues(d: Draft, seen: Set<string>, out: Issue[]) {
+  const cases = d.cases ?? [];
+  if (cases.length > COURSE_MAX_CASES) out.push({ level: "error", code: "manyCases", x: String(cases.length) });
+  const base = d.steps.map((s) => s.id);
+  const ids = new Set<string>();
+  for (const c of cases) {
+    const at = (code: IssueCode, x: string, step?: number): Issue => ({ level: "error", code, case: c.id, x, ...(step === undefined ? {} : { step }) });
+    if (!ID_RE.test(c.id)) out.push(at("caseId", c.id));
+    if (ids.has(c.id)) out.push(at("caseDup", c.id));
+    ids.add(c.id);
+    const from = base.indexOf(c.from);
+    if (from < 0) out.push(at("caseFrom", c.from));
+    else if (from === base.length - 1) out.push(at("caseFromLast", c.from));
+    if (!c.steps.length) out.push(at("caseEmpty", c.id));
+    if (c.steps.length > COURSE_MAX_CASE_STEPS) out.push(at("manyCaseSteps", String(c.steps.length)));
+    for (const lang of AUTHOR_LANGS) if (!c.label[lang]?.trim()) out.push({ ...at("caseLabel", c.id), lang });
+    c.steps.forEach((s, i) => {
+      if (seen.has(s.id)) out.push(at("stepDup", s.id, i));
+      seen.add(s.id);
+      for (const x of danglingRefs(s)) out.push(at("caseNode", x, i));
+    });
+  }
+}
+
+/** Edges and focus that point at a node missing from the step (a draft built in code, before `normalize`). */
+export function danglingRefs(s: DraftStep): string[] {
+  const bad: string[] = [];
+  for (const e of Object.values(s.edges)) for (const end of [e.from, e.to]) if (!s.nodes[end]) bad.push(`${e.id}: ${end}`);
+  for (const f of s.focus) if (!s.nodes[f]) bad.push(f);
+  return bad;
+}
+
 /** Every reader-facing string of one language, each with where it lives. */
 function textsOf(d: Draft, lang: AuthorLang): [string, string][] {
   const out: [string, string][] = [
@@ -207,7 +309,8 @@ function textsOf(d: Draft, lang: AuthorLang): [string, string][] {
     ...Object.entries(d.labels[lang]),
     ...d.metrics.map((m) => [m.id, m.label[lang]] as [string, string]),
   ];
-  for (const s of d.steps) {
+  for (const c of d.cases ?? []) out.push([c.id, c.label[lang]]);
+  for (const s of allSteps(d)) {
     const t = s.text[lang];
     out.push([s.id, [t.short, t.title, t.body, t.watch, ...Object.values(t.fields)].join(" ")]);
     if (t.check) out.push([`${s.id} check`, [t.check.q, t.check.why, ...t.check.options].join(" ")]);

@@ -56,7 +56,7 @@ export function PipelineImport({ lang, initial = "gitlab-ci", onImport, open: op
   const report = (draft: Draft, warnings: ImportWarning[], detected: string, kind: ImportSource) => {
     onImport(draft, kind);
     const lines = [fill(t.detected, { x: detected }), ...warnings.map((w) => fill(t.warning[w.code], { x: w.x ?? "" }))];
-    setDone(fill(t.done, { nodes: Object.keys(draft.steps[0]?.nodes ?? {}).length, steps: draft.steps.length }));
+    setDone(fill(t.done, { nodes: Object.keys(draft.steps[0]?.nodes ?? {}).length, steps: draft.steps.length, cases: draft.cases.length }));
     setNotes(lines);
   };
   const run = async (input: string) => {

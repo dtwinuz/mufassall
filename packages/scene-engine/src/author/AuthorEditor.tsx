@@ -33,31 +33,44 @@ import {
   AUTHOR_LANGS,
   type AuthorLang,
   type Draft,
+  type DraftCase,
   type DraftExchange,
   type DraftMessage,
   type DraftStep,
   type DraftStepText,
   GRID_MAX,
+  MAX_BASE_STEPS,
+  MAX_CASES,
+  MAX_CASE_STEPS,
+  addCase,
+  addCaseStep,
   addStep,
   allEdgeIds,
   allNodeIds,
+  deleteCase,
+  deleteCaseStep,
   deleteStep,
+  duplicateCaseStep,
   duplicateStep,
-  editStep,
   emptyMessage,
   fromLesson,
+  moveCaseStep,
   moveStep,
   newDraft,
   normalize,
+  renameCaseId,
   renameEdge,
   renameMetric,
   renameNode,
   sanitizeDraft,
+  setCaseFrom,
+  setCaseLabel,
   snapshotOf,
   toLessonInput,
   toLessonText,
   uniqueId,
 } from "./model";
+import { type Track, casesByFrom, editIn, issuesOfCase, patchIn, posKey, prevStepIn, renameStepIn, visibleRows } from "./tracks";
 import { type StoreError, type SystemMeta, createSystem, draftTitle, listSystems, loadSystem, migrateLegacyDraft, saveSystem } from "./store";
 import { LESSON_FILES, type LessonFile, toLessonSource } from "./toLessonSource";
 import { type Issue, checkDraft, checkWire } from "./validation";
@@ -304,19 +317,38 @@ function MessageEditor({ a, msg, onChange }: { a: AuthorStrings; msg: DraftMessa
   );
 }
 
-function issueText(a: AuthorStrings, i: Issue): string {
+const caseName = (c: DraftCase, lang: AuthorLang) => c.label[lang].trim() || c.id;
+
+function issueText(a: AuthorStrings, i: Issue, d: Draft, lang: AuthorLang): string {
   const msg = fill(a.issue[i.code], { x: i.x ?? "" });
-  const where = [i.step !== undefined ? fill(a.stepN, { n: i.step + 1 }) : "", i.lang ? a.langNames[i.lang] : ""].filter(Boolean).join(", ");
+  const c = i.case ? d.cases.find((k) => k.id === i.case) : undefined;
+  const where = [
+    i.case ? fill(a.inCase, { x: c ? caseName(c, lang) : i.case }) : "",
+    i.step !== undefined ? fill(a.stepN, { n: i.step + 1 }) : "",
+    i.lang ? a.langNames[i.lang] : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
   return where ? `${where}: ${msg}` : msg;
 }
 
+type PreviewStepText = { short: string; title: string; body: string };
+
 function previewText(d: Draft, lang: AuthorLang): LessonText<LessonInput> {
   const t = toLessonText(d, lang);
-  const steps = t.steps as Record<string, { short: string; title: string; body: string }>;
-  for (const s of d.steps) {
-    const st = steps[s.id]!;
-    if (!st.short.trim()) st.short = s.id;
-    if (!st.title.trim()) st.title = s.id;
+  const fillStep = (st: PreviewStepText | undefined, id: string) => {
+    if (!st) return;
+    if (!st.short.trim()) st.short = id;
+    if (!st.title.trim()) st.title = id;
+  };
+  const steps = t.steps as Record<string, PreviewStepText>;
+  for (const s of d.steps) fillStep(steps[s.id], s.id);
+  const scenarios = (t as { scenarios?: Record<string, { label: string; steps: Record<string, PreviewStepText> }> }).scenarios ?? {};
+  for (const c of d.cases) {
+    const sc = scenarios[c.id];
+    if (!sc) continue;
+    if (!sc.label.trim()) sc.label = c.id;
+    for (const s of c.steps) fillStep(sc.steps[s.id], s.id);
   }
   const nodes = t.nodes as Record<string, string>;
   for (const id of Object.keys(nodes)) if (!nodes[id]?.trim()) nodes[id] = id;
@@ -335,8 +367,16 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
   const draft = hist.present;
   const saved = useRef<Draft>(opened.draft);
   const [cur, setCur] = useState(0);
-  const at = Math.min(cur, draft.steps.length - 1);
-  const step = draft.steps[at]!;
+  const [track, setTrack] = useState<Track>(null);
+  const kase = track === null ? undefined : draft.cases.find((c) => c.id === track);
+  const tr: Track = kase ? kase.id : null;
+  const steps = kase ? kase.steps : draft.steps;
+  const at = Math.min(cur, steps.length - 1);
+  const step = steps[at]!;
+  /** names the step for undo tags, so typing in one step never merges with another */
+  const pos = posKey(tr, at);
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+  const [askCase, setAskCase] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("edit");
   const [tl, setTl] = useState<AuthorLang>(lang);
   const [tool, setTool] = useState<Tool>({ mode: "select" });
@@ -350,7 +390,7 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
   const [file, setFile] = useState<LessonFile>("lesson.ts");
   const drag = useRef<{ id: string; before: Draft; moved: boolean } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const stepRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const stepRefs = useRef(new Map<string, HTMLButtonElement | null>());
   const sourceRef = useRef<HTMLTextAreaElement>(null);
   const reduced = useReducedMotion();
   const idp = "mf-author";
@@ -369,9 +409,24 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
   const replace = (d: Draft) => {
     update(() => d);
     setCur(0);
+    setTrack(null);
+    setAskCase(null);
     setSel(null);
     setTool({ mode: "select" });
   };
+  const expand = (id: string) => setExpanded((s) => (s.has(id) ? s : new Set([...s, id])));
+  /** Selects a step of the base story (`null`) or of a case. */
+  const select = (t: Track, i: number) => {
+    setTrack(t);
+    setCur(i);
+    setSel(null);
+    if (t !== null) expand(t);
+  };
+
+  // a case removed by undo or a file cannot stay the edited track
+  useEffect(() => {
+    if (track !== null && !kase) setTrack(null);
+  }, [track, kase]);
 
   // the address names the system being edited, so reload and "back" land on it
   useEffect(() => {
@@ -405,17 +460,13 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
     if (tool.mode === "connect" && tool.from && !step.nodes[tool.from]) setTool({ mode: "connect" });
   }, [step, sel, tool]);
 
-  const editCur = useCallback((fn: (s: DraftStep) => DraftStep, tag?: string) => update((d) => editStep(d, at, fn, forward), tag), [update, at, forward]);
-  const setText = (patch: Partial<DraftStepText>, key: string) =>
-    update(
-      (d) => ({ ...d, steps: d.steps.map((s, j) => (j === at ? { ...s, text: { ...s.text, [tl]: { ...s.text[tl], ...patch } } } : s)) }),
-      `text:${at}:${tl}:${key}`,
-    );
-  const setExchange = (x: DraftExchange | undefined, tag?: string) =>
-    update((d) => ({ ...d, steps: d.steps.map((s, j) => (j === at ? { ...s, exchange: x } : s)) }), tag);
+  const editCur = useCallback((fn: (s: DraftStep) => DraftStep, tag?: string) => update((d) => editIn(d, tr, at, fn, forward), tag), [update, tr, at, forward]);
+  const patchCur = (fn: (s: DraftStep) => DraftStep, tag?: string) => update((d) => patchIn(d, tr, at, fn), tag);
+  const setText = (patch: Partial<DraftStepText>, key: string) => patchCur((s) => ({ ...s, text: { ...s.text, [tl]: { ...s.text[tl], ...patch } } }), `text:${pos}:${tl}:${key}`);
+  const setExchange = (x: DraftExchange | undefined, tag?: string) => patchCur((s) => ({ ...s, exchange: x }), tag);
   const setLabel = (id: string, v: string) => update((d) => ({ ...d, labels: { ...d.labels, [tl]: { ...d.labels[tl], [id]: v } } }), `label:${tl}:${id}`);
 
-  const issues = useMemo(() => checkDraft(draft), [draft]);
+  const issues = useMemo(() => checkDraft(draft, { course: false }), [draft]);
   const errors = issues.filter((i) => i.level === "error").length;
   const warns = issues.length - errors;
 
@@ -432,7 +483,7 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
     const id = uniqueId(kind === "service" ? "api" : kind, allNodeIds(draft));
     const name = tl === lang ? lab.kinds[kind] : "";
     update((d) => {
-      const next = editStep(d, at, (s) => ({ ...s, nodes: { ...s.nodes, [id]: { id, kind, at: cell, state: "ok" } } }), forward);
+      const next = editIn(d, tr, at, (s) => ({ ...s, nodes: { ...s.nodes, [id]: { id, kind, at: cell, state: "ok" } } }), forward);
       return name ? { ...next, labels: { ...next.labels, [tl]: { ...next.labels[tl], [id]: name } } } : next;
     });
     setSel({ type: "node", id });
@@ -473,7 +524,7 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
   };
   const moveNode = (id: string, cell: Cell) => {
     if (!step.nodes[id] || !inArea(cell) || taken(step, cell, id)) return;
-    patchNode(id, { at: cell }, `move:${at}:${id}`);
+    patchNode(id, { at: cell }, `move:${pos}:${id}`);
   };
   const activateNode = (id: string) => {
     if (tool.mode === "connect") {
@@ -539,7 +590,7 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
       if (!inArea(cell) || taken(step, cell, d.id)) return;
       d.moved = true;
       // live drag: shown at once, recorded as one undo point on release
-      setHist((h) => ({ ...h, present: editStep(h.present, at, (s) => ({ ...s, nodes: { ...s.nodes, [d.id]: { ...n, at: cell } } }), forward) }));
+      setHist((h) => ({ ...h, present: editIn(h.present, tr, at, (s) => ({ ...s, nodes: { ...s.nodes, [d.id]: { ...n, at: cell } } }), forward) }));
     },
     onStageUp: () => {
       const d = drag.current;
@@ -570,24 +621,59 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const focusStep = (i: number) => window.requestAnimationFrame(() => stepRefs.current[i]?.focus());
-  const onStepKey = (i: number, e: React.KeyboardEvent<HTMLButtonElement>) => {
-    const last = draft.steps.length - 1;
-    let to: number | null = null;
+  const rows = useMemo(() => visibleRows(draft, expanded), [draft, expanded]);
+  const byFrom = useMemo(() => casesByFrom(draft), [draft]);
+  const focusStep = (t: Track, i: number) => window.requestAnimationFrame(() => stepRefs.current.get(posKey(t, i))?.focus());
+  /** ↑ ↓ walk every visible row (base and open cases); Alt + ↑ ↓ move a step inside its own story. */
+  const onStepKey = (t: Track, i: number, e: React.KeyboardEvent<HTMLButtonElement>) => {
+    let to: { track: Track; i: number } | undefined;
     if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
       const delta = e.key === "ArrowUp" ? -1 : 1;
-      if (i + delta < 0 || i + delta > last) return;
-      update((d) => moveStep(d, i, delta));
-      to = i + delta;
-    } else if (e.key === "ArrowUp") to = Math.max(0, i - 1);
-    else if (e.key === "ArrowDown") to = Math.min(last, i + 1);
-    else if (e.key === "Home") to = 0;
-    else if (e.key === "End") to = last;
-    if (to === null) return;
+      const len = t === null ? draft.steps.length : (draft.cases.find((c) => c.id === t)?.steps.length ?? 0);
+      if (i + delta < 0 || i + delta >= len) return;
+      update((d) => (t === null ? moveStep(d, i, delta) : moveCaseStep(d, t, i, delta)));
+      to = { track: t, i: i + delta };
+    } else {
+      const k = rows.findIndex((r) => r.track === t && r.i === i);
+      if (e.key === "ArrowUp") to = rows[Math.max(0, k - 1)];
+      else if (e.key === "ArrowDown") to = rows[Math.min(rows.length - 1, k + 1)];
+      else if (e.key === "Home") to = rows[0];
+      else if (e.key === "End") to = rows.at(-1);
+    }
+    if (!to) return;
     e.preventDefault();
-    setCur(to);
-    setSel(null);
-    focusStep(to);
+    select(to.track, to.i);
+    focusStep(to.track, to.i);
+  };
+
+  /* ---------- cases ---------- */
+
+  /** the base step a new case branches after: the selected base step, or the one the open case branches from */
+  const fromIdx = kase ? Math.max(0, draft.steps.findIndex((s) => s.id === kase.from)) : at;
+  const stepCap = kase ? steps.length >= MAX_CASE_STEPS : steps.length >= MAX_BASE_STEPS;
+  const caseCap = draft.cases.length >= MAX_CASES;
+  const lastCaseStep = !!kase && steps.length <= 1;
+  const newCase = () => {
+    const from = draft.steps[fromIdx];
+    if (!from || caseCap) return;
+    const r = addCase(draft, from.id);
+    if (r.draft === draft || !r.caseId) return;
+    update(() => r.draft);
+    select(r.caseId, 0);
+    focusStep(r.caseId, 0);
+  };
+  const toggleCase = (id: string) =>
+    setExpanded((s) => {
+      const next = new Set(s);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const removeCase = (c: DraftCase) => {
+    const back = Math.max(0, draft.steps.findIndex((s) => s.id === c.from));
+    update((d) => deleteCase(d, c.id));
+    setAskCase(null);
+    select(null, back);
+    focusStep(null, back);
   };
 
   /* ---------- files ---------- */
@@ -599,9 +685,9 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
     try {
       const entry = await loadLesson(pick);
       if (!entry) throw new Error("missing");
-      const { draft: d, droppedScenarios } = fromLesson(entry.lesson, entry.text);
+      const { draft: d } = fromLesson(entry.lesson, entry.text);
       replace(d);
-      setStatus(droppedScenarios ? fill(a.scenariosDropped, { n: droppedScenarios }) : "");
+      setStatus(d.cases.length ? fill(a.casesLoaded, { n: d.cases.length }) : "");
     } catch {
       setStatus(a.loadFail);
     } finally {
@@ -623,7 +709,9 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
 
   /* ---------- derived views ---------- */
 
-  const prev = at > 0 ? draft.steps[at - 1] : undefined;
+  const prev = prevStepIn(draft, tr, at);
+  const diagramTitle = kase ? fill(a.caseDiagram, { x: caseName(kase, tl), n: at + 1 }) : fill(a.diagram, { n: at + 1 });
+  const caseIssues = kase ? issuesOfCase(issues, kase.id) : [];
   const node = sel?.type === "node" ? step.nodes[sel.id] : undefined;
   const edgeSel = sel?.type === "edge" ? step.edges[sel.id] : undefined;
   const text = step.text[tl];
@@ -674,38 +762,77 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
     window.requestAnimationFrame(() => document.getElementById(`${idp}-tab-${TABS[to]}`)?.focus());
   };
 
+  const issueItems = (list: readonly Issue[]) => (
+    <ul className="mf-author__issues">
+      {list.map((i, k) => {
+        const it: Track = i.case ?? null;
+        const c = it === null ? undefined : draft.cases.find((x) => x.id === it);
+        const here = it === tr && (i.step === undefined || i.step === at);
+        const target = i.step ?? 0;
+        const show = !here && (i.step !== undefined || !!c);
+        const label = c
+          ? i.step !== undefined
+            ? fill(a.goToCaseStep, { x: caseName(c, tl), n: i.step + 1 })
+            : fill(a.goToCase, { x: caseName(c, tl) })
+          : fill(a.goTo, { n: target + 1 });
+        return (
+          <li key={k} className={`mf-author__issue mf-author__issue--${i.level}`}>
+            <span className="mf-author__tag">{i.level === "error" ? a.error : a.warn}</span>
+            <span>{issueText(a, i, draft, tl)}</span>
+            {show && (it === null || c) && (
+              <button
+                type="button"
+                className="mf-author__link"
+                onClick={() => {
+                  setTab("edit");
+                  select(it, target);
+                  focusStep(it, target);
+                }}
+              >
+                {label}
+              </button>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+
   const issueList = (
     <section className="mf-panel__card mf-author__checks" aria-labelledby={`${idp}-checks`}>
       <h2 id={`${idp}-checks`}>{a.checks}</h2>
       <p className="mf-lab__muted" aria-live="polite">
         {issues.length === 0 ? a.checksNone : `${fill(a.errorsN, { n: errors })} · ${fill(a.warnsN, { n: warns })}`}
       </p>
-      {issues.length > 0 && (
-        <ul className="mf-author__issues">
-          {issues.map((i, k) => (
-            <li key={k} className={`mf-author__issue mf-author__issue--${i.level}`}>
-              <span className="mf-author__tag">{i.level === "error" ? a.error : a.warn}</span>
-              <span>{issueText(a, i)}</span>
-              {i.step !== undefined && i.step !== at && (
-                <button
-                  type="button"
-                  className="mf-author__link"
-                  onClick={() => {
-                    setTab("edit");
-                    setCur(i.step!);
-                    setSel(null);
-                    focusStep(i.step!);
-                  }}
-                >
-                  {fill(a.goTo, { n: i.step + 1 })}
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      {issues.length > 0 && issueItems(issues)}
     </section>
   );
+
+  const stepButton = (s: DraftStep, t: Track, i: number, num: string) => {
+    const key = posKey(t, i);
+    const current = t === tr && i === at;
+    return (
+      <button
+        ref={(el) => {
+          stepRefs.current.set(key, el);
+        }}
+        type="button"
+        className={`mf-author__step mf-author__step--${s.kind}${t === null ? "" : " mf-author__step--case"}`}
+        aria-current={current ? "step" : undefined}
+        aria-describedby={`${idp}-steps-hint`}
+        aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+        tabIndex={current || (rovingFallback && t === null && i === 0) ? 0 : -1}
+        onClick={() => select(t, i)}
+        onKeyDown={(e) => onStepKey(t, i, e)}
+      >
+        <span className="mf-author__num">{num}</span>
+        <span className="mf-author__steptitle">{s.text[tl].short.trim() || s.id}</span>
+        <small>{ui.kinds[s.kind]}</small>
+      </button>
+    );
+  };
+  // the edited step sits in a collapsed case: the first base step keeps the list reachable by Tab
+  const rovingFallback = !rows.some((r) => r.track === tr && r.i === at);
 
   return (
     <div className="mf-author">
@@ -865,61 +992,158 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
 
               <nav className="mf-panel__card mf-author__steps" aria-labelledby={`${idp}-steps`}>
                 <h2 id={`${idp}-steps`}>{a.steps}</h2>
+                <label className="mf-author__path">
+                  {a.path}
+                  <select
+                    value={tr ?? ""}
+                    onChange={(e) => {
+                      const v = e.currentTarget.value || null;
+                      select(v, v === null ? fromIdx : 0);
+                    }}
+                  >
+                    <option value="">{fill(a.baseN, { n: draft.steps.length })}</option>
+                    {draft.cases.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {fill(a.caseOption, { x: caseName(c, tl), n: Math.max(0, draft.steps.findIndex((s) => s.id === c.from)) + 1 })}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <p className="mf-lab__muted" id={`${idp}-steps-hint`}>
                   {a.stepsHint}
                 </p>
                 <ol>
-                  {draft.steps.map((s, i) => (
-                    <li key={`${s.id}-${i}`}>
-                      <button
-                        ref={(el) => {
-                          stepRefs.current[i] = el;
-                        }}
-                        type="button"
-                        className={`mf-author__step mf-author__step--${s.kind}`}
-                        aria-current={i === at ? "step" : undefined}
-                        aria-describedby={`${idp}-steps-hint`}
-                        aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
-                        tabIndex={i === at ? 0 : -1}
-                        onClick={() => {
-                          setCur(i);
-                          setSel(null);
-                        }}
-                        onKeyDown={(e) => onStepKey(i, e)}
-                      >
-                        <span className="mf-author__num">{i + 1}</span>
-                        <span className="mf-author__steptitle">{s.text[tl].short.trim() || s.id}</span>
-                        <small>{ui.kinds[s.kind]}</small>
-                      </button>
-                    </li>
-                  ))}
+                  {draft.steps.map((s, i) => {
+                    const from = byFrom.get(s.id) ?? [];
+                    return (
+                      <li key={`${s.id}-${i}`}>
+                        {stepButton(s, null, i, String(i + 1))}
+                        {from.length > 0 && (
+                          <ul className="mf-author__cases" aria-label={fill(a.casesFrom, { n: i + 1 })}>
+                            {from.map((c) => {
+                              const open = expanded.has(c.id);
+                              const errs = issuesOfCase(issues, c.id).filter((x) => x.level === "error").length;
+                              return (
+                                <li key={c.id}>
+                                  <button
+                                    type="button"
+                                    className="mf-author__casehead"
+                                    aria-expanded={open}
+                                    aria-controls={`${idp}-case-${c.id}`}
+                                    aria-current={tr === c.id ? "true" : undefined}
+                                    onClick={() => toggleCase(c.id)}
+                                  >
+                                    <span className="mf-author__chev" aria-hidden="true" />
+                                    <span className="mf-author__casetag">{a.caseTag}</span>
+                                    <span className="mf-author__steptitle" lang={tl}>
+                                      {caseName(c, tl)}
+                                    </span>
+                                    <small>
+                                      {fill(a.caseStepsN, { n: c.steps.length })}
+                                      {errs > 0 && <span className="mf-author__caseerr"> · {fill(a.errorsN, { n: errs })}</span>}
+                                    </small>
+                                  </button>
+                                  {open && (
+                                    <ol id={`${idp}-case-${c.id}`} className="mf-author__casesteps">
+                                      {c.steps.map((cs, j) => (
+                                        <li key={`${cs.id}-${j}`}>{stepButton(cs, c.id, j, `${i + 1}.${j + 1}`)}</li>
+                                      ))}
+                                    </ol>
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ol>
-                <div className="mf-lab__seg">
-                  <button type="button" className="mf-btn" onClick={() => (update((d) => addStep(d, at)), setCur(at + 1), focusStep(at + 1))}>
+                {draft.cases.length === 0 && <p className="mf-lab__muted">{a.casesNone}</p>}
+                <div className="mf-lab__seg mf-author__stepbar">
+                  <button
+                    type="button"
+                    className="mf-btn"
+                    disabled={stepCap}
+                    aria-describedby={stepCap ? `${idp}-cap-steps` : undefined}
+                    onClick={() => {
+                      update((d) => (tr === null ? addStep(d, at) : addCaseStep(d, tr, at)));
+                      select(tr, at + 1);
+                      focusStep(tr, at + 1);
+                    }}
+                  >
                     {a.add}
                   </button>
-                  <button type="button" className="mf-btn" onClick={() => (update((d) => duplicateStep(d, at)), setCur(at + 1), focusStep(at + 1))}>
+                  <button
+                    type="button"
+                    className="mf-btn"
+                    disabled={stepCap}
+                    aria-describedby={stepCap ? `${idp}-cap-steps` : undefined}
+                    onClick={() => {
+                      update((d) => (tr === null ? duplicateStep(d, at) : duplicateCaseStep(d, tr, at)));
+                      select(tr, at + 1);
+                      focusStep(tr, at + 1);
+                    }}
+                  >
                     {a.duplicate}
                   </button>
-                  <button type="button" className="mf-btn" disabled={at === 0} onClick={() => (update((d) => moveStep(d, at, -1)), setCur(at - 1))}>
+                  <button
+                    type="button"
+                    className="mf-btn"
+                    disabled={at === 0}
+                    onClick={() => (update((d) => (tr === null ? moveStep(d, at, -1) : moveCaseStep(d, tr, at, -1))), setCur(at - 1))}
+                  >
                     {a.up}
                   </button>
-                  <button type="button" className="mf-btn" disabled={at === draft.steps.length - 1} onClick={() => (update((d) => moveStep(d, at, 1)), setCur(at + 1))}>
+                  <button
+                    type="button"
+                    className="mf-btn"
+                    disabled={at === steps.length - 1}
+                    onClick={() => (update((d) => (tr === null ? moveStep(d, at, 1) : moveCaseStep(d, tr, at, 1))), setCur(at + 1))}
+                  >
                     {a.down}
                   </button>
                   <button
                     type="button"
                     className="mf-btn mf-btn--danger"
-                    disabled={draft.steps.length <= 1}
+                    disabled={steps.length <= 1}
+                    aria-describedby={lastCaseStep ? `${idp}-cap-last` : undefined}
                     onClick={() => {
                       if (!window.confirm(fill(a.removeConfirm, { id: step.id }))) return;
-                      update((d) => deleteStep(d, at));
+                      update((d) => (tr === null ? deleteStep(d, at) : deleteCaseStep(d, tr, at)));
                       setCur(Math.max(0, at - 1));
                     }}
                   >
                     {a.remove}
                   </button>
+                  <button
+                    type="button"
+                    className="mf-btn mf-btn--primary"
+                    disabled={caseCap}
+                    aria-describedby={caseCap ? `${idp}-cap-cases` : `${idp}-case-hint`}
+                    onClick={newCase}
+                  >
+                    {fill(a.addCase, { n: fromIdx + 1 })}
+                  </button>
                 </div>
+                <p className="mf-lab__muted" id={`${idp}-case-hint`}>
+                  {a.caseHint}
+                </p>
+                {stepCap && (
+                  <p className="mf-author__cap" id={`${idp}-cap-steps`}>
+                    {kase ? fill(a.capCaseSteps, { n: MAX_CASE_STEPS }) : fill(a.capSteps, { n: MAX_BASE_STEPS })}
+                  </p>
+                )}
+                {caseCap && (
+                  <p className="mf-author__cap" id={`${idp}-cap-cases`}>
+                    {fill(a.capCases, { n: MAX_CASES })}
+                  </p>
+                )}
+                {lastCaseStep && (
+                  <p className="mf-author__cap" id={`${idp}-cap-last`}>
+                    {a.caseLastStep}
+                  </p>
+                )}
               </nav>
 
               <section className="mf-panel__card mf-author__file" aria-labelledby={`${idp}-file`}>
@@ -969,16 +1193,98 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
             </div>
 
             <section className="mf-author__stage" aria-labelledby={`${idp}-diagram`}>
-              <h2 id={`${idp}-diagram`}>{fill(a.diagram, { n: at + 1 })}</h2>
+              {kase && (
+                <section className="mf-panel__card mf-author__case" aria-labelledby={`${idp}-case`}>
+                  <div className="mf-author__casetop">
+                    <h2 id={`${idp}-case`}>
+                      <span className="mf-author__casetag">{a.caseTag}</span> <span lang={tl}>{caseName(kase, tl)}</span>
+                    </h2>
+                    <button type="button" className="mf-btn" onClick={() => (select(null, fromIdx), focusStep(null, fromIdx))}>
+                      {a.backToBase}
+                    </button>
+                  </div>
+                  <form className="mf-lab__form" onSubmit={(e) => e.preventDefault()}>
+                    <div className="mf-author__pair">
+                      <IdField
+                        label={a.caseId}
+                        value={kase.id}
+                        error={a.idTaken}
+                        onRename={(to) => {
+                          const next = renameCaseId(draft, kase.id, to);
+                          if (next === draft) return false;
+                          update(() => next);
+                          select(to, at);
+                          return true;
+                        }}
+                      />
+                      <label>
+                        {a.caseFrom}
+                        <select value={kase.from} onChange={(e) => update((d) => setCaseFrom(d, kase.id, e.currentTarget.value))}>
+                          {draft.steps.map((s, i) => (
+                            <option key={`${s.id}-${i}`} value={s.id}>
+                              {i + 1}. {s.text[tl].short.trim() || s.id}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <fieldset className="mf-author__caselabels">
+                      <legend>{a.caseLabel}</legend>
+                      {AUTHOR_LANGS.map((l) => (
+                        <label key={l} lang={l}>
+                          {a.langNames[l]}
+                          <input
+                            value={kase.label[l]}
+                            maxLength={60}
+                            aria-invalid={!kase.label[l].trim() || undefined}
+                            onInput={(e) => update((d) => setCaseLabel(d, kase.id, l, e.currentTarget.value), `clabel:${kase.id}:${l}`)}
+                          />
+                        </label>
+                      ))}
+                    </fieldset>
+                  </form>
+                  <div aria-live="polite">
+                    {caseIssues.length ? issueItems(caseIssues) : <p className="mf-lab__muted">{a.caseOk}</p>}
+                  </div>
+                  {askCase === kase.id ? (
+                    <div className="mf-author__confirm" role="group" aria-labelledby={`${idp}-case-ask`}>
+                      <p id={`${idp}-case-ask`}>{fill(a.caseDeleteAsk, { x: caseName(kase, tl), n: kase.steps.length })}</p>
+                      <div className="mf-lab__seg">
+                        <button type="button" className="mf-btn mf-btn--danger" onClick={() => removeCase(kase)}>
+                          {a.caseDeleteYes}
+                        </button>
+                        <button
+                          type="button"
+                          className="mf-btn"
+                          // eslint-disable-next-line jsx-a11y/no-autofocus
+                          autoFocus
+                          onClick={() => {
+                            setAskCase(null);
+                            window.requestAnimationFrame(() => document.getElementById(`${idp}-case-del`)?.focus());
+                          }}
+                        >
+                          {a.cancel}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button id={`${idp}-case-del`} type="button" className="mf-btn mf-btn--danger" onClick={() => setAskCase(kase.id)}>
+                      {a.caseDelete}
+                    </button>
+                  )}
+                </section>
+              )}
+              <h2 id={`${idp}-diagram`}>{diagramTitle}</h2>
               <div className="mf-author__steprow">
                 <IdField label={a.stepId} value={step.id} error={a.idTaken} onRename={(to) => {
-                  if (!/^[a-z][a-z0-9-]*$/.test(to) || draft.steps.some((s, j) => j !== at && s.id === to)) return false;
-                  update((d) => ({ ...d, steps: d.steps.map((s, j) => (j === at ? { ...s, id: to } : s)) }));
+                  const next = renameStepIn(draft, tr, at, to);
+                  if (next === draft) return false;
+                  update(() => next);
                   return true;
                 }} />
                 <label>
                   {a.stepKind}
-                  <select value={step.kind} onChange={(e) => update((d) => ({ ...d, steps: d.steps.map((s, j) => (j === at ? { ...s, kind: e.currentTarget.value as StepKind } : s)) }))}>
+                  <select value={step.kind} onChange={(e) => patchCur((s) => ({ ...s, kind: e.currentTarget.value as StepKind }))}>
                     {STEP_KINDS.map((k) => (
                       <option key={k} value={k}>
                         {ui.kinds[k]}
@@ -1035,10 +1341,10 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
                   state={snapshotOf(step)}
                   box={BOX}
                   labels={labels}
-                  title={fill(a.diagram, { n: at + 1 })}
+                  title={diagramTitle}
                   paused={reduced}
                   reduced={reduced}
-                  runKey={at}
+                  runKey={at + (kase ? (draft.cases.indexOf(kase) + 1) * 100 : 0)}
                   active={ex?.edge}
                   edit={edit}
                 />
@@ -1096,7 +1402,7 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
                             aria-describedby={locked ? `${idp}-loadlock` : undefined}
                             onInput={(e) => {
                               const v = Number(e.currentTarget.value);
-                              patchNode(node.id, { load: v < 0 ? undefined : v }, `load:${at}:${node.id}`);
+                              patchNode(node.id, { load: v < 0 ? undefined : v }, `load:${pos}:${node.id}`);
                             }}
                           />
                           {locked && (
@@ -1113,10 +1419,7 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
                         checked={step.focus.includes(node.id)}
                         onChange={(e) => {
                           const on = e.currentTarget.checked;
-                          update((d) => ({
-                            ...d,
-                            steps: d.steps.map((s, j) => (j === at ? { ...s, focus: on ? [...s.focus, node.id] : s.focus.filter((f) => f !== node.id) } : s)),
-                          }));
+                          patchCur((s) => ({ ...s, focus: on ? [...s.focus, node.id] : s.focus.filter((f) => f !== node.id) }));
                         }}
                       />
                       {a.focus}
@@ -1150,7 +1453,7 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
                     </label>
                     <label>
                       {lab.rate}: {edgeSel.rate}
-                      <input type="range" min={0} max={12} step={1} value={edgeSel.rate} onInput={(e) => patchEdge(edgeSel.id, { rate: Number(e.currentTarget.value) }, `rate:${at}:${edgeSel.id}`)} />
+                      <input type="range" min={0} max={12} step={1} value={edgeSel.rate} onInput={(e) => patchEdge(edgeSel.id, { rate: Number(e.currentTarget.value) }, `rate:${pos}:${edgeSel.id}`)} />
                     </label>
                     <label className="mf-author__check">
                       <input type="checkbox" checked={edgeSel.cut} onChange={(e) => patchEdge(edgeSel.id, { cut: e.currentTarget.checked })} />
@@ -1262,7 +1565,7 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
                               if (raw === "" || !Number.isFinite(n)) delete metrics[m.id];
                               else metrics[m.id] = n;
                               return { ...s, metrics };
-                            }, `metric:${at}:${m.id}`);
+                            }, `metric:${pos}:${m.id}`);
                           }}
                         />
                       </label>
@@ -1304,7 +1607,7 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
                     </label>
                     <fieldset className="mf-author__msg">
                       <legend>{a.request}</legend>
-                      <MessageEditor a={a} msg={ex.request} onChange={(request) => setExchange({ ...ex, request }, `req:${at}`)} />
+                      <MessageEditor a={a} msg={ex.request} onChange={(request) => setExchange({ ...ex, request }, `req:${pos}`)} />
                     </fieldset>
                     <label className="mf-author__check">
                       <input type="checkbox" checked={!!ex.response} onChange={(e) => setExchange({ ...ex, response: e.currentTarget.checked ? emptyMessage("http") : undefined })} />
@@ -1313,11 +1616,11 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }
                     {ex.response && (
                       <fieldset className="mf-author__msg">
                         <legend>{a.response}</legend>
-                        <MessageEditor a={a} msg={ex.response} onChange={(response) => setExchange({ ...ex, response }, `res:${at}`)} />
+                        <MessageEditor a={a} msg={ex.response} onChange={(response) => setExchange({ ...ex, response }, `res:${pos}`)} />
                       </fieldset>
                     )}
-                    <ParsedField label={a.marks} hint={a.listHint} value={ex.marks} parse={parseList} print={printList} onChange={(marks) => setExchange({ ...ex, marks }, `marks:${at}`)} />
-                    <ParsedField label={a.masked} hint={a.listHint} value={ex.masked} parse={parseList} print={printList} onChange={(masked) => setExchange({ ...ex, masked }, `masked:${at}`)} />
+                    <ParsedField label={a.marks} hint={a.listHint} value={ex.marks} parse={parseList} print={printList} onChange={(marks) => setExchange({ ...ex, marks }, `marks:${pos}`)} />
+                    <ParsedField label={a.masked} hint={a.listHint} value={ex.masked} parse={parseList} print={printList} onChange={(masked) => setExchange({ ...ex, masked }, `masked:${pos}`)} />
                     <div aria-live="polite">
                       {wire && (wire.missingMarks.length || wire.badMasks.length || wire.missingMasked.length) ? (
                         <ul className="mf-author__issues">

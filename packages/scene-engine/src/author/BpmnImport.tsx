@@ -48,7 +48,7 @@ export function BpmnImport({ a, lang, blank, onImport }: BpmnImportProps) {
     if (!blank && !window.confirm(b.replaceConfirm)) return;
     const { draft, warnings } = r.result;
     onImport(draft);
-    setDone(fill(b.done, { nodes: Object.keys(draft.steps[0]?.nodes ?? {}).length, steps: draft.steps.length }));
+    setDone(fill(b.done, { nodes: Object.keys(draft.steps[0]?.nodes ?? {}).length, steps: draft.steps.length, cases: draft.cases.length }));
     setNotes(warnings.map((w) => fill(b.warning[w.code], { x: w.x ?? "" })));
   };
   const readFile = (f: File | undefined) => {

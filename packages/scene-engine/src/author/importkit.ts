@@ -1,22 +1,41 @@
 import type { EdgeMode, EdgeState, Flow, NodeKind, NodeState, NodeStatus, StepKind, WireFormat } from "@mufassall/scene-schema";
 import { slugify, transliterate } from "./bpmn";
-import { AUTHOR_LANGS, type AuthorLang, type Draft, type DraftMessage, type DraftStep, GRID_MAX, blankStep, normalize } from "./model";
+import {
+  AUTHOR_LANGS,
+  type AuthorLang,
+  type Draft,
+  type DraftCase,
+  type DraftMessage,
+  type DraftStep,
+  GRID_MAX,
+  MAX_CASE_STEPS,
+  MAX_CASES,
+  MAX_NODES,
+  MAX_BASE_STEPS,
+  type PerLang,
+  blankStep,
+  normalize,
+} from "./model";
 import { hasCyrillic } from "./validation";
 
 /*
  * Shared tail of the text importers (pipeline YAML, Mermaid): a small graph with per-language
  * names and a list of beats becomes a Draft that `checkDraft` accepts. Every block is on the scene
  * from the first step; each beat focuses some blocks and carries one message on one line.
+ * Alternative paths (a failure, a rejection, a manual gate) become cases next to the base story.
  */
 
-export const IMPORT_MAX_NODES = 30;
-/** the course allows 16 steps; one is the recap */
-export const IMPORT_MAX_STEPS = 16;
+/** a full workflow: the system caps from model.ts, not the 16-step course limit */
+export const IMPORT_MAX_NODES = MAX_NODES;
+/** base steps, the recap included */
+export const IMPORT_MAX_STEPS = MAX_BASE_STEPS;
+export const IMPORT_MAX_CASES = MAX_CASES;
+export const IMPORT_MAX_CASE_STEPS = MAX_CASE_STEPS;
 /** `checkDraft` wants at least 7 steps */
 export const IMPORT_MIN_STEPS = 7;
 export const LATTICE = GRID_MAX / 2 + 1; // cells 0, 2, .., 12
 
-export type PerLang<T> = Record<AuthorLang, T>;
+export type { PerLang };
 
 export type ImportWarningCode =
   | "include"
@@ -153,7 +172,7 @@ export function layoutCells(points: readonly [number, number][]): [number, numbe
         }
       }
     }
-    // more blocks than 49 spots: IMPORT_MAX_NODES keeps this unreachable
+    // more blocks than 49 spots: IMPORT_MAX_NODES (40) keeps this unreachable
     return [x * 2, y * 2] as [number, number];
   });
 }
@@ -204,6 +223,14 @@ export interface KitBeat {
   text: PerLang<{ title: string; short: string; body: string; watch?: string }>;
 }
 
+export interface KitCase {
+  idBase: string;
+  /** index in `KitInput.beats` of the base beat the case branches after */
+  from: number;
+  label: PerLang<string>;
+  beats: KitBeat[];
+}
+
 export interface KitInput {
   slugBase: string;
   fallbackSlug: string;
@@ -213,6 +240,7 @@ export interface KitInput {
   nodes: KitNode[];
   edges: KitEdge[];
   beats: KitBeat[];
+  cases?: KitCase[];
   recap: PerLang<{ title: string; short: string; body: string }>;
 }
 
@@ -223,14 +251,15 @@ const message = (m: KitMessage): DraftMessage => ({
   body: (m.body ?? "").slice(0, 4000),
 });
 
-/** Builds the draft. Callers keep nodes <= IMPORT_MAX_NODES and beats <= IMPORT_MAX_STEPS - 1. */
+/** Builds the draft. Base beats beyond IMPORT_MAX_STEPS - 1 and cases beyond the caps are dropped. */
 export function buildDraft(input: KitInput): Draft {
   const nodeIds = new Set<string>();
   const idOf = new Map<string, string>();
-  for (const n of input.nodes) idOf.set(n.key, uniqueSlug(n.idBase, n.fallbackId, nodeIds));
-  const cells = layoutCells(input.nodes.map((n) => n.at));
+  for (const n of input.nodes.slice(0, IMPORT_MAX_NODES)) idOf.set(n.key, uniqueSlug(n.idBase, n.fallbackId, nodeIds));
+  const kitNodes = input.nodes.filter((n) => idOf.has(n.key));
+  const cells = layoutCells(kitNodes.map((n) => n.at));
   const nodes: Record<string, NodeState> = {};
-  input.nodes.forEach((n, k) => {
+  kitNodes.forEach((n, k) => {
     const id = idOf.get(n.key)!;
     nodes[id] = { id, kind: n.kind, at: cells[k]!, state: "ok" };
   });
@@ -247,15 +276,16 @@ export function buildDraft(input: KitInput): Draft {
   }
   const labels = perLangOf((l) => {
     const o: Record<string, string> = {};
-    for (const n of input.nodes) o[idOf.get(n.key)!] = clip(nameIn(oneLine(n.label[l]) || n.idBase, l), 48);
+    for (const n of kitNodes) o[idOf.get(n.key)!] = clip(nameIn(oneLine(n.label[l]) || n.idBase, l), 48);
     return o;
   });
+  // step ids are unique across the base story and every case
   const stepIds = new Set<string>(["recap"]);
   const fresh = () => ({
     nodes: JSON.parse(JSON.stringify(nodes)) as Record<string, NodeState>,
     edges: JSON.parse(JSON.stringify(edges)) as Record<string, EdgeState>,
   });
-  const steps: DraftStep[] = input.beats.slice(0, IMPORT_MAX_STEPS - 1).map((b) => {
+  const stepOf = (b: KitBeat): DraftStep => {
     const s = blankStep(uniqueSlug(b.idBase, "step", stepIds), b.kind);
     const f = fresh();
     for (const [k, st] of Object.entries(b.states ?? {})) {
@@ -282,7 +312,21 @@ export function buildDraft(input: KitInput): Draft {
       if (t.watch) s.text[l].watch = nameIn(t.watch, l).slice(0, 2000);
     }
     return s;
-  });
+  };
+  const steps: DraftStep[] = input.beats.slice(0, IMPORT_MAX_STEPS - 1).map(stepOf);
+  const caseIds = new Set<string>();
+  const cases: DraftCase[] = [];
+  for (const c of input.cases ?? []) {
+    if (cases.length >= IMPORT_MAX_CASES) break;
+    const from = steps[c.from];
+    if (!from || !c.beats.length) continue;
+    cases.push({
+      id: uniqueSlug(c.idBase, "case", caseIds),
+      from: from.id,
+      label: perLangOf((l) => clip(nameIn(oneLine(c.label[l]), l), 60)),
+      steps: c.beats.slice(0, IMPORT_MAX_CASE_STEPS).map(stepOf),
+    });
+  }
   const recap = blankStep("recap", "recap");
   Object.assign(recap, fresh());
   for (const l of AUTHOR_LANGS) {
@@ -292,7 +336,7 @@ export function buildDraft(input: KitInput): Draft {
   }
   steps.push(recap);
   const draft: Draft = {
-    v: 1,
+    v: 2,
     slug: slugify(input.slugBase, 40) || input.fallbackSlug,
     level: "beginner",
     minutes: Math.max(3, Math.min(30, steps.length)),
@@ -302,6 +346,7 @@ export function buildDraft(input: KitInput): Draft {
     labels,
     metrics: [],
     steps,
+    cases,
   };
   return normalize(draft);
 }

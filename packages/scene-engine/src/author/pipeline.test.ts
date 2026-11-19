@@ -1,11 +1,13 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import githubYml from "./fixtures/ci.github-workflow.yml?raw";
 import minimalYml from "./fixtures/minimal.gitlab-ci.yml?raw";
+import releaseGithubYml from "./fixtures/release.github-workflow.yml?raw";
+import releaseYml from "./fixtures/release.gitlab-ci.yml?raw";
 import gitlabYml from "./fixtures/web-app.gitlab-ci.yml?raw";
-import { IMPORT_MAX_NODES, IMPORT_MAX_STEPS } from "./importkit";
-import { AUTHOR_LANGS, type Draft, ID_RE, sanitizeDraft } from "./model";
+import { assertPlayable } from "./fixtures/playable";
+import { IMPORT_MAX_NODES } from "./importkit";
+import { AUTHOR_LANGS, type Draft } from "./model";
 import { PIPELINE_MAX_CHARS, type PipelineErrorCode, type PipelineImport, computeWaves, imageName, importPipeline, parsePipeline } from "./pipeline";
-import { checkDraft, hasCyrillic } from "./validation";
 
 const ok = async (text: string): Promise<PipelineImport> => {
   const r = await importPipeline(text, "en");
@@ -19,18 +21,6 @@ const errorOf = async (text: string): Promise<PipelineErrorCode | undefined> => 
 const nodesOf = (d: Draft) => Object.values(d.steps[0]!.nodes);
 const kinds = (d: Draft) => nodesOf(d).map((n) => n.kind);
 const idByLabel = (d: Draft, label: string) => Object.entries(d.labels.en).find(([, v]) => v === label)?.[0];
-
-/** The importer's promise: a draft the author checks accept as is. */
-function assertPlayable(d: Draft) {
-  expect(checkDraft(d).filter((i) => i.level === "error")).toEqual([]);
-  const cells = nodesOf(d).map((n) => n.at.join(","));
-  expect(new Set(cells).size).toBe(cells.length);
-  expect(nodesOf(d).length).toBeLessThanOrEqual(IMPORT_MAX_NODES);
-  expect(d.steps.length).toBeLessThanOrEqual(IMPORT_MAX_STEPS);
-  for (const id of [...d.steps.map((s) => s.id), ...nodesOf(d).map((n) => n.id), ...Object.keys(d.steps[0]!.edges)]) expect(id).toMatch(ID_RE);
-  for (const l of ["uz", "en"] as const) expect(hasCyrillic(JSON.stringify([d.labels[l], d.title[l], d.summary[l], d.steps.map((s) => s.text[l])]))).toBe(false);
-  expect(sanitizeDraft(JSON.parse(JSON.stringify(d)))).toEqual(d);
-}
 
 beforeAll(async () => {
   // load the yaml chunk once so the timing checks measure parsing, not module loading
@@ -169,6 +159,98 @@ describe("GitHub Actions", () => {
     expect(draft.steps.filter((s) => s.id.startsWith("wave-"))).toHaveLength(4);
     expect(draft.steps[0]!.text.en.body).toContain("workflow_dispatch also lets a person start it by hand");
     expect(draft.steps[0]!.exchange?.request.head).toBe("event: push, pull_request, workflow_dispatch");
+    assertPlayable(draft);
+  });
+});
+
+describe("cases: the alternative paths of a pipeline", () => {
+  const caseOf = (d: Draft, id: string) => {
+    const c = d.cases.find((x) => x.id === id);
+    if (!c) throw new Error(`no case ${id}: ${d.cases.map((x) => x.id).join(", ")}`);
+    return c;
+  };
+  const stepOf = (d: Draft, id: string) => d.steps.find((s) => s.id === id)!;
+  it("reads on_failure, retry, allow_failure, stop jobs and tag rules", async () => {
+    const p = await parsePipeline(releaseYml);
+    if (!p.ok) throw new Error(p.error.code);
+    const job = (k: string) => p.model.jobs.find((j) => j.key === k)!;
+    expect(job("build").retry).toBe(2);
+    expect(job("notify-failure").onFailure).toBe(true);
+    expect(job("stop-staging")).toMatchObject({ stopsEnv: "staging", manual: true });
+    expect(job("publish-package").tagOnly).toBe(true);
+    expect(job("lint")).toMatchObject({ allowFailure: true, onFailure: false, tagOnly: false });
+  });
+  it("GitLab: each kind of case branches after the right base step", async () => {
+    const { draft } = await ok(releaseYml);
+    assertPlayable(draft);
+    expect(draft.cases.map((c) => c.id)).toEqual([
+      "on-failure-notify-failure",
+      "allowed-failure-lint",
+      "retry-build",
+      "manual-stop-staging",
+      "manual-deploy-production",
+      "rollback-production",
+      "tag-pipeline",
+    ]);
+    // the wave where the job runs (or, for on_failure, where the failing job runs)
+    expect(caseOf(draft, "retry-build").from).toBe("stage-build");
+    expect(caseOf(draft, "allowed-failure-lint").from).toBe("stage-test");
+    expect(caseOf(draft, "on-failure-notify-failure").from).toBe("stage-deploy");
+    expect(caseOf(draft, "manual-deploy-production").from).toBe("stage-deploy-2");
+    expect(caseOf(draft, "rollback-production").from).toBe("deploy");
+    expect(caseOf(draft, "tag-pipeline").from).toBe("start");
+    for (const c of draft.cases) expect(draft.steps.findIndex((s) => s.id === c.from)).toBeLessThan(draft.steps.length - 1);
+    // labels in three languages
+    expect(caseOf(draft, "retry-build").label).toEqual({ en: "build is retried automatically", ru: "Автоповтор build", uz: "build avtomatik qayta ishga tushadi" });
+    expect(caseOf(draft, "rollback-production").label.en).toBe("Rollback of production");
+    // the scene tells the story
+    const retry = caseOf(draft, "retry-build");
+    expect(retry.steps.map((s) => s.kind)).toEqual(["problem", "fix"]);
+    expect(retry.steps[0]!.nodes.build!.state).toBe("down");
+    expect(retry.steps[1]!.nodes.build!.state).toBe("ok");
+    expect(Object.values(retry.steps[1]!.edges).some((e) => e.flow === "retry")).toBe(true);
+    const onFail = caseOf(draft, "on-failure-notify-failure");
+    expect(onFail.steps[1]!.focus).toEqual(["notify-failure"]);
+    expect(onFail.steps[0]!.text.en.body).toContain("when: on_failure");
+    const manual = caseOf(draft, "manual-deploy-production").steps[0]!;
+    expect(manual.nodes["deploy-production"]!.state).toBe("slow");
+    expect(manual.text.en.watch).toContain("Run");
+    const roll = caseOf(draft, "rollback-production");
+    expect(roll.steps[0]!.nodes.production!.state).toBe("down");
+    expect(roll.steps[1]!.text.en.body).toContain("Environments, Rollback");
+    expect(caseOf(draft, "tag-pipeline").steps[0]!.focus).toEqual(["publish-package"]);
+    // the notes in the base story mention the new keywords
+    expect(stepOf(draft, "stage-build").text.en.body).toContain("build: saves artifacts for later jobs; is retried up to 2 times.");
+    expect(stepOf(draft, "stage-notify").text.en.body).toContain("notify-failure: runs only after an earlier job fails");
+  });
+  it("GitHub: if: failure(), continue-on-error, a production approval, tags", async () => {
+    const { draft } = await ok(releaseGithubYml);
+    assertPlayable(draft);
+    expect(draft.cases.map((c) => c.id)).toEqual(["on-failure-alert", "allowed-failure-e2e", "approval-deploy", "rollback-production", "tag-pipeline"]);
+    const onFail = caseOf(draft, "on-failure-alert");
+    expect(onFail.from).toBe("wave-1");
+    expect(onFail.steps[0]!.text.en.body).toContain("if: failure()");
+    expect(caseOf(draft, "approval-deploy").from).toBe("wave-2");
+    expect(caseOf(draft, "approval-deploy").label.uz).toBe("deploy tasdiqni kutadi");
+    expect(caseOf(draft, "rollback-production").steps[1]!.text.en.body).toContain("re-run");
+    expect(caseOf(draft, "allowed-failure-e2e").steps[0]!.text.ru).toMatchObject({ title: "e2e падает, и это разрешено" });
+  });
+  it("web-app fixture: same base story, now with its cases", async () => {
+    const { draft } = await ok(gitlabYml);
+    expect(draft.cases.map((c) => [c.id, c.from])).toEqual([
+      ["allowed-failure-e2e-tests", "stage-test"],
+      ["manual-deploy-production", "stage-deploy-2"],
+      ["rollback-production", "deploy"],
+      ["other-branch", "start"],
+    ]);
+    assertPlayable(draft);
+  });
+  it("a long pipeline keeps every wave (no fold at 16 steps)", async () => {
+    const chain = Array.from({ length: 30 }, (_, k) => `j${k}:\n  stage: build\n  needs: [${k ? `j${k - 1}` : ""}]\n  script: [x]`).join("\n");
+    const { draft, warnings } = await ok(chain);
+    expect(draft.steps.filter((s) => s.id.startsWith("wave-") || s.id.startsWith("stage-"))).toHaveLength(30);
+    expect(warnings.map((w) => w.code)).not.toContain("maxSteps");
+    expect(warnings.map((w) => w.code)).not.toContain("maxNodes");
     assertPlayable(draft);
   });
 });

@@ -1,6 +1,6 @@
 import type { BpmnErrorCode, BpmnWarningCode } from "./bpmn";
 import type { AuthorLang } from "./model";
-import type { IssueCode } from "./validation";
+import { CASE_ISSUE_TEXT, type IssueCode } from "./validation";
 
 /** Author mode strings. `{x}` placeholders are filled with `fill`. */
 export interface AuthorStrings {
@@ -30,6 +30,34 @@ export interface AuthorStrings {
   down: string;
   stepId: string;
   stepKind: string;
+  /* cases: alternative paths that branch after a base step */
+  path: string;
+  baseN: string;
+  caseOption: string;
+  casesFrom: string;
+  caseTag: string;
+  caseStepsN: string;
+  casesNone: string;
+  addCase: string;
+  caseHint: string;
+  capSteps: string;
+  capCases: string;
+  capCaseSteps: string;
+  caseLastStep: string;
+  backToBase: string;
+  caseId: string;
+  caseFrom: string;
+  caseLabel: string;
+  caseOk: string;
+  caseDelete: string;
+  caseDeleteAsk: string;
+  caseDeleteYes: string;
+  cancel: string;
+  caseDiagram: string;
+  inCase: string;
+  goToCase: string;
+  goToCaseStep: string;
+  casesLoaded: string;
   /* diagram */
   diagram: string;
   palette: string;
@@ -103,7 +131,6 @@ export interface AuthorStrings {
   replaceConfirm: string;
   loading: string;
   loadFail: string;
-  scenariosDropped: string;
   saveJson: string;
   openJson: string;
   openBad: string;
@@ -154,6 +181,7 @@ export interface LibraryStrings {
   lessonPick: string;
   create: string;
   stepsN: string;
+  casesN: string;
   updated: string;
   sources: Record<"blank" | "bpmn" | "gitlab-ci" | "github-actions" | "mermaid" | "file" | "lesson" | "link", string>;
   actionsFor: string;
@@ -229,6 +257,7 @@ export const LIBRARY_UI: Record<AuthorLang, LibraryStrings> = {
     lessonPick: "Lesson",
     create: "Create",
     stepsN: "{n} steps",
+    casesN: "{n} cases",
     updated: "updated {date}",
     sources: { blank: "blank", bpmn: "BPMN", "gitlab-ci": "GitLab CI", "github-actions": "GitHub Actions", mermaid: "Mermaid", file: "file", lesson: "lesson", link: "link" },
     actionsFor: "Actions for {title}",
@@ -284,6 +313,7 @@ export const LIBRARY_UI: Record<AuthorLang, LibraryStrings> = {
     lessonPick: "Урок",
     create: "Создать",
     stepsN: "Шагов: {n}",
+    casesN: "случаев: {n}",
     updated: "изменено {date}",
     sources: { blank: "пустая", bpmn: "BPMN", "gitlab-ci": "GitLab CI", "github-actions": "GitHub Actions", mermaid: "Mermaid", file: "файл", lesson: "урок", link: "ссылка" },
     actionsFor: "Действия для {title}",
@@ -339,6 +369,7 @@ export const LIBRARY_UI: Record<AuthorLang, LibraryStrings> = {
     lessonPick: "Dars",
     create: "Yaratish",
     stepsN: "{n} ta qadam",
+    casesN: "{n} ta holat",
     updated: "{date} da o'zgartirilgan",
     sources: { blank: "bo'sh", bpmn: "BPMN", "gitlab-ci": "GitLab CI", "github-actions": "GitHub Actions", mermaid: "Mermaid", file: "fayl", lesson: "dars", link: "havola" },
     actionsFor: "{title} uchun amallar",
@@ -431,6 +462,33 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     down: "Move down",
     stepId: "Step ID",
     stepKind: "Kind",
+    path: "Editing",
+    baseN: "Base workflow ({n} steps)",
+    caseOption: "Case: {x} (after step {n})",
+    casesFrom: "Cases after step {n}",
+    caseTag: "Case",
+    caseStepsN: "{n} steps",
+    casesNone: "No cases yet. A case is another path of the same workflow: a failure, a timeout, a retry, a rejection, a manual approval, a rollback.",
+    addCase: "Add case from step {n}",
+    caseHint: "A case branches after the chosen base step and starts from its diagram; the reader switches to it in the lesson.",
+    capSteps: "The base workflow has at most {n} steps.",
+    capCases: "At most {n} cases.",
+    capCaseSteps: "A case has at most {n} steps.",
+    caseLastStep: "A case keeps at least one step: delete the case instead.",
+    backToBase: "Back to the base workflow",
+    caseId: "Case ID",
+    caseFrom: "Branches after",
+    caseLabel: "Case name, shown in the lesson's path switch",
+    caseOk: "No problems in this case.",
+    caseDelete: "Delete case",
+    caseDeleteAsk: "Delete case “{x}” and its {n} steps?",
+    caseDeleteYes: "Yes, delete",
+    cancel: "Cancel",
+    caseDiagram: "Case “{x}”, step {n}",
+    inCase: "case “{x}”",
+    goToCase: "Go to case {x}",
+    goToCaseStep: "Go to {x}, step {n}",
+    casesLoaded: "Opened with {n} cases.",
     diagram: "Diagram of step {n}",
     palette: "Add a block",
     forward: "Also change the following steps",
@@ -520,6 +578,7 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
       resolve: "The scene cannot be built: {x}",
       loadSpot: "The load gauge of {x} hits a name or a block.",
       crossing: "Line crosses a name: {x}.",
+      ...CASE_ISSUE_TEXT.en,
     },
     file: "Draft",
     newDraft: "New draft",
@@ -530,7 +589,6 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     replaceConfirm: "Replace the current draft with this lesson?",
     loading: "Loading…",
     loadFail: "Could not load the lesson.",
-    scenariosDropped: "This lesson has {n} alternative endings; the author mode keeps only the main story.",
     saveJson: "Save draft (.json)",
     openJson: "Open draft (.json)",
     openBad: "This file is not an author draft.",
@@ -544,7 +602,7 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     download: "Download {file}",
     fileTabs: "Files",
     previewBroken: "The draft cannot be shown yet: {x}",
-    previewNote: "Preview of the main story in the selected text language.",
+    previewNote: "The lesson in the selected text language. Cases play through the path switch of the player.",
     library: LIBRARY_UI.en,
     bpmn: {
       open: "Import BPMN",
@@ -556,7 +614,7 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
       close: "Close",
       replaceConfirm: "Replace the current draft with the imported diagram?",
       reading: "Reading…",
-      done: "Imported: {nodes} blocks, {steps} steps.",
+      done: "Imported: {nodes} blocks, {steps} steps, {cases} cases.",
       notes: "Notes on the import",
       error: {
         empty: "The file is empty.",
@@ -578,8 +636,8 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
         unreachable: "Not reachable from a start event, placed at the end: {x}.",
         noStart: "No start event: the walk starts from elements without incoming lines.",
         maxElements: "The file is too big: {x} elements were not read.",
-        maxNodes: "At most 30 blocks: {x} elements were left out.",
-        maxSteps: "A lesson has at most 16 steps: {x} elements have no step of their own.",
+        maxNodes: "At most 40 blocks: {x} elements were left out.",
+        maxSteps: "At most 60 steps in the base workflow: {x} elements have no step of their own.",
         partialLayout: "Only some elements have diagram coordinates, so blocks are laid out by order.",
         translate: "Names were copied into all three languages: translate them.",
       },
@@ -611,6 +669,33 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     down: "Ниже",
     stepId: "ID шага",
     stepKind: "Тип",
+    path: "Правка",
+    baseN: "Основной процесс (шагов: {n})",
+    caseOption: "Случай: {x} (после шага {n})",
+    casesFrom: "Случаи после шага {n}",
+    caseTag: "Случай",
+    caseStepsN: "шагов: {n}",
+    casesNone: "Случаев пока нет. Случай — другой путь того же процесса: сбой, таймаут, повтор, отказ, ручное согласование, откат.",
+    addCase: "Добавить случай от шага {n}",
+    caseHint: "Случай ответвляется после выбранного шага основного процесса и начинается с его схемы; читатель переключается на него в уроке.",
+    capSteps: "В основном процессе не больше {n} шагов.",
+    capCases: "Не больше {n} случаев.",
+    capCaseSteps: "В случае не больше {n} шагов.",
+    caseLastStep: "В случае остаётся хотя бы один шаг: удалите случай целиком.",
+    backToBase: "К основному процессу",
+    caseId: "ID случая",
+    caseFrom: "Ответвляется после",
+    caseLabel: "Название случая в переключателе путей урока",
+    caseOk: "В этом случае проблем нет.",
+    caseDelete: "Удалить случай",
+    caseDeleteAsk: "Удалить случай «{x}» и его шаги ({n})?",
+    caseDeleteYes: "Да, удалить",
+    cancel: "Отмена",
+    caseDiagram: "Случай «{x}», шаг {n}",
+    inCase: "случай «{x}»",
+    goToCase: "К случаю {x}",
+    goToCaseStep: "К случаю {x}, шаг {n}",
+    casesLoaded: "Открыто с случаями: {n}.",
     diagram: "Схема шага {n}",
     palette: "Добавить блок",
     forward: "Менять и следующие шаги",
@@ -700,6 +785,7 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
       resolve: "Сцену нельзя построить: {x}",
       loadSpot: "Шкала нагрузки {x} задевает название или блок.",
       crossing: "Линия пересекает название: {x}.",
+      ...CASE_ISSUE_TEXT.ru,
     },
     file: "Черновик",
     newDraft: "Новый черновик",
@@ -710,7 +796,6 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     replaceConfirm: "Заменить текущий черновик этим уроком?",
     loading: "Загрузка…",
     loadFail: "Не удалось загрузить урок.",
-    scenariosDropped: "У урока есть альтернативные концовки ({n}); режим автора сохраняет только основную историю.",
     saveJson: "Сохранить черновик (.json)",
     openJson: "Открыть черновик (.json)",
     openBad: "Это не черновик режима автора.",
@@ -724,7 +809,7 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     download: "Скачать {file}",
     fileTabs: "Файлы",
     previewBroken: "Черновик пока нельзя показать: {x}",
-    previewNote: "Просмотр основной истории на выбранном языке текста.",
+    previewNote: "Урок на выбранном языке текста. Случаи проигрываются через переключатель путей плеера.",
     library: LIBRARY_UI.ru,
     bpmn: {
       open: "Импорт BPMN",
@@ -736,7 +821,7 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
       close: "Закрыть",
       replaceConfirm: "Заменить текущий черновик импортированной диаграммой?",
       reading: "Чтение…",
-      done: "Импортировано: блоков {nodes}, шагов {steps}.",
+      done: "Импортировано: блоков {nodes}, шагов {steps}, случаев {cases}.",
       notes: "Заметки об импорте",
       error: {
         empty: "Файл пуст.",
@@ -758,8 +843,8 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
         unreachable: "Недостижимо от стартового события, поставлено в конец: {x}.",
         noStart: "Нет стартового события: обход начат с элементов без входящих линий.",
         maxElements: "Файл слишком большой: не прочитано элементов: {x}.",
-        maxNodes: "Не больше 30 блоков: не вошло элементов: {x}.",
-        maxSteps: "В уроке не больше 16 шагов: без своего шага осталось элементов: {x}.",
+        maxNodes: "Не больше 40 блоков: не вошло элементов: {x}.",
+        maxSteps: "В основном процессе не больше 60 шагов: без своего шага осталось элементов: {x}.",
         partialLayout: "Координаты есть только у части элементов, поэтому блоки расставлены по порядку.",
         translate: "Названия скопированы во все три языка: переведите их.",
       },
@@ -791,6 +876,33 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     down: "Pastga",
     stepId: "Qadam ID",
     stepKind: "Turi",
+    path: "Tahrirlanmoqda",
+    baseN: "Asosiy jarayon ({n} ta qadam)",
+    caseOption: "Holat: {x} ({n}-qadamdan keyin)",
+    casesFrom: "{n}-qadamdan keyingi holatlar",
+    caseTag: "Holat",
+    caseStepsN: "{n} ta qadam",
+    casesNone: "Hali holat (case) yo'q. Holat - shu jarayonning boshqa yo'li: xato, vaqt tugashi, qayta urinish, rad etish, qo'lda tasdiqlash, orqaga qaytarish.",
+    addCase: "{n}-qadamdan holat qo'shish",
+    caseHint: "Holat tanlangan asosiy qadamdan keyin ajraladi va uning sxemasidan boshlanadi; o'quvchi darsda unga o'tadi.",
+    capSteps: "Asosiy jarayonda ko'pi bilan {n} ta qadam.",
+    capCases: "Ko'pi bilan {n} ta holat.",
+    capCaseSteps: "Holatda ko'pi bilan {n} ta qadam.",
+    caseLastStep: "Holatda kamida bitta qadam qoladi: buning o'rniga holatni o'chiring.",
+    backToBase: "Asosiy jarayonga qaytish",
+    caseId: "Holat ID",
+    caseFrom: "Qaysi qadamdan keyin ajraladi",
+    caseLabel: "Holat nomi, darsdagi yo'l almashtirgichda ko'rinadi",
+    caseOk: "Bu holatda muammo yo'q.",
+    caseDelete: "Holatni o'chirish",
+    caseDeleteAsk: "“{x}” holati va uning {n} ta qadami o'chirilsinmi?",
+    caseDeleteYes: "Ha, o'chirish",
+    cancel: "Bekor qilish",
+    caseDiagram: "“{x}” holati, {n}-qadam",
+    inCase: "“{x}” holati",
+    goToCase: "{x} holatiga o'tish",
+    goToCaseStep: "{x}, {n}-qadamga o'tish",
+    casesLoaded: "{n} ta holat bilan ochildi.",
     diagram: "{n}-qadam sxemasi",
     palette: "Blok qo'shish",
     forward: "Keyingi qadamlarni ham o'zgartirish",
@@ -880,6 +992,7 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
       resolve: "Sahnani qurib bo'lmadi: {x}",
       loadSpot: "{x} yuklama shkalasi nom yoki blokka tegib turibdi.",
       crossing: "Chiziq nomni kesib o'tadi: {x}.",
+      ...CASE_ISSUE_TEXT.uz,
     },
     file: "Qoralama",
     newDraft: "Yangi qoralama",
@@ -890,7 +1003,6 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     replaceConfirm: "Joriy qoralama shu dars bilan almashtirilsinmi?",
     loading: "Yuklanmoqda…",
     loadFail: "Darsni yuklab bo'lmadi.",
-    scenariosDropped: "Bu darsda {n} ta muqobil yakun bor; muallif rejimi faqat asosiy hikoyani oladi.",
     saveJson: "Qoralamani saqlash (.json)",
     openJson: "Qoralamani ochish (.json)",
     openBad: "Bu fayl muallif qoralamasi emas.",
@@ -904,7 +1016,7 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     download: "{file} ni yuklab olish",
     fileTabs: "Fayllar",
     previewBroken: "Qoralamani hozircha ko'rsatib bo'lmaydi: {x}",
-    previewNote: "Tanlangan matn tilida asosiy hikoyaning ko'rinishi.",
+    previewNote: "Dars tanlangan matn tilida. Holatlar pleyerdagi yo'l almashtirgich orqali o'ynaladi.",
     library: LIBRARY_UI.uz,
     bpmn: {
       open: "BPMN import",
@@ -916,7 +1028,7 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
       close: "Yopish",
       replaceConfirm: "Joriy qoralama import qilingan diagramma bilan almashtirilsinmi?",
       reading: "O'qilmoqda…",
-      done: "Import qilindi: {nodes} ta blok, {steps} ta qadam.",
+      done: "Import qilindi: {nodes} ta blok, {steps} ta qadam, {cases} ta holat.",
       notes: "Import bo'yicha izohlar",
       error: {
         empty: "Fayl bo'sh.",
@@ -938,8 +1050,8 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
         unreachable: "Boshlanish hodisasidan yetib bo'lmaydi, oxiriga qo'yildi: {x}.",
         noStart: "Boshlanish hodisasi yo'q: aylanish kiruvchi chizig'i yo'q elementlardan boshlandi.",
         maxElements: "Fayl juda katta: {x} ta element o'qilmadi.",
-        maxNodes: "Ko'pi bilan 30 ta blok: {x} ta element kirmadi.",
-        maxSteps: "Darsda ko'pi bilan 16 qadam: {x} ta elementga alohida qadam yetmadi.",
+        maxNodes: "Ko'pi bilan 40 ta blok: {x} ta element kirmadi.",
+        maxSteps: "Asosiy jarayonda ko'pi bilan 60 qadam: {x} ta elementga alohida qadam yetmadi.",
         partialLayout: "Koordinatalar faqat ayrim elementlarda bor, shuning uchun bloklar tartib bo'yicha joylashtirildi.",
         translate: "Nomlar uchala tilga ham nusxalandi: ularni tarjima qiling.",
       },

@@ -1,12 +1,14 @@
 import type { EdgeMode, Flow, NodeKind, WireFormat } from "@mufassall/scene-schema";
-import { walkOrder } from "./bpmn";
+import { mainChoice, splitBranches, walkOrder } from "./bpmn";
 import {
+  IMPORT_MAX_CASE_STEPS,
   IMPORT_MAX_NODES,
   IMPORT_MAX_STEPS,
   IMPORT_MIN_STEPS,
   type ImportWarning,
   type ImportWarningCode,
   type KitBeat,
+  type KitCase,
   type KitEdge,
   type KitMessage,
   type KitNode,
@@ -37,6 +39,8 @@ export interface MermaidNode {
   id: string;
   label: string;
   kind: NodeKind;
+  /** a `{...}` (diamond) shape in a flowchart */
+  decision?: boolean;
 }
 
 export interface MermaidEdge {
@@ -56,6 +60,16 @@ export interface MermaidMessage {
   lost: boolean;
   /** `-)`: fire and forget */
   async: boolean;
+  /** index in `MermaidModel.branches`; none for the base story */
+  branch?: number;
+}
+
+/** A sequence block section off the base story: an `else`, an `option`, a `break` body. */
+export interface MermaidBranch {
+  kind: "alt" | "critical" | "break";
+  label: string;
+  /** messages read before the block opened: the case branches after the last base one of them */
+  at: number;
 }
 
 export interface MermaidModel {
@@ -65,6 +79,7 @@ export interface MermaidModel {
   nodes: MermaidNode[];
   edges: MermaidEdge[];
   messages: MermaidMessage[];
+  branches: MermaidBranch[];
   warnings: ImportWarning[];
 }
 
@@ -447,9 +462,9 @@ function readFlowchart(stmts: string[], header: string, title: string): MermaidM
     const guess = kindFromName(name);
     if (PLAIN.has(n.shape) && guess) kind = guess;
     else if (n.shape === "[(" && guess === "storage") kind = "storage";
-    return { id: n.id, label: n.label, kind };
+    return { id: n.id, label: n.label, kind, ...(n.shape === "{" ? { decision: true } : {}) };
   });
-  return { kind: "mermaid-flowchart", title: docTitle, direction: dir === "LR" || dir === "RL" ? "LR" : "TD", nodes: list, edges, messages: [], warnings };
+  return { kind: "mermaid-flowchart", title: docTitle, direction: dir === "LR" || dir === "RL" ? "LR" : "TD", nodes: list, edges, messages: [], branches: [], warnings };
 }
 
 /* ---------- sequence ---------- */
@@ -466,6 +481,10 @@ function readSequence(stmts: string[], title: string): MermaidModel {
   let notes = 0;
   let selfLoops = 0;
   let docTitle = title;
+  // open blocks; `cur` is the branch the messages inside belong to (none: the base story)
+  const branches: MermaidBranch[] = [];
+  const stack: { w: string; cur: number | undefined; at: number }[] = [];
+  const here = () => stack[stack.length - 1]?.cur;
   const declare = (id: string, label: string, actor: boolean) => {
     const cur = nodes.get(id);
     const kind: NodeKind = actor ? "actor" : (kindFromName(label || id) ?? "service");
@@ -484,7 +503,26 @@ function readSequence(stmts: string[], title: string): MermaidModel {
       continue;
     }
     if (BLOCKS.has(w)) {
-      if (w !== "end" && w !== "else" && w !== "and" && w !== "option") blocks.add(w);
+      const text = mermaidLabel(st.slice(w.length));
+      const outer = here();
+      if (w === "end") stack.pop();
+      else if (w === "else" || w === "option") {
+        const top = stack[stack.length - 1];
+        // the first section stays in the base story; each later one is a case (nested: flattened)
+        if (top && (top.w === "alt" || top.w === "critical")) {
+          const parent = stack[stack.length - 2]?.cur;
+          if (parent === undefined) {
+            branches.push({ kind: top.w === "alt" ? "alt" : "critical", label: text, at: top.at });
+            top.cur = branches.length - 1;
+          }
+        }
+      } else if (w === "break") {
+        if (outer === undefined) branches.push({ kind: "break", label: text, at: messages.length });
+        stack.push({ w, cur: outer ?? branches.length - 1, at: messages.length });
+      } else if (w !== "and") {
+        if (w !== "alt" && w !== "critical") blocks.add(w);
+        stack.push({ w, cur: outer, at: messages.length });
+      }
       continue;
     }
     if (SKIP_SEQ.has(w)) {
@@ -519,13 +557,14 @@ function readSequence(stmts: string[], title: string): MermaidModel {
       selfLoops++;
       continue;
     }
-    messages.push(m);
+    const b = here();
+    messages.push(b === undefined ? m : { ...m, branch: b });
   }
   if (notes) warnings.push({ code: "notes", x: String(notes) });
   if (blocks.size) warnings.push({ code: "blocks", x: [...blocks].join(", ") });
   if (selfLoops) warnings.push({ code: "selfLoop", x: String(selfLoops) });
   if (unsupported.length) warnings.push({ code: "unsupported", x: unsupported.slice(0, 3).join(" | ") + (unsupported.length > 3 ? `, +${unsupported.length - 3}` : "") });
-  return { kind: "mermaid-sequence", title: docTitle, direction: "LR", nodes: [...nodes.values()], edges: [], messages, warnings };
+  return { kind: "mermaid-sequence", title: docTitle, direction: "LR", nodes: [...nodes.values()], edges: [], messages, branches, warnings };
 }
 
 /** `A->>B: text`, `A-->>+B: text`, `A-x B`, `A-)B: text` */
@@ -619,6 +658,8 @@ const T = {
     recap: "Recap",
     flowRecap: "The flow goes from {a} to {z} through {n} blocks. Each block takes what the previous one sends and passes it on; when one stops, everything after it waits.",
     seqRecap: "{n} participants exchange {m} messages in a fixed order, and {a} starts it. Every message that waits for an answer is a place where a slow or silent participant holds everyone up.",
+    altCase: "Other branch {n}",
+    breakCase: "Break {n}",
   },
   ru: {
     flowTitle: "Поток: от {a} до {z}",
@@ -656,6 +697,8 @@ const T = {
     recap: "Итог",
     flowRecap: "Поток идёт от {a} до {z} через блоки ({n}). Каждый блок берёт то, что прислал предыдущий, и передаёт дальше; если один встаёт, всё после него ждёт.",
     seqRecap: "Участники ({n}) обмениваются сообщениями ({m}) в строгом порядке, начинает {a}. Каждое сообщение, ждущее ответа, — место, где медленный или молчащий участник задерживает всех.",
+    altCase: "Другая ветка {n}",
+    breakCase: "Прерывание {n}",
   },
   uz: {
     flowTitle: "Oqim: {a} dan {z} gacha",
@@ -693,6 +736,8 @@ const T = {
     recap: "Xulosa",
     flowRecap: "Oqim {a} dan {z} gacha {n} ta blok orqali o'tadi. Har bir blok oldingisi yuborganini olib, keyingisiga uzatadi; bittasi to'xtasa, undan keyingi hamma narsa kutadi.",
     seqRecap: "{n} ta ishtirokchi qat'iy tartibda {m} ta xabar almashadi, {a} boshlaydi. Javob kutadigan har bir xabar — sekin yoki jim ishtirokchi hammani ushlab turadigan joy.",
+    altCase: "Boshqa tarmoq {n}",
+    breakCase: "To'xtatish {n}",
   },
 } satisfies Record<AuthorLang, unknown>;
 type Strings = (typeof T)["en"];
@@ -820,7 +865,25 @@ function flowchartToDraft(m: MermaidModel): MermaidImport {
   for (const e of edges) out.set(e.from, [...(out.get(e.from) ?? []), e.to]);
   const hasIn = new Set(edges.map((e) => e.to));
   const roots = ids.filter((id) => !hasIn.has(id));
-  const { order, backEdges } = walkOrder({ ids, out }, roots.length ? roots : ids.slice(0, 1));
+  const starts = roots.length ? roots : ids.slice(0, 1);
+  const { order, backEdges } = walkOrder({ ids, out }, starts);
+  // a decision {..} with labelled ways out: the story follows one, the others are cases
+  const back = new Set(backEdges.map(([a, b]) => `${a}\u0000${b}`));
+  const alt = new Set<string>();
+  const altLabel = new Map<string, string>();
+  for (const n of m.nodes) {
+    if (!n.decision) continue;
+    const outs = edges.filter((e) => e.from === n.id);
+    if (outs.length < 2 || !outs.some((e) => e.label)) continue;
+    const main = mainChoice(out, n.id, outs.map((e) => e.to), outs[0]!.to, back, (id) => !(out.get(id) ?? []).length);
+    for (const e of outs) {
+      const key = `${e.from}\u0000${e.to}`;
+      if (e.to === main || back.has(key)) continue;
+      alt.add(key);
+      altLabel.set(key, e.label);
+    }
+  }
+  const { base, branches } = splitBranches({ ids, out }, starts, order, alt);
   if (backEdges.length) warn("cycle", listIn([...new Set(backEdges.map(([, b]) => nodeLabel(byId.get(b)!)))], "en", 5));
   const kept = order.slice(0, IMPORT_MAX_NODES);
   if (order.length > kept.length) warn("maxNodes", String(order.length - kept.length));
@@ -868,9 +931,10 @@ function flowchartToDraft(m: MermaidModel): MermaidImport {
     return wireOf(e.label, `${label(e.from)} -> ${label(e.to)}`);
   };
 
-  const stepped = kept.slice(0, IMPORT_MAX_STEPS - 1);
-  if (kept.length > stepped.length) warn("maxSteps", String(kept.length - stepped.length));
-  const beats: KitBeat[] = stepped.map((id) => {
+  const baseKept = kept.filter((id) => base.has(id));
+  const stepped = baseKept.slice(0, IMPORT_MAX_STEPS - 1);
+  if (baseKept.length > stepped.length) warn("maxSteps", String(baseKept.length - stepped.length));
+  const beatFor = (id: string): KitBeat => {
     const into = keptEdges.filter((e) => e.to === id && pos.get(e.from)! < pos.get(id)!);
     const outs = keptEdges.filter((e) => e.from === id);
     const e = into[0] ?? outs[0];
@@ -888,7 +952,16 @@ function flowchartToDraft(m: MermaidModel): MermaidImport {
         return { title: name, short: name, body };
       }),
     };
-  });
+  };
+  const beats: KitBeat[] = stepped.map(beatFor);
+  const cases: KitCase[] = [];
+  for (const b of branches) {
+    const from = stepped.indexOf(b.from);
+    const own = b.nodes.filter((id) => keptSet.has(id));
+    if (from < 0 || !own.length) continue;
+    const name = altLabel.get(`${b.from}\u0000${b.to}`) || label(b.to);
+    cases.push({ idBase: name, from, label: perLangOf(() => name), beats: own.slice(0, IMPORT_MAX_CASE_STEPS).map(beatFor) });
+  }
   // the longest path, for the padding beat
   const deepest = kept.reduce((a, b) => ((layer.get(b) ?? 0) > (layer.get(a) ?? 0) ? b : a), kept[0]!);
   const path: string[] = [];
@@ -907,6 +980,7 @@ function flowchartToDraft(m: MermaidModel): MermaidImport {
     nodes,
     edges: kitEdges,
     beats,
+    cases,
     recap: per((s) => ({ title: s.recap, short: s.recap, body: fill(s.flowRecap, { a, z, n: nodes.length }) })),
   });
   warn("translate");
@@ -943,7 +1017,7 @@ function sequenceToDraft(m: MermaidModel): MermaidImport {
     if (x.dashed) {
       for (let k = rows.length - 1; k >= Math.max(0, rows.length - 8) && !open; k--) {
         const r = rows[k]!;
-        if (!r.res && !r.req.dashed && !r.req.async && !r.req.lost && r.req.from === x.to && r.req.to === x.from) open = r;
+        if (!r.res && !r.req.dashed && !r.req.async && !r.req.lost && r.req.from === x.to && r.req.to === x.from && r.req.branch === x.branch) open = r;
       }
     }
     if (open) open.res = x;
@@ -966,9 +1040,10 @@ function sequenceToDraft(m: MermaidModel): MermaidImport {
     const x = firstMsg.get(key)!;
     return wireOf(x.text, `${label(x.from)} -> ${label(x.to)}`);
   };
-  const stepped = rows.slice(0, IMPORT_MAX_STEPS - 1);
-  if (rows.length > stepped.length) warn("maxSteps", String(rows.length - stepped.length));
-  const beats: KitBeat[] = stepped.map((r) => {
+  const baseRows = rows.filter((r) => r.req.branch === undefined);
+  const stepped = baseRows.slice(0, IMPORT_MAX_STEPS - 1);
+  if (baseRows.length > stepped.length) warn("maxSteps", String(baseRows.length - stepped.length));
+  const beatFor = (r: Row): KitBeat => {
     const key = `${r.req.from}>${r.req.to}`;
     const from = label(r.req.from);
     const to = label(r.req.to);
@@ -987,6 +1062,19 @@ function sequenceToDraft(m: MermaidModel): MermaidImport {
         body: fill(s.send, { from, to, text }) + (r.res ? fill(s.reply, { to, x: r.res.text || "OK" }) : "") + (r.req.lost ? s.lost : r.req.async ? s.async : ""),
       })),
     };
+  };
+  const beats: KitBeat[] = stepped.map(beatFor);
+  // alternative sections: each branches after the last base message sent before its block opened
+  const msgIndex = new Map(m.messages.map((x, k) => [x, k]));
+  const cases: KitCase[] = [];
+  m.branches.forEach((b, k) => {
+    const own = rows.filter((r) => r.req.branch === k);
+    if (!own.length) return;
+    let from = -1;
+    for (let i = 0; i < stepped.length && (msgIndex.get(stepped[i]!.req) ?? 0) < b.at; i++) from = i;
+    const n = cases.length + 1;
+    const label = b.label ? perLangOf(() => b.label) : per((s) => fill(b.kind === "break" ? s.breakCase : s.altCase, { n }));
+    cases.push({ idBase: b.label || `${b.kind}-${n}`, from: Math.max(0, from), label, beats: own.slice(0, IMPORT_MAX_CASE_STEPS).map(beatFor) });
   });
   const order = [...new Set(rows.flatMap((r) => [r.req.from, r.req.to]))];
   const sh: Shared = { nodes, edges, beats, label, wire };
@@ -1002,6 +1090,7 @@ function sequenceToDraft(m: MermaidModel): MermaidImport {
     nodes,
     edges,
     beats,
+    cases,
     recap: per((s) => ({ title: s.recap, short: s.recap, body: fill(s.seqRecap, { n: kept.length, m: rows.length, a: first }) })),
   });
   warn("translate");

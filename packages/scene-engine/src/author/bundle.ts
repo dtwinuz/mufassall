@@ -56,7 +56,7 @@ export function parseBundle(text: string): ParsedBundle {
     return { ok: false, error: "notJson" };
   }
   if (!isObj(data)) return { ok: false, error: "wrongFormat" };
-  if (data.format === undefined && data.v === 1 && Array.isArray(data.steps)) {
+  if (data.format === undefined && (data.v === 1 || data.v === 2) && Array.isArray(data.steps)) {
     const draft = sanitizeDraft(data);
     return draft ? { ok: true, systems: [{ title: "", source: "file", draft }], dropped: 0, skipped: 0 } : { ok: false, error: "wrongFormat" };
   }

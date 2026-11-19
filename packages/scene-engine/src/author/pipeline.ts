@@ -1,11 +1,13 @@
 import type { NodeKind } from "@mufassall/scene-schema";
 import {
+  IMPORT_MAX_CASES,
   IMPORT_MAX_NODES,
   IMPORT_MAX_STEPS,
   IMPORT_MIN_STEPS,
   type ImportWarning,
   type ImportWarningCode,
   type KitBeat,
+  type KitCase,
   type KitEdge,
   type KitNode,
   LATTICE,
@@ -56,6 +58,14 @@ export interface PipelineJob {
   /** parallel copies; 0 when none */
   matrix: number;
   allowFailure: boolean;
+  /** GitLab `when: on_failure`, GitHub `if: failure()`: runs only after an earlier job failed */
+  onFailure: boolean;
+  /** automatic retries (GitLab `retry`); 0 when none */
+  retry: number;
+  /** GitLab `environment: { action: stop }`: the job that takes an environment down */
+  stopsEnv?: string;
+  /** runs only for tags (`only: [tags]`, `$CI_COMMIT_TAG` rules, `refs/tags` conditions) */
+  tagOnly: boolean;
   image?: string;
   script: string[];
 }
@@ -154,7 +164,7 @@ const GITLAB_RESERVED = new Set([
   "spec",
 ]);
 const GITLAB_JOB_KEYS = ["script", "run", "trigger", "extends", "stage", "needs"];
-const MERGED = ["stage", "needs", "environment", "services", "artifacts", "cache", "when", "rules", "only", "trigger", "image", "script", "parallel", "allow_failure"];
+const MERGED = ["stage", "needs", "environment", "services", "artifacts", "cache", "when", "rules", "only", "trigger", "image", "script", "parallel", "allow_failure", "retry"];
 
 const isGitlabJob = (k: string, v: unknown) => !GITLAB_RESERVED.has(k) && !k.startsWith(".") && isObj(v) && GITLAB_JOB_KEYS.some((j) => own(v, j));
 
@@ -233,6 +243,10 @@ function readGitlab(root: Obj): PipelineModel {
     const onlyRaw = job.only;
     const only = isObj(onlyRaw) ? strings(onlyRaw.refs) : strings(onlyRaw);
     const env = isObj(job.environment) ? str(job.environment.name) : str(job.environment);
+    const stops = isObj(job.environment) && job.environment.action === "stop";
+    const retryRaw = job.retry;
+    const retry = typeof retryRaw === "number" ? retryRaw : isObj(retryRaw) ? (typeof retryRaw.max === "number" ? retryRaw.max : 1) : 0;
+    const ruleIfs = rules.map((r) => (isObj(r) ? str(r.if) : "")).join(" ");
     const trig = job.trigger;
     const trigger = typeof trig === "string" ? trig : isObj(trig) ? str(trig.project) || (own(trig, "include") ? "child" : "") : "";
     const par = job.parallel;
@@ -254,6 +268,10 @@ function readGitlab(root: Obj): PipelineModel {
       ...(trigger ? { trigger } : {}),
       matrix: matrix > 1 ? matrix : 0,
       allowFailure: job.allow_failure === true || isObj(job.allow_failure),
+      onFailure: job.when === "on_failure" || rules.some((r) => isObj(r) && r.when === "on_failure"),
+      retry: Math.max(0, Math.min(retry, 9)),
+      ...(stops && env ? { stopsEnv: env } : {}),
+      tagOnly: only.includes("tags") || ruleIfs.includes("CI_COMMIT_TAG"),
       ...(image ? { image } : {}),
       script: strings(job.script ?? job.run).slice(0, 12),
     });
@@ -315,6 +333,9 @@ function readGithub(root: Obj): PipelineModel {
       ...(typeof j.uses === "string" ? { reusable: workflowName(j.uses) } : {}),
       matrix: matrixSize(strategy.matrix),
       allowFailure: j["continue-on-error"] === true,
+      onFailure: str(j.if).includes("failure()"),
+      retry: 0,
+      tagOnly: str(j.if).includes("refs/tags"),
       ...(container ? { image: container } : runsOn ? { image: `runs-on: ${runsOn}` } : {}),
       script: steps
         .map((s) => str(s.name) || str(s.run).split("\n")[0] || (str(s.uses) && `uses: ${str(s.uses)}`))
@@ -451,7 +472,7 @@ export function computeWaves(m: PipelineModel): Waves {
 
 /* ---------- texts ---------- */
 
-type NoteKey = "manual" | "rules" | "only" | "if" | "matrix" | "env" | "artifacts" | "services" | "trigger" | "reusable" | "allowFailure";
+type NoteKey = "manual" | "rules" | "only" | "if" | "matrix" | "env" | "artifacts" | "services" | "trigger" | "reusable" | "allowFailure" | "onFailure" | "retry";
 
 const T = {
   en: {
@@ -496,6 +517,8 @@ const T = {
       trigger: "starts another pipeline: {x}",
       reusable: "calls the reusable workflow {x}",
       allowFailure: "may fail without stopping the pipeline",
+      onFailure: "runs only after an earlier job fails",
+      retry: "is retried up to {x} times",
     } satisfies Record<NoteKey, string>,
     deployTitle: "Deploy: {x}",
     deployShort: "Deploy",
@@ -528,6 +551,46 @@ const T = {
     recapTitle: "Recap",
     recapBody: "{trigger} creates the pipeline. Then {waves} waves of jobs follow: inside a wave jobs run in parallel, and a wave starts when the jobs it needs are done.{targets} If a job fails, everything that waits for it stops until a retry.",
     recapTargets: " Results go to: {x}.",
+    caseOnFailure: "{job} runs after a failure",
+    onFailFailTitle: "{dep} fails",
+    onFailFailBody: "{dep} exits with an error. The jobs that wait for it do not start, but {job} has {how}: it starts exactly now.",
+    onFailRunTitle: "{job} handles the failure",
+    onFailRunBody: "{job} runs only when an earlier job has failed, for example to notify the team, collect logs or clean up. On a green pipeline it never starts. The pipeline stays red: {job} reports the failure, it does not repair it.",
+    caseAllowFail: "{job} fails, the pipeline goes on",
+    allowFailTitle: "{job} fails, and that is allowed",
+    allowFailBody: "{job} exits with an error, but it is marked {how}. The pipeline does not stop: it gets a warning sign instead of turning red.",
+    allowGoTitle: "The pipeline goes on",
+    allowGoNext: "{next} still start as if {job} had passed. A yellow warning is easy to miss: a job that keeps failing should be fixed or removed.",
+    allowGoAlone: "The other jobs finish as usual and the pipeline passes with a warning. A yellow warning is easy to miss: a job that keeps failing should be fixed or removed.",
+    caseRetry: "{job} is retried automatically",
+    retryFailTitle: "{job} fails on the first try",
+    retryFailBody: "The runner loses its network for a moment and {job} fails. retry: {n} tells the runner to start it again by itself, up to {n} more times, before the pipeline turns red.",
+    retryOkTitle: "The second attempt passes",
+    retryOkBody: "{job} runs again on a fresh runner and passes, and the pipeline continues. Retries help with flaky networks and runners; a real bug fails every attempt, so a retry only costs time there.",
+    caseManual: "Nobody presses Run on {job}",
+    manualIdleTitle: "{job} is never started",
+    manualIdleNext: "Nobody presses Run on {job}, so {next} never start and nothing behind this gate changes. A manual job is a decision point: the pipeline waits for a person, not for a machine.",
+    manualIdleAlone: "Nobody presses Run on {job}, so nothing behind this gate changes. A manual job is a decision point: the pipeline waits for a person, not for a machine.",
+    manualLateTitle: "Someone presses Run later",
+    manualLateBody: "Hours later someone presses Run: {job} starts from the same commit and the rest of the pipeline continues from there.",
+    caseApproval: "{job} waits for approval",
+    approvalWaitTitle: "{job} waits for a reviewer",
+    approvalWaitBody: "{job} deploys to the environment {env}. When that environment has protection rules (required reviewers, a wait timer), the job does not start until a person approves it.",
+    approvalOkTitle: "The deploy is approved",
+    approvalOkBody: "A reviewer approves the run and {job} starts. The approval is recorded next to the deployment, so it is clear who let which version into {env}.",
+    caseRollback: "Rollback of {env}",
+    badTitle: "The new version is broken",
+    badBody: "The deploy to {env} finishes, but the new version does not work: errors grow right after the release. The pipeline is green, the users see failures.",
+    rollTitle: "Roll back",
+    rollJob: "{rb} brings back the previous version on {env}. The fix then comes as a new commit and goes through the whole pipeline again.",
+    rollGitlab: "The previous successful deploy job is run again (Environments, Rollback). {env} is back on the old version; the fix then comes as a new commit and goes through the whole pipeline again.",
+    rollGithub: "The last good workflow run is re-run, so {env} gets the previous version back. The fix then comes as a new commit and goes through the whole pipeline again.",
+    caseTag: "A pipeline for a tag",
+    tagTitle: "A tag is pushed",
+    tagBody: "A release tag starts the pipeline. Now {jobs} also run: their rules match only tags, so on ordinary pushes they are skipped.",
+    caseBranch: "A pipeline on another branch",
+    branchTitle: "Another branch",
+    branchBody: "A push to a feature branch starts a smaller pipeline: {jobs} have rules (only, rules or if) that do not match here, so they are skipped. The other jobs run as usual.",
   },
   ru: {
     title: "CI-пайплайн: {name}",
@@ -571,6 +634,8 @@ const T = {
       trigger: "запускает другой пайплайн: {x}",
       reusable: "вызывает переиспользуемый workflow {x}",
       allowFailure: "может упасть, не останавливая пайплайн",
+      onFailure: "запускается, только если упала задача раньше",
+      retry: "перезапускается до {x} раз",
     } satisfies Record<NoteKey, string>,
     deployTitle: "Деплой: {x}",
     deployShort: "Деплой",
@@ -603,6 +668,46 @@ const T = {
     recapTitle: "Итог",
     recapBody: "{trigger} создаёт пайплайн. Дальше идут волны задач ({waves}): внутри волны задачи работают параллельно, а волна стартует, когда готово всё, что ей нужно.{targets} Если задача падает, всё, что её ждёт, стоит до повтора.",
     recapTargets: " Результаты уходят в: {x}.",
+    caseOnFailure: "{job} после сбоя",
+    onFailFailTitle: "{dep} падает",
+    onFailFailBody: "{dep} завершается с ошибкой. Задачи, которые её ждут, не стартуют, но у {job} стоит {how}: она стартует именно сейчас.",
+    onFailRunTitle: "{job} обрабатывает сбой",
+    onFailRunBody: "{job} запускается, только если раньше упала другая задача, например чтобы оповестить команду, собрать логи или прибрать за собой. В зелёном пайплайне она не стартует. Пайплайн остаётся красным: {job} сообщает о сбое, но не исправляет его.",
+    caseAllowFail: "{job} падает, пайплайн идёт дальше",
+    allowFailTitle: "{job} падает, и это разрешено",
+    allowFailBody: "{job} завершается с ошибкой, но у неё стоит {how}. Пайплайн не останавливается: вместо красного статуса он получает предупреждение.",
+    allowGoTitle: "Пайплайн идёт дальше",
+    allowGoNext: "{next} всё равно стартуют, будто {job} прошла. Жёлтое предупреждение легко пропустить: задачу, которая падает постоянно, стоит починить или убрать.",
+    allowGoAlone: "Остальные задачи завершаются как обычно, пайплайн проходит с предупреждением. Жёлтое предупреждение легко пропустить: задачу, которая падает постоянно, стоит починить или убрать.",
+    caseRetry: "Автоповтор {job}",
+    retryFailTitle: "{job} падает с первой попытки",
+    retryFailBody: "У раннера на миг пропадает сеть, и {job} падает. retry: {n} велит раннеру запустить её снова самому, до {n} раз, прежде чем пайплайн станет красным.",
+    retryOkTitle: "Вторая попытка проходит",
+    retryOkBody: "{job} запускается заново на чистом раннере и проходит, пайплайн продолжается. Повторы спасают от нестабильной сети и раннеров; настоящая ошибка падает каждый раз, и повтор там лишь тратит время.",
+    caseManual: "Никто не нажимает Run у {job}",
+    manualIdleTitle: "{job} так и не запускают",
+    manualIdleNext: "Никто не нажимает Run у {job}, поэтому {next} не стартуют и за этими воротами ничего не меняется. Ручная задача — точка решения: пайплайн ждёт человека, а не машину.",
+    manualIdleAlone: "Никто не нажимает Run у {job}, поэтому за этими воротами ничего не меняется. Ручная задача — точка решения: пайплайн ждёт человека, а не машину.",
+    manualLateTitle: "Run нажимают позже",
+    manualLateBody: "Через несколько часов кто-то нажимает Run: {job} стартует с того же коммита, и остальной пайплайн продолжается с этого места.",
+    caseApproval: "{job} ждёт одобрения",
+    approvalWaitTitle: "{job} ждёт ревьюера",
+    approvalWaitBody: "{job} деплоит в окружение {env}. Если у окружения есть правила защиты (обязательные ревьюеры, таймер ожидания), задача не стартует, пока человек её не одобрит.",
+    approvalOkTitle: "Деплой одобрен",
+    approvalOkBody: "Ревьюер одобряет запуск, и {job} стартует. Одобрение записывается рядом с деплоем: видно, кто пустил какую версию в {env}.",
+    caseRollback: "Откат {env}",
+    badTitle: "Новая версия сломана",
+    badBody: "Деплой в {env} завершился, но новая версия не работает: сразу после релиза растут ошибки. Пайплайн зелёный, а пользователи видят сбои.",
+    rollTitle: "Откат",
+    rollJob: "{rb} возвращает в {env} предыдущую версию. Исправление потом приходит новым коммитом и снова проходит весь пайплайн.",
+    rollGitlab: "Предыдущая успешная задача деплоя запускается снова (Environments, Rollback). В {env} снова старая версия; исправление потом приходит новым коммитом и снова проходит весь пайплайн.",
+    rollGithub: "Последний удачный запуск workflow перезапускается, и {env} получает предыдущую версию. Исправление потом приходит новым коммитом и снова проходит весь пайплайн.",
+    caseTag: "Пайплайн для тега",
+    tagTitle: "Пушат тег",
+    tagBody: "Пайплайн запускает релизный тег. Теперь выполняются и {jobs}: их правила совпадают только для тегов, при обычных пушах они пропускаются.",
+    caseBranch: "Пайплайн в другой ветке",
+    branchTitle: "Другая ветка",
+    branchBody: "Пуш в feature-ветку запускает пайплайн поменьше: у {jobs} есть правила (only, rules или if), которые здесь не совпадают, и они пропускаются. Остальные задачи идут как обычно.",
   },
   uz: {
     title: "CI pipeline: {name}",
@@ -646,6 +751,8 @@ const T = {
       trigger: "boshqa pipeline'ni ishga tushiradi: {x}",
       reusable: "qayta ishlatiladigan {x} workflow'ini chaqiradi",
       allowFailure: "pipeline'ni to'xtatmasdan yiqilishi mumkin",
+      onFailure: "faqat oldingi job yiqilsa ishga tushadi",
+      retry: "{x} martagacha qayta ishga tushiriladi",
     } satisfies Record<NoteKey, string>,
     deployTitle: "Deploy: {x}",
     deployShort: "Deploy",
@@ -678,6 +785,46 @@ const T = {
     recapTitle: "Xulosa",
     recapBody: "{trigger} pipeline'ni yaratadi. Keyin job'lar to'lqinlari ({waves}) keladi: to'lqin ichida job'lar parallel ishlaydi, to'lqin esa kerakli job'lar tugagach boshlanadi.{targets} Job yiqilsa, uni kutayotgan hamma narsa qayta ishga tushirilguncha to'xtaydi.",
     recapTargets: " Natijalar boradi: {x}.",
+    caseOnFailure: "Xatodan keyin {job}",
+    onFailFailTitle: "{dep} yiqiladi",
+    onFailFailBody: "{dep} xato bilan tugaydi. Uni kutayotgan job'lar boshlanmaydi, lekin {job} da {how} bor: u aynan hozir boshlanadi.",
+    onFailRunTitle: "{job} xatoni qayta ishlaydi",
+    onFailRunBody: "{job} faqat oldingi job yiqilganda ishga tushadi, masalan jamoaga xabar berish, loglarni yig'ish yoki tozalash uchun. Yashil pipeline'da u hech qachon boshlanmaydi. Pipeline qizilligicha qoladi: {job} xato haqida xabar beradi, uni tuzatmaydi.",
+    caseAllowFail: "{job} yiqiladi, pipeline davom etadi",
+    allowFailTitle: "{job} yiqiladi, bunga ruxsat bor",
+    allowFailBody: "{job} xato bilan tugaydi, lekin unda {how} belgilangan. Pipeline to'xtamaydi: qizil bo'lish o'rniga ogohlantirish belgisini oladi.",
+    allowGoTitle: "Pipeline davom etadi",
+    allowGoNext: "{next} xuddi {job} o'tgandek baribir boshlanadi. Sariq ogohlantirishni o'tkazib yuborish oson: doim yiqiladigan job tuzatilishi yoki olib tashlanishi kerak.",
+    allowGoAlone: "Qolgan job'lar odatdagidek tugaydi va pipeline ogohlantirish bilan o'tadi. Sariq ogohlantirishni o'tkazib yuborish oson: doim yiqiladigan job tuzatilishi yoki olib tashlanishi kerak.",
+    caseRetry: "{job} avtomatik qayta ishga tushadi",
+    retryFailTitle: "{job} birinchi urinishda yiqiladi",
+    retryFailBody: "Runner'da bir lahzaga tarmoq uziladi va {job} yiqiladi. retry: {n} runner'ga uni o'zi qayta ishga tushirishni aytadi, pipeline qizil bo'lishidan oldin {n} martagacha.",
+    retryOkTitle: "Ikkinchi urinish o'tadi",
+    retryOkBody: "{job} toza runner'da qayta ishlaydi va o'tadi, pipeline davom etadi. Qayta urinish beqaror tarmoq va runner'lardan saqlaydi; haqiqiy xato har safar yiqiladi, u yerda qayta urinish faqat vaqt oladi.",
+    caseManual: "{job} da hech kim Run bosmaydi",
+    manualIdleTitle: "{job} ishga tushirilmaydi",
+    manualIdleNext: "{job} da hech kim Run bosmaydi, shuning uchun {next} boshlanmaydi va bu darvozadan keyin hech narsa o'zgarmaydi. Qo'lda ishga tushadigan job — qaror nuqtasi: pipeline mashinani emas, odamni kutadi.",
+    manualIdleAlone: "{job} da hech kim Run bosmaydi, shuning uchun bu darvozadan keyin hech narsa o'zgarmaydi. Qo'lda ishga tushadigan job — qaror nuqtasi: pipeline mashinani emas, odamni kutadi.",
+    manualLateTitle: "Keyinroq kimdir Run bosadi",
+    manualLateBody: "Bir necha soatdan keyin kimdir Run bosadi: {job} o'sha commit'dan boshlanadi va pipeline'ning qolgan qismi shu joydan davom etadi.",
+    caseApproval: "{job} tasdiqni kutadi",
+    approvalWaitTitle: "{job} tekshiruvchini kutadi",
+    approvalWaitBody: "{job} {env} muhitiga deploy qiladi. Bu muhitda himoya qoidalari (majburiy tekshiruvchilar, kutish taymeri) bo'lsa, odam tasdiqlamaguncha job boshlanmaydi.",
+    approvalOkTitle: "Deploy tasdiqlandi",
+    approvalOkBody: "Tekshiruvchi ishga tushirishni tasdiqlaydi va {job} boshlanadi. Tasdiq deploy yonida yoziladi: {env} ga qaysi versiyani kim kiritgani ko'rinadi.",
+    caseRollback: "{env} ni orqaga qaytarish",
+    badTitle: "Yangi versiya buzuq",
+    badBody: "{env} ga deploy tugadi, lekin yangi versiya ishlamayapti: relizdan keyin darhol xatolar ko'payadi. Pipeline yashil, foydalanuvchilar esa xatolarni ko'radi.",
+    rollTitle: "Orqaga qaytarish",
+    rollJob: "{rb} {env} ga oldingi versiyani qaytaradi. Tuzatish keyin yangi commit bo'lib keladi va butun pipeline'dan yana o'tadi.",
+    rollGitlab: "Oldingi muvaffaqiyatli deploy job'i qayta ishga tushiriladi (Environments, Rollback). {env} yana eski versiyada; tuzatish keyin yangi commit bo'lib keladi va butun pipeline'dan yana o'tadi.",
+    rollGithub: "Oxirgi muvaffaqiyatli workflow qayta ishga tushiriladi va {env} oldingi versiyani qaytarib oladi. Tuzatish keyin yangi commit bo'lib keladi va butun pipeline'dan yana o'tadi.",
+    caseTag: "Teg uchun pipeline",
+    tagTitle: "Teg push qilinadi",
+    tagBody: "Reliz tegi pipeline'ni boshlaydi. Endi {jobs} ham ishlaydi: ularning qoidalari faqat teglarga mos keladi, oddiy push'larda ular o'tkazib yuboriladi.",
+    caseBranch: "Boshqa branch'dagi pipeline",
+    branchTitle: "Boshqa branch",
+    branchBody: "Feature branch'ga push kichikroq pipeline'ni boshlaydi: {jobs} ning qoidalari (only, rules yoki if) bu yerda mos kelmaydi, shuning uchun ular o'tkazib yuboriladi. Qolgan job'lar odatdagidek ishlaydi.",
   },
 } satisfies Record<AuthorLang, unknown>;
 
@@ -878,7 +1025,10 @@ export function pipelineToDraft(m: PipelineModel): PipelineImport {
     else waveBeats[waveBeats.length - 1]!.push(l);
   }
   if (levels > waveBudget) warn("maxSteps", String(levels - waveBudget));
+  /** wave level -> index of the beat that tells it, for the cases that branch there */
+  const waveBeatAt = new Map<number, number>();
   for (const ls of waveBeats) {
+    for (const l of ls) waveBeatAt.set(l, beats.length);
     const gs = groups.filter((g) => ls.includes(g.level));
     const jobs = gs.flatMap((g) => g.jobs);
     const names = jobs.map(jobName);
@@ -905,6 +1055,8 @@ export function pipelineToDraft(m: PipelineModel): PipelineImport {
         if (j.trigger) add("trigger", j.trigger === "child" ? s.child : j.trigger);
         if (j.reusable) add("reusable", j.reusable);
         if (j.allowFailure) add("allowFailure");
+        if (j.onFailure) add("onFailure");
+        if (j.retry) add("retry", String(j.retry));
         if (list.length) out += ` ${j.name}: ${list.join("; ")}.`;
       }
       return out;
@@ -939,6 +1091,7 @@ export function pipelineToDraft(m: PipelineModel): PipelineImport {
   }
 
   // where results go: one beat per kind of target
+  let deployBeat = -1;
   const targetBeat = (group: Target["group"]) => {
     const ts = workTargets.filter((t) => t.group === group);
     if (!ts.length) return;
@@ -958,6 +1111,7 @@ export function pipelineToDraft(m: PipelineModel): PipelineImport {
             ? { head: `service: ${t0.name}`, body: `job: ${u0?.name ?? ""}` }
             : { head: t0.key === "store:cache" ? "save cache" : "upload artifacts", body: `job: ${u0?.name ?? ""}` };
     const res = group === "env" ? "deployment recorded" : group === "ext" ? "downstream pipeline created" : group === "svc" ? "service ready" : "stored";
+    if (group === "env") deployBeat = beats.length;
     beats.push({
       idBase: group === "env" ? "deploy" : group === "ext" ? "downstream" : group === "svc" ? "services" : "artifacts",
       kind: manual ? "problem" : "case",
@@ -1070,6 +1224,8 @@ export function pipelineToDraft(m: PipelineModel): PipelineImport {
     });
   }
   if (beats.length > IMPORT_MAX_STEPS - 1) warn("maxSteps", String(beats.length - (IMPORT_MAX_STEPS - 1)));
+  const cases = pipelineCases({ m, waves, groups, groupOf, edges, keptTargets, waveBeatAt, deployBeat });
+  if (cases.length > IMPORT_MAX_CASES) warn("maxSteps", String(cases.length - IMPORT_MAX_CASES));
 
   const resultNames = (l: AuthorLang) => workTargets.map((t) => t.label[l]);
   const draft = buildDraft({
@@ -1081,6 +1237,7 @@ export function pipelineToDraft(m: PipelineModel): PipelineImport {
     nodes,
     edges,
     beats,
+    cases,
     recap: perLangOf((l) => {
       const s = T[l] as (typeof T)["en"];
       const targetsLine = workTargets.length ? fill(s.recapTargets, { x: listIn(resultNames(l), l, 6) }) : "";
@@ -1090,6 +1247,295 @@ export function pipelineToDraft(m: PipelineModel): PipelineImport {
   warn("translate");
   return { draft, warnings, kind: m.kind };
 }
+
+interface CaseCtx {
+  m: PipelineModel;
+  waves: Waves;
+  groups: Group[];
+  groupOf: Map<string, string>;
+  edges: KitEdge[];
+  keptTargets: { key: string; group: string; name: string }[];
+  waveBeatAt: Map<number, number>;
+  deployBeat: number;
+}
+
+/** per kind of case: enough to show the pattern without crowding the case list */
+const CASES_PER_KIND = 2;
+
+/**
+ * Alternative paths read from the YAML, each branching after the base beat where it starts:
+ * on-failure jobs, allowed failures, automatic retries, manual gates (GitLab) and environment
+ * approvals (GitHub), a rollback when something is deployed, tag-only and branch-only jobs.
+ */
+function pipelineCases(c: CaseCtx): KitCase[] {
+  const { m, waves } = c;
+  const out: KitCase[] = [];
+  const gl = m.kind === "gitlab-ci";
+  const groupOf = (j: PipelineJob) => c.groupOf.get(j.key);
+  const beatOf = (j: PipelineJob) => c.waveBeatAt.get(waves.level.get(j.key) ?? -1);
+  const into = (g: string) => c.edges.find((e) => e.to === g)?.key;
+  const outOf = (g: string) => c.edges.filter((e) => e.from === g);
+  const waiters = (j: PipelineJob) => m.jobs.filter((x) => (waves.deps.get(x.key) ?? []).includes(j.key));
+  const shown = m.jobs.filter((j) => groupOf(j) !== undefined && beatOf(j) !== undefined);
+  const say = (f: (s: (typeof T)["en"], l: AuthorLang) => { title: string; short: string; body: string; watch?: string }) =>
+    perLangOf((l) => f(T[l] as (typeof T)["en"], l));
+  const ex = (edge: string | undefined, head: string, res: string, body?: string) =>
+    edge ? { exchange: { edge, request: { format: "text" as const, head, ...(body ? { body } : {}) }, response: { format: "text" as const, head: res } } } : {};
+
+  // a job that runs only after a failure: an earlier job fails, then this one starts
+  for (const j of shown.filter((x) => x.onFailure).slice(0, CASES_PER_KIND)) {
+    const g = groupOf(j)!;
+    const dep = (waves.deps.get(j.key) ?? []).map((k) => m.jobs.find((x) => x.key === k)).find((x): x is PipelineJob => !!x && groupOf(x) !== undefined && beatOf(x) !== undefined);
+    if (!dep) continue;
+    const dg = groupOf(dep)!;
+    const how = gl ? "when: on_failure" : "if: failure()";
+    out.push({
+      idBase: `on-failure-${j.key}`,
+      from: beatOf(dep)!,
+      label: perLangOf((l) => fill(T[l].caseOnFailure, { job: j.name })),
+      beats: [
+        {
+          idBase: `${dep.key}-fails`,
+          kind: "problem",
+          focus: [dg],
+          states: { [dg]: "down" },
+          edgeChange: Object.fromEntries(outOf(dg).map((e) => [e.key, e.to === g ? { flow: "fail" as const } : { flow: "fail" as const, cut: true }])),
+          ...ex(into(dg), `job: ${dep.name}`, "job failed: exit code 1", jobBody(dep)),
+          text: say((s) => ({ title: fill(s.onFailFailTitle, { dep: dep.name }), short: s.failShort, body: fill(s.onFailFailBody, { dep: dep.name, job: j.name, how }) })),
+        },
+        {
+          idBase: `${j.key}-runs`,
+          kind: "fix",
+          focus: [g],
+          states: { [dg]: "down" },
+          ...ex(c.edges.find((e) => e.from === dg && e.to === g)?.key ?? into(g), `job: ${j.name}`, "job succeeded", jobBody(j)),
+          text: say((s) => ({ title: fill(s.onFailRunTitle, { job: j.name }), short: clip(j.name, 24), body: fill(s.onFailRunBody, { job: j.name }) })),
+        },
+      ],
+    });
+  }
+
+  // allowed to fail: the job goes red, the pipeline does not
+  for (const j of shown.filter((x) => x.allowFailure && !x.onFailure).slice(0, CASES_PER_KIND)) {
+    const g = groupOf(j)!;
+    const how = gl ? "allow_failure: true" : "continue-on-error: true";
+    const next = waiters(j).filter((x) => groupOf(x));
+    out.push({
+      idBase: `allowed-failure-${j.key}`,
+      from: beatOf(j)!,
+      label: perLangOf((l) => fill(T[l].caseAllowFail, { job: j.name })),
+      beats: [
+        {
+          idBase: `${j.key}-fails`,
+          kind: "problem",
+          focus: [g],
+          states: { [g]: "down" },
+          ...ex(into(g), `job: ${j.name}`, "job failed: allowed to fail", jobBody(j)),
+          text: say((s) => ({ title: fill(s.allowFailTitle, { job: j.name }), short: s.failShort, body: fill(s.allowFailBody, { job: j.name, how }) })),
+        },
+        {
+          idBase: `${j.key}-goes-on`,
+          kind: "case",
+          focus: next.length ? [...new Set(next.map((x) => groupOf(x)!))] : [g],
+          states: { [g]: "down" },
+          ...ex(next.length ? into(groupOf(next[0]!)!) : into(g), next.length ? `job: ${next[0]!.name}` : "pipeline", next.length ? "job succeeded" : "passed with warnings"),
+          text: say((s, l) => ({
+            title: s.allowGoTitle,
+            short: s.allowGoTitle,
+            body: next.length ? fill(s.allowGoNext, { next: listIn(next.map((x) => x.name), l), job: j.name }) : s.allowGoAlone,
+          })),
+        },
+      ],
+    });
+  }
+
+  // automatic retry
+  for (const j of shown.filter((x) => x.retry > 0).slice(0, CASES_PER_KIND)) {
+    const g = groupOf(j)!;
+    const e = into(g);
+    out.push({
+      idBase: `retry-${j.key}`,
+      from: beatOf(j)!,
+      label: perLangOf((l) => fill(T[l].caseRetry, { job: j.name })),
+      beats: [
+        {
+          idBase: `${j.key}-attempt-1`,
+          kind: "problem",
+          focus: [g],
+          states: { [g]: "down" },
+          ...(e ? { edgeChange: { [e]: { flow: "fail" as const } } } : {}),
+          ...ex(e, `job: ${j.name}`, "job failed: runner system failure", jobBody(j)),
+          text: say((s) => ({ title: fill(s.retryFailTitle, { job: j.name }), short: s.failShort, body: fill(s.retryFailBody, { job: j.name, n: j.retry }) })),
+        },
+        {
+          idBase: `${j.key}-attempt-2`,
+          kind: "fix",
+          focus: [g],
+          ...(e ? { edgeChange: { [e]: { flow: "retry" as const } } } : {}),
+          ...ex(e, `retry ${2}/${j.retry + 1}: ${j.name}`, "job succeeded"),
+          text: say((s) => ({ title: s.retryOkTitle, short: s.retryShort, body: fill(s.retryOkBody, { job: j.name }) })),
+        },
+      ],
+    });
+  }
+
+  // a gate: GitLab `when: manual`; GitHub deployments to a protected-looking environment
+  const gate = (j: PipelineJob) => j.manual || (!gl && !!j.environment && isProtectedName(j.environment));
+  for (const j of shown.filter(gate).slice(0, CASES_PER_KIND)) {
+    const g = groupOf(j)!;
+    const e = into(g);
+    const next = waiters(j).filter((x) => groupOf(x));
+    const blocked = outOf(g);
+    if (j.manual) {
+      out.push({
+        idBase: `manual-${j.key}`,
+        from: beatOf(j)!,
+        label: perLangOf((l) => fill(T[l].caseManual, { job: j.name })),
+        beats: [
+          {
+            idBase: `${j.key}-not-run`,
+            kind: "problem",
+            focus: [g],
+            states: { [g]: "slow" },
+            edgeChange: Object.fromEntries(blocked.map((x) => [x.key, { cut: true }])),
+            ...ex(e, `job: ${j.name}`, "job waiting: manual", jobBody(j)),
+            text: say((s, l) => ({
+              title: fill(s.manualIdleTitle, { job: j.name }),
+              short: clip(j.name, 24),
+              body: next.length ? fill(s.manualIdleNext, { job: j.name, next: listIn(next.map((x) => x.name), l) }) : fill(s.manualIdleAlone, { job: j.name }),
+              watch: s.manualWatch,
+            })),
+          },
+          {
+            idBase: `${j.key}-run-later`,
+            kind: "fix",
+            focus: [g],
+            ...ex(e, `play job: ${j.name}`, "job succeeded"),
+            text: say((s) => ({ title: s.manualLateTitle, short: "Run", body: fill(s.manualLateBody, { job: j.name }) })),
+          },
+        ],
+      });
+    } else {
+      const env = j.environment!;
+      out.push({
+        idBase: `approval-${j.key}`,
+        from: beatOf(j)!,
+        label: perLangOf((l) => fill(T[l].caseApproval, { job: j.name })),
+        beats: [
+          {
+            idBase: `${j.key}-waits-review`,
+            kind: "problem",
+            focus: [g],
+            states: { [g]: "slow" },
+            edgeChange: Object.fromEntries(blocked.map((x) => [x.key, { cut: true }])),
+            ...ex(e, `job: ${j.name}`, "waiting for review", `environment: ${env}`),
+            text: say((s) => ({ title: fill(s.approvalWaitTitle, { job: j.name }), short: clip(env, 24), body: fill(s.approvalWaitBody, { job: j.name, env }) })),
+          },
+          {
+            idBase: `${j.key}-approved`,
+            kind: "fix",
+            focus: [g],
+            ...ex(e, `review: approved`, "job started", `environment: ${env}`),
+            text: say((s) => ({ title: s.approvalOkTitle, short: s.deployShort, body: fill(s.approvalOkBody, { job: j.name, env }) })),
+          },
+        ],
+      });
+    }
+  }
+
+  // rollback, after the deploy beat: the last environment is usually the one that matters most
+  const envTargets = c.keptTargets.filter((t) => t.group === "env");
+  const envT = envTargets[envTargets.length - 1];
+  if (envT && c.deployBeat >= 0) {
+    const env = envT.name;
+    const deployer = [...m.jobs].reverse().find((j) => j.environment === env && !j.stopsEnv && groupOf(j));
+    const rb = m.jobs.find((j) => groupOf(j) && (j.stopsEnv === env || isRollbackName(j.name)));
+    const dEdge = deployer ? c.edges.find((e) => e.from === groupOf(deployer) && e.to === envT.key)?.key : undefined;
+    const rEdge = (rb && c.edges.find((e) => e.from === groupOf(rb) && e.to === envT.key)?.key) ?? dEdge;
+    out.push({
+      idBase: `rollback-${env}`,
+      from: c.deployBeat,
+      label: perLangOf((l) => fill(T[l].caseRollback, { env })),
+      beats: [
+        {
+          idBase: `bad-release-${env}`,
+          kind: "problem",
+          focus: [envT.key],
+          states: { [envT.key]: "down" },
+          ...(dEdge ? { edgeChange: { [dEdge]: { flow: "fail" as const } } } : {}),
+          ...ex(dEdge, `deploy: ${env}`, "health check failed: 5xx", deployer ? `environment: ${env}\njob: ${deployer.name}` : `environment: ${env}`),
+          text: say((s) => ({ title: s.badTitle, short: s.failShort, body: fill(s.badBody, { env }) })),
+        },
+        {
+          idBase: `rollback-${env}`,
+          kind: "fix",
+          focus: [...(rb ? [groupOf(rb)!] : deployer ? [groupOf(deployer)!] : []), envT.key],
+          ...(rEdge ? { edgeChange: { [rEdge]: { flow: "retry" as const } } } : {}),
+          ...ex(rEdge, `rollback: ${env}`, "deployment recorded", `environment: ${env}\nversion: previous`),
+          text: say((s) => ({ title: s.rollTitle, short: s.rollTitle, body: rb ? fill(s.rollJob, { rb: rb.name, env }) : fill(gl ? s.rollGitlab : s.rollGithub, { env }) })),
+        },
+      ],
+    });
+  }
+
+  // jobs that only some refs run: the pipeline for a tag, and a smaller one on another branch
+  const restricted = shown.filter((j) => j.only.length || j.rules || j.condition);
+  const tagJobs = restricted.filter((j) => j.tagOnly);
+  const branchJobs = restricted.filter((j) => !j.tagOnly && !j.onFailure);
+  const start = (focus: PipelineJob[], cut: boolean) => ({
+    focus: [...new Set(focus.map((j) => groupOf(j)!))],
+    ...(cut ? { edgeChange: Object.fromEntries(focus.flatMap((j) => c.edges.filter((e) => e.to === groupOf(j)).map((e) => [e.key, { cut: true }]))) } : {}),
+  });
+  const trig = c.edges.find((e) => e.from === "trigger")?.key;
+  if (tagJobs.length && tagJobs.length < shown.length) {
+    out.push({
+      idBase: "tag-pipeline",
+      from: 0,
+      label: perLangOf((l) => T[l].caseTag),
+      beats: [
+        {
+          idBase: "tag-pushed",
+          kind: "case",
+          ...start(tagJobs, false),
+          ...ex(trig, gl ? "event: tag push" : "event: push (tag)", "pipeline created", gl ? "CI_COMMIT_TAG: v1.0.0" : "github.ref: refs/tags/v1.0.0"),
+          text: say((s, l) => ({ title: s.tagTitle, short: s.tagTitle, body: fill(s.tagBody, { jobs: listIn(tagJobs.map((j) => j.name), l) }) })),
+        },
+      ],
+    });
+  }
+  if (branchJobs.length && branchJobs.length < shown.length) {
+    out.push({
+      idBase: "other-branch",
+      from: 0,
+      label: perLangOf((l) => T[l].caseBranch),
+      beats: [
+        {
+          idBase: "feature-branch",
+          kind: "case",
+          ...start(branchJobs, true),
+          ...ex(trig, "event: push", "pipeline created", gl ? "CI_COMMIT_BRANCH: feature/login" : "github.ref: refs/heads/feature/login"),
+          text: say((s, l) => ({ title: s.branchTitle, short: s.branchTitle, body: fill(s.branchBody, { jobs: listIn(branchJobs.map((j) => j.name), l) }) })),
+        },
+      ],
+    });
+  }
+  return out;
+}
+
+/** Whole lowercase words of a name, Latin letters and digits only. Linear, no regex. */
+function words(name: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  for (const ch of name.toLowerCase()) {
+    const c = ch.charCodeAt(0);
+    if ((c >= 97 && c <= 122) || (c >= 48 && c <= 57)) cur += ch;
+    else if (cur) out.push(cur), (cur = "");
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+const isProtectedName = (env: string) => words(env).some((w) => w === "production" || w === "prod" || w === "live");
+const isRollbackName = (name: string) => words(name).some((w) => w === "rollback" || w === "revert" || w === "undeploy");
 
 function usesTarget(j: PipelineJob, key: string): boolean {
   if (key.startsWith("env:")) return j.environment === key.slice(4);

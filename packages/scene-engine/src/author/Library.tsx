@@ -28,6 +28,7 @@ export interface LibraryProps {
 
 interface Row extends SystemMeta {
   steps: number;
+  cases: number;
   draftTitle: string;
 }
 
@@ -86,7 +87,7 @@ export function Library({ lang, lessons = [], loadLesson }: LibraryProps) {
     () =>
       items.map((m) => {
         const d = loadSystem(m.id);
-        return { ...m, steps: d?.steps.length ?? 0, draftTitle: d ? (d.title[lang].trim() || "") : "" };
+        return { ...m, steps: d?.steps.length ?? 0, cases: d?.cases?.length ?? 0, draftTitle: d ? (d.title[lang].trim() || "") : "" };
       }),
     [items, lang],
   );
@@ -284,7 +285,7 @@ export function Library({ lang, lessons = [], loadLesson }: LibraryProps) {
                       <a href={editorHref(lang, m.id)}>{name}</a>
                     </h3>
                     <p className="mf-lab__muted mf-lib__meta">
-                      {fill(l.stepsN, { n: m.steps })} · {fill(l.updated, { date: formatStamp(m.updated) })}
+                      {fill(l.stepsN, { n: m.steps })} · {fill(l.casesN, { n: m.cases })} · {fill(l.updated, { date: formatStamp(m.updated) })}
                       {m.source && <> · {l.sources[m.source]}</>}
                     </p>
                   </div>
