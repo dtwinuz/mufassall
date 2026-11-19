@@ -29,6 +29,7 @@ for (const file of html(DIST)) {
   }
   const rel = relative(DIST, file).split(sep).join("/");
   if (rel === "404.html" || rel === "index.html") continue;
+  if (/<meta name="robots" content="noindex"/.test(text)) continue;
   pages.push(`${SITE}/${rel.replace(/index\.html$/, "")}`);
 }
 

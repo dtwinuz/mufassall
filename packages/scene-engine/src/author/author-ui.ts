@@ -136,7 +136,251 @@ export interface AuthorStrings {
     error: Record<BpmnErrorCode, string>;
     warning: Record<BpmnWarningCode, string>;
   };
+  /* "My systems" library, and the editor's link back to it */
+  library: LibraryStrings;
 }
+
+export interface LibraryStrings {
+  privacy: string;
+  heading: string;
+  countN: string;
+  empty: string;
+  untitled: string;
+  newTitle: string;
+  newBlank: string;
+  newPipeline: string;
+  newMermaid: string;
+  fromLesson: string;
+  lessonPick: string;
+  create: string;
+  stepsN: string;
+  updated: string;
+  sources: Record<"blank" | "bpmn" | "gitlab-ci" | "github-actions" | "mermaid" | "file" | "lesson" | "link", string>;
+  actionsFor: string;
+  open: string;
+  view: string;
+  duplicate: string;
+  copySuffix: string;
+  rename: string;
+  renameLabel: string;
+  save: string;
+  cancel: string;
+  delete: string;
+  deleteAsk: string;
+  deleteYes: string;
+  deleted: string;
+  share: string;
+  shareCopied: string;
+  shareTooLong: string;
+  shareFail: string;
+  exportAll: string;
+  importFile: string;
+  imported: string;
+  importDropped: string;
+  importSkipped: string;
+  importError: { tooLarge: string; notJson: string; wrongFormat: string; empty: string };
+  created: string;
+  openIt: string;
+  loading: string;
+  loadFail: string;
+  quota: string;
+  blocked: string;
+  missing: string;
+  /* editor */
+  back: string;
+  editing: string;
+  notFound: string;
+}
+
+/** Page head for `/<lang>/my/`. */
+export const LIBRARY_PAGE: Record<AuthorLang, { title: string; lead: string; nav: string; noscript: string }> = {
+  uz: {
+    title: "Mening tizimlarim",
+    lead: "Kompaniyangizdagi istalgan tizim yoki pipeline'ni o'zingiz qo'shing, to'ldiring va undan qadamma-qadam dars oling.",
+    nav: "Tizimlarim",
+    noscript: "Tizimlar kutubxonasi uchun JavaScript kerak.",
+  },
+  ru: {
+    title: "Мои системы",
+    lead: "Добавьте любую систему или пайплайн своей компании, заполните её и получите пошаговый урок.",
+    nav: "Мои системы",
+    noscript: "Для библиотеки систем нужен JavaScript.",
+  },
+  en: {
+    title: "My systems",
+    lead: "Add any system or pipeline of your company, fill it in, and get a step-by-step lesson out of it.",
+    nav: "My systems",
+    noscript: "The systems library needs JavaScript.",
+  },
+};
+
+export const LIBRARY_UI: Record<AuthorLang, LibraryStrings> = {
+  en: {
+    privacy: "Your systems stay in this browser. Nothing is sent anywhere unless you save a file or copy a link yourself.",
+    heading: "Systems",
+    countN: "{n} saved",
+    empty: "No systems yet. Start a blank one, import a BPMN diagram, a pipeline or a Mermaid chart, or begin from a lesson.",
+    untitled: "Untitled system",
+    newTitle: "New system",
+    newBlank: "Blank",
+    newPipeline: "From pipeline YAML",
+    newMermaid: "From Mermaid",
+    fromLesson: "From a lesson",
+    lessonPick: "Lesson",
+    create: "Create",
+    stepsN: "{n} steps",
+    updated: "updated {date}",
+    sources: { blank: "blank", bpmn: "BPMN", "gitlab-ci": "GitLab CI", "github-actions": "GitHub Actions", mermaid: "Mermaid", file: "file", lesson: "lesson", link: "link" },
+    actionsFor: "Actions for {title}",
+    open: "Open in editor",
+    view: "View as lesson",
+    duplicate: "Duplicate",
+    copySuffix: " (copy)",
+    rename: "Rename",
+    renameLabel: "New name",
+    save: "Save",
+    cancel: "Cancel",
+    delete: "Delete",
+    deleteAsk: "Delete “{title}”? This cannot be undone.",
+    deleteYes: "Yes, delete",
+    deleted: "Deleted “{title}”.",
+    share: "Copy link",
+    shareCopied: "Link copied. It carries the whole system: send it only to people who may see it.",
+    shareTooLong: "This system is too large for a link: use a file instead.",
+    shareFail: "Could not copy the link.",
+    exportAll: "Export all (.json)",
+    importFile: "Import file",
+    imported: "Imported: {n}.",
+    importDropped: "{n} entries were not a valid system and were skipped.",
+    importSkipped: "At most 50 systems per file: {n} were not imported.",
+    importError: {
+      tooLarge: "The file is too large (over 5 MB).",
+      notJson: "This file is not JSON.",
+      wrongFormat: "This is not a systems file (.mufassall.json).",
+      empty: "The file has no systems.",
+    },
+    created: "Created “{title}”.",
+    openIt: "Open it",
+    loading: "Loading…",
+    loadFail: "Could not load the lesson.",
+    quota: "The browser storage is full, so this was not saved. Export a file and delete systems you no longer need.",
+    blocked: "This browser does not keep systems (storage is blocked). Save a file before you leave the page.",
+    missing: "This system no longer exists.",
+    back: "My systems",
+    editing: "System: {title}",
+    notFound: "That system was not found, so the most recent one is open.",
+  },
+  ru: {
+    privacy: "Ваши системы хранятся только в этом браузере. Ничего никуда не отправляется, пока вы сами не сохраните файл или не скопируете ссылку.",
+    heading: "Системы",
+    countN: "Сохранено: {n}",
+    empty: "Систем пока нет. Начните с пустой, импортируйте BPMN, пайплайн или схему Mermaid, либо возьмите за основу урок.",
+    untitled: "Система без названия",
+    newTitle: "Новая система",
+    newBlank: "Пустая",
+    newPipeline: "Из YAML пайплайна",
+    newMermaid: "Из Mermaid",
+    fromLesson: "Из урока",
+    lessonPick: "Урок",
+    create: "Создать",
+    stepsN: "Шагов: {n}",
+    updated: "изменено {date}",
+    sources: { blank: "пустая", bpmn: "BPMN", "gitlab-ci": "GitLab CI", "github-actions": "GitHub Actions", mermaid: "Mermaid", file: "файл", lesson: "урок", link: "ссылка" },
+    actionsFor: "Действия для {title}",
+    open: "Открыть в редакторе",
+    view: "Смотреть как урок",
+    duplicate: "Дублировать",
+    copySuffix: " (копия)",
+    rename: "Переименовать",
+    renameLabel: "Новое название",
+    save: "Сохранить",
+    cancel: "Отмена",
+    delete: "Удалить",
+    deleteAsk: "Удалить «{title}»? Это нельзя отменить.",
+    deleteYes: "Да, удалить",
+    deleted: "«{title}» удалена.",
+    share: "Скопировать ссылку",
+    shareCopied: "Ссылка скопирована. В ней вся система: отправляйте её только тем, кому можно её видеть.",
+    shareTooLong: "Система слишком большая для ссылки: используйте файл.",
+    shareFail: "Не удалось скопировать ссылку.",
+    exportAll: "Выгрузить все (.json)",
+    importFile: "Загрузить файл",
+    imported: "Загружено: {n}.",
+    importDropped: "Пропущено записей без корректной системы: {n}.",
+    importSkipped: "Не больше 50 систем в файле: не загружено {n}.",
+    importError: {
+      tooLarge: "Файл слишком большой (больше 5 МБ).",
+      notJson: "Это не JSON.",
+      wrongFormat: "Это не файл систем (.mufassall.json).",
+      empty: "В файле нет систем.",
+    },
+    created: "Создана «{title}».",
+    openIt: "Открыть",
+    loading: "Загрузка…",
+    loadFail: "Не удалось загрузить урок.",
+    quota: "Хранилище браузера заполнено, изменения не сохранены. Выгрузите файл и удалите ненужные системы.",
+    blocked: "Этот браузер не хранит системы (хранилище заблокировано). Сохраните файл, прежде чем закрыть страницу.",
+    missing: "Этой системы больше нет.",
+    back: "Мои системы",
+    editing: "Система: {title}",
+    notFound: "Эта система не найдена, открыта последняя.",
+  },
+  uz: {
+    privacy: "Tizimlaringiz faqat shu brauzerda saqlanadi. Faylni o'zingiz saqlamaguningizcha yoki havolani nusxalamaguningizcha hech narsa hech qayerga yuborilmaydi.",
+    heading: "Tizimlar",
+    countN: "{n} ta saqlangan",
+    empty: "Hozircha tizim yo'q. Bo'sh tizimdan boshlang, BPMN, pipeline yoki Mermaid sxemasini import qiling yoki darsdan boshlang.",
+    untitled: "Nomsiz tizim",
+    newTitle: "Yangi tizim",
+    newBlank: "Bo'sh",
+    newPipeline: "Pipeline YAML dan",
+    newMermaid: "Mermaid dan",
+    fromLesson: "Darsdan",
+    lessonPick: "Dars",
+    create: "Yaratish",
+    stepsN: "{n} ta qadam",
+    updated: "{date} da o'zgartirilgan",
+    sources: { blank: "bo'sh", bpmn: "BPMN", "gitlab-ci": "GitLab CI", "github-actions": "GitHub Actions", mermaid: "Mermaid", file: "fayl", lesson: "dars", link: "havola" },
+    actionsFor: "{title} uchun amallar",
+    open: "Muharrirda ochish",
+    view: "Dars sifatida ko'rish",
+    duplicate: "Nusxa yaratish",
+    copySuffix: " (nusxa)",
+    rename: "Nomini o'zgartirish",
+    renameLabel: "Yangi nom",
+    save: "Saqlash",
+    cancel: "Bekor qilish",
+    delete: "O'chirish",
+    deleteAsk: "“{title}” o'chirilsinmi? Buni qaytarib bo'lmaydi.",
+    deleteYes: "Ha, o'chirish",
+    deleted: "“{title}” o'chirildi.",
+    share: "Havolani nusxalash",
+    shareCopied: "Havola nusxalandi. Unda butun tizim bor: faqat ko'rishi mumkin bo'lgan odamlarga yuboring.",
+    shareTooLong: "Tizim havola uchun juda katta: fayldan foydalaning.",
+    shareFail: "Havolani nusxalab bo'lmadi.",
+    exportAll: "Hammasini eksport qilish (.json)",
+    importFile: "Fayldan import",
+    imported: "Import qilindi: {n} ta.",
+    importDropped: "{n} ta yozuv to'g'ri tizim emas edi va o'tkazib yuborildi.",
+    importSkipped: "Bitta faylda ko'pi bilan 50 ta tizim: {n} tasi import qilinmadi.",
+    importError: {
+      tooLarge: "Fayl juda katta (5 MB dan ortiq).",
+      notJson: "Bu fayl JSON emas.",
+      wrongFormat: "Bu tizimlar fayli emas (.mufassall.json).",
+      empty: "Faylda tizim yo'q.",
+    },
+    created: "“{title}” yaratildi.",
+    openIt: "Ochish",
+    loading: "Yuklanmoqda…",
+    loadFail: "Darsni yuklab bo'lmadi.",
+    quota: "Brauzer xotirasi to'lgan, shuning uchun saqlanmadi. Faylni eksport qiling va keraksiz tizimlarni o'chiring.",
+    blocked: "Bu brauzer tizimlarni saqlamaydi (xotira bloklangan). Sahifadan chiqishdan oldin faylni saqlang.",
+    missing: "Bu tizim endi yo'q.",
+    back: "Mening tizimlarim",
+    editing: "Tizim: {title}",
+    notFound: "Bu tizim topilmadi, shuning uchun eng oxirgisi ochildi.",
+  },
+};
 
 /** Page head and nav label for the host page (the site strings are not edited from here). */
 export const AUTHOR_PAGE: Record<AuthorLang, { title: string; lead: string; nav: string; noscript: string }> = {
@@ -301,6 +545,7 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     fileTabs: "Files",
     previewBroken: "The draft cannot be shown yet: {x}",
     previewNote: "Preview of the main story in the selected text language.",
+    library: LIBRARY_UI.en,
     bpmn: {
       open: "Import BPMN",
       title: "Import a BPMN diagram",
@@ -480,6 +725,7 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     fileTabs: "Файлы",
     previewBroken: "Черновик пока нельзя показать: {x}",
     previewNote: "Просмотр основной истории на выбранном языке текста.",
+    library: LIBRARY_UI.ru,
     bpmn: {
       open: "Импорт BPMN",
       title: "Импорт диаграммы BPMN",
@@ -659,6 +905,7 @@ export const AUTHOR_UI: Record<AuthorLang, AuthorStrings> = {
     fileTabs: "Fayllar",
     previewBroken: "Qoralamani hozircha ko'rsatib bo'lmaydi: {x}",
     previewNote: "Tanlangan matn tilida asosiy hikoyaning ko'rinishi.",
+    library: LIBRARY_UI.uz,
     bpmn: {
       open: "BPMN import",
       title: "BPMN diagrammasini import qilish",

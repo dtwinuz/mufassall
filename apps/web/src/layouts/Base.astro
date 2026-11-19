@@ -21,14 +21,16 @@ interface Props {
   jsonLd?: object | object[];
   /** error page: no canonical/hreflang, noindex, language links go to each home page */
   notFound?: boolean;
-  active?: "learn" | "lab" | "glossary" | "review" | "test" | "tools" | "paths" | "me";
+  active?: "learn" | "lab" | "glossary" | "review" | "test" | "tools" | "paths" | "me" | "my";
+  /** private page (own systems): noindex, kept out of the sitemap */
+  noindex?: boolean;
 }
 
 const { lang, title, description, active = "learn" } = Astro.props;
 const s = site[lang];
 const pageTitle = title ? `${title} · mufassall` : `mufassall · ${s.tagline}`;
 const desc = description ?? s.description;
-const { image, jsonLd, notFound = false } = Astro.props;
+const { image, jsonLd, notFound = false, noindex = false } = Astro.props;
 const rest = notFound ? "/" : Astro.url.pathname.replace(/^\/(uz|ru|en)(?=\/)/, "");
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const OG_LOCALE: Record<Lang, string> = { uz: "uz_UZ", ru: "ru_RU", en: "en_US" };
@@ -43,7 +45,7 @@ const ldJson = jsonLd ? JSON.stringify(jsonLd).replace(/</g, "\\u003c") : undefi
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{pageTitle}</title>
     <meta name="description" content={desc} />
-    {notFound && <meta name="robots" content="noindex" />}
+    {(notFound || noindex) && <meta name="robots" content="noindex" />}
     {!notFound && <link rel="canonical" href={canonical.href} />}
     {!notFound && LANGS.map((l) => <link rel="alternate" hreflang={l} href={new URL(`/${l}${rest}`, Astro.site).href} />)}
     {!notFound && <link rel="alternate" hreflang="x-default" href={new URL(`/uz${rest}`, Astro.site).href} />}
@@ -91,6 +93,7 @@ const ldJson = jsonLd ? JSON.stringify(jsonLd).replace(/</g, "\\u003c") : undefi
           <a href={`/${lang}/test/`} aria-current={active === "test" ? "page" : undefined}>{test[lang].nav}</a>
           <a href={`/${lang}/me/`} aria-current={active === "me" ? "page" : undefined}>{me[lang].nav}</a>
           <a href={`/${lang}/paths/`} aria-current={active === "paths" ? "page" : undefined}>{s.learner.nav.paths}</a>
+          <a href={`/${lang}/my/`} aria-current={active === "my" ? "page" : undefined}>{s.learner.nav.my}</a>
           <a href={`/${lang}/tools/`} aria-current={active === "tools" ? "page" : undefined}>{s.learner.nav.tools}</a>
         </nav>
         <div class="site-tools">

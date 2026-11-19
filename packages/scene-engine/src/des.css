@@ -178,3 +178,9 @@
     transition: d 0.25s ease;
   }
 }
+
+.mf-des__fit {
+  margin-top: 6px;
+  align-self: flex-start;
+  font-size: 0.85em;
+}

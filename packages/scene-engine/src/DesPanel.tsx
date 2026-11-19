@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { nodeTargets } from "./chaos";
-import { DES_MAX_DURATION, type DesResult, TRAFFIC_PROFILES, type TrafficProfile, busiestNode, mulberry32, queueStory, simulateDes, spikeWindow } from "./des";
+import { DES_MAX_DURATION, type DesResult, TRAFFIC_PROFILES, type TrafficProfile, busiestNode, comfortableRps, mulberry32, queueStory, simulateDes, spikeWindow } from "./des";
 import { desStrings } from "./des-ui";
 import type { LabDoc } from "./lab";
 import { fill, formatNumber } from "./ui";
@@ -50,9 +50,14 @@ export function DesPanel({ doc, lang, rps }: { doc: LabDoc; lang: string; rps: n
   const num = (v: number, d = 0) => formatNumber(v, lang, d);
   const name = (id: string) => doc.labels[id] ?? id;
 
+  // an overloaded start never drains and hides the point of the panel, so start at 60% of the bottleneck
+  const startRps = (r: number) => {
+    const fit = comfortableRps(doc, r);
+    return clampInt(fit !== null && fit < r ? fit : r, 1, 20000);
+  };
   const [p, setP] = useState<Params>(() => ({
     profile: "spike",
-    rps: clampInt(rps, 1, 20000),
+    rps: startRps(rps),
     factor: 3,
     duration: 60,
     seed: 1,
@@ -64,7 +69,15 @@ export function DesPanel({ doc, lang, rps }: { doc: LabDoc; lang: string; rps: n
   const [result, setResult] = useState<DesResult | null>(null);
   const [pending, setPending] = useState(true);
   // the Lab's traffic slider sets the base rate; the reader can still type another one here
-  useEffect(() => setP((s) => ({ ...s, rps: clampInt(rps, 1, 20000) })), [rps]);
+  const firstRps = useRef(true);
+  useEffect(() => {
+    if (firstRps.current) {
+      firstRps.current = false;
+      return;
+    }
+    setP((s) => ({ ...s, rps: clampInt(rps, 1, 20000) }));
+  }, [rps]);
+  const fitRps = comfortableRps(doc, p.rps);
 
   const targets = useMemo(() => nodeTargets(doc), [doc]);
   const failNode = targets.includes(p.failNode) ? p.failNode : "";
@@ -208,6 +221,11 @@ export function DesPanel({ doc, lang, rps }: { doc: LabDoc; lang: string; rps: n
           <span>{t.rps}</span>
           {numberInput("rps", 1, 20000)}
         </label>
+        {fitRps !== null && fitRps !== p.rps && (
+          <button type="button" className="mf-btn mf-des__fit" onClick={() => set("rps", clampInt(fitRps, 1, 20000))}>
+            {fill(t.fit, { n: num(fitRps) })}
+          </button>
+        )}
         {p.profile !== "constant" && (
           <label>
             <span>{t.factor}</span>

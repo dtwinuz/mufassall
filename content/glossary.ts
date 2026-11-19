@@ -720,11 +720,11 @@ export const glossary: Term[] = [
     id: "api-gateway",
     term: { uz: "API gateway", ru: "API gateway", en: "API gateway" },
     short: {
-      uz: "Barcha servislar oldidagi bitta kirish eshigi: tokenni tekshiradi, rate limit qo'llaydi, request id qo'shadi va yo'l bo'yicha yo'naltiradi. Ichki tuzilmani klientlardan yashiradi.",
-      ru: "Единая входная дверь перед всеми сервисами: проверяет токен, применяет rate limit, добавляет request id и маршрутизирует по пути. Скрывает внутреннее устройство от клиентов.",
-      en: "One front door in front of all services: it checks the token, applies rate limits, adds a request id and routes by path. It hides the inside from clients.",
+      uz: "Barcha servislar oldidagi bitta kirish eshigi: host va path bo'yicha yo'naltiradi, TLS ni tugatadi, tokenni bir marta tekshiradi, kalit bo'yicha limit va kvotalarni qo'llaydi. Biznes mantiq unga kirmasligi kerak.",
+      ru: "Единая входная дверь перед всеми сервисами: маршрутизирует по host и path, завершает TLS, один раз проверяет токен, применяет лимиты и квоты по ключу. Бизнес-логике в нём не место.",
+      en: "One front door in front of all services: it routes by host and path, ends TLS, checks the token once and applies per-key limits and quotas. Business logic does not belong in it.",
     },
-    lesson: "microservices",
+    lesson: "api-gateway",
   },
   {
     id: "service-discovery",
@@ -2176,5 +2176,185 @@ export const glossary: Term[] = [
       en: "One hot counter split into several rows, each write changing a random row so locks spread out. The real value is the sum of the rows.",
     },
     lesson: "inventory-reservation",
+  },
+  {
+    id: "connection-pool",
+    term: { uz: "Ulanishlar pool'i (connection pool)", ru: "Пул соединений (connection pool)", en: "Connection pool" },
+    short: {
+      uz: "Bazaga ochiq ulanishlar to'plami: so'rov ulanishni qarzga oladi va qaytaradi, TCP, TLS va autentifikatsiya narxi har so'rovga emas, bir marta to'lanadi.",
+      ru: "Набор открытых соединений с базой: запрос берёт соединение и возвращает его, так что TCP, TLS и аутентификация оплачиваются один раз, а не на каждый запрос.",
+      en: "A set of open database connections that requests borrow and return, so TCP, TLS and authentication are paid once instead of on every request.",
+    },
+    lesson: "connection-pooling",
+  },
+  {
+    id: "littles-law",
+    term: { uz: "Little qonuni", ru: "Закон Литтла", en: "Little's law" },
+    short: {
+      uz: "Bir vaqtda jarayondagi ishlar soni tezlik ko'paytirilgan davomiylikka teng: soniyasiga 2 000 so'rov x 5 ms = 10 ta band ulanish.",
+      ru: "Число одновременно выполняемых задач равно скорости, умноженной на длительность: 2 000 запросов в секунду x 5 мс = 10 занятых соединений.",
+      en: "The number of things in progress equals the arrival rate times how long each takes: 2 000 requests a second x 5 ms = 10 busy connections.",
+    },
+    lesson: "connection-pooling",
+  },
+  {
+    id: "acquire-timeout",
+    term: { uz: "Acquire timeout", ru: "Acquire timeout (таймаут получения соединения)", en: "Acquire timeout" },
+    short: {
+      uz: "So'rov pool'dan bo'sh ulanishni qancha kutishi. Qisqa bo'lsa, ortiqcha yuk osilib qolgan so'rovlar o'rniga tez va qayta urinsa bo'ladigan xatolarga aylanadi.",
+      ru: "Сколько запрос ждёт свободное соединение из пула. Короткий таймаут превращает перегрузку в быстрые ошибки, которые можно повторить, а не в зависшие запросы.",
+      en: "How long a request waits for a free connection from the pool. A short one turns overload into fast, retryable errors instead of hanging requests.",
+    },
+    lesson: "connection-pooling",
+  },
+  {
+    id: "transaction-pooling",
+    term: { uz: "Transaction rejimidagi pooler", ru: "Пулер в режиме transaction", en: "Transaction pooling" },
+    short: {
+      uz: "Baza oldidagi pooler server ulanishini client'ga faqat bitta tranzaksiyaga beradi, shuning uchun ko'p client'ga oz ulanish yetadi; sessiya holati (prepared statement, SET, advisory lock) ishlamaydi.",
+      ru: "Пулер перед базой отдаёт серверное соединение клиенту только на одну транзакцию, поэтому многим клиентам хватает немногих соединений; сессионное состояние (prepared statements, SET, advisory-блокировки) не работает.",
+      en: "A pooler in front of the database lends a server connection to a client for one transaction only, so many clients share few connections; session state (prepared statements, SET, advisory locks) does not survive.",
+    },
+    lesson: "connection-pooling",
+  },
+  {
+    id: "graceful-shutdown",
+    term: { uz: "Graceful shutdown", ru: "Корректное завершение (graceful shutdown)", en: "Graceful shutdown" },
+    short: {
+      uz: "Jarayonni so'rovlarni uzmasdan to'xtatish: readiness false, balanserlarni kutish, qabul qilishni to'xtatish, boshlangan ishni muddat ichida tugatish, keyin chiqish.",
+      ru: "Остановка процесса без обрыва запросов: readiness в false, ожидание балансировщиков, прекращение приёма, завершение начатого с дедлайном, затем выход.",
+      en: "Stopping a process without cutting requests: readiness false, wait for the balancers, stop accepting, finish what started within a deadline, then exit.",
+    },
+    lesson: "graceful-shutdown",
+  },
+  {
+    id: "sigterm",
+    term: { uz: "SIGTERM va SIGKILL", ru: "SIGTERM и SIGKILL", en: "SIGTERM and SIGKILL" },
+    short: {
+      uz: "SIGTERM to'xtashga iltimos, ilova uni ushlab ishini tugatishi mumkin. Grace period tugaganda keladigan SIGKILL esa jarayonni joyida o'ldiradi va uni ushlab bo'lmaydi.",
+      ru: "SIGTERM — просьба остановиться, приложение может её перехватить и доделать работу. SIGKILL, приходящий по истечении grace period, убивает процесс на месте, перехватить его нельзя.",
+      en: "SIGTERM asks a process to stop and can be caught so the app finishes its work. SIGKILL, sent when the grace period ends, kills it on the spot and cannot be caught.",
+    },
+    lesson: "graceful-shutdown",
+  },
+  {
+    id: "readiness-probe",
+    term: { uz: "Readiness probe", ru: "Readiness-проба", en: "Readiness probe" },
+    short: {
+      uz: "Pod'ga hozir trafik yuborilsinmi degan savol. Yiqilsa pod rotatsiyadan chiqadi, lekin restart bo'lmaydi; warm-up'dan keyin va drain paytida ishlatiladi.",
+      ru: "Вопрос «слать ли сюда трафик сейчас». При провале под выводится из ротации, но не перезапускается; используется после прогрева и во время drain.",
+      en: "Asks whether a pod should get traffic now. Failing it takes the pod out of rotation without a restart; used after warm-up and while draining.",
+    },
+    lesson: "graceful-shutdown",
+  },
+  {
+    id: "liveness-probe",
+    term: { uz: "Liveness probe", ru: "Liveness-проба", en: "Liveness probe" },
+    short: {
+      uz: "Jarayon qotib qoldimi degan savol; yiqilsa konteyner restart bo'ladi. Bog'liqliklarni tekshirmasligi kerak, aks holda bazadagi uzilish hamma pod'ni restart siklga tushiradi.",
+      ru: "Вопрос «не завис ли процесс»; при провале контейнер перезапускается. Не должна проверять зависимости, иначе сбой базы отправит все поды в цикл перезапусков.",
+      en: "Asks whether the process is stuck; failing it restarts the container. It must not check dependencies, or a database blip sends every pod into a restart loop.",
+    },
+    lesson: "graceful-shutdown",
+  },
+  {
+    id: "connection-draining",
+    term: { uz: "Drain (ulanishlarni bo'shatish)", ru: "Drain (дренирование соединений)", en: "Connection draining" },
+    short: {
+      uz: "Yangi ulanishlarni qabul qilmay, ishlanayotgan so'rovlarni muddat ichida tugatish. Javoblar Connection: close bilan ketadi, muddatdan oshgani uziladi.",
+      ru: "Не принимать новые соединения и доделать запросы в работе в пределах дедлайна. Ответы уходят с Connection: close, всё, что не успело, обрывается.",
+      en: "Refusing new connections while finishing in-flight requests within a deadline. Responses carry Connection: close, and whatever overruns is cut.",
+    },
+    lesson: "graceful-shutdown",
+  },
+  {
+    id: "bff",
+    term: { uz: "BFF (backend for frontend)", ru: "BFF (backend for frontend)", en: "BFF (backend for frontend)" },
+    short: {
+      uz: "Bitta ekran yoki klient uchun kichik backend: bir nechta servisni ichkarida parallel chaqiradi va ekranga kerakli maydonlarni bitta javobda qaytaradi, ixtiyoriy qism yiqilsa qisman javob bilan.",
+      ru: "Небольшой бэкенд под один экран или клиент: параллельно вызывает несколько сервисов внутри и возвращает нужные экрану поля одним ответом, частичным, если упала необязательная часть.",
+      en: "A small backend for one screen or client: it calls several services in parallel inside and returns the fields the screen needs in one answer, a partial one when an optional part fails.",
+    },
+    lesson: "api-gateway",
+  },
+  {
+    id: "tls-termination",
+    term: { uz: "TLS termination", ru: "TLS termination (завершение TLS)", en: "TLS termination" },
+    short: {
+      uz: "Shifrlangan ulanishni klientdan keyingi birinchi bo'g'inda, odatda gateway yoki balancer'da ochish. Sertifikat bitta joyda yashaydi; ichkaridagi yo'l mTLS bilan alohida himoyalanadi.",
+      ru: "Расшифровка соединения на первом узле после клиента, обычно на gateway или балансировщике. Сертификат живёт в одном месте; участок внутри защищают отдельно, через mTLS.",
+      en: "Decrypting the client's connection at the first hop, usually a gateway or balancer. The certificate lives in one place; the hop inside is protected separately, with mTLS.",
+    },
+    lesson: "api-gateway",
+  },
+  {
+    id: "header-spoofing",
+    term: { uz: "Header spoofing", ru: "Подделка заголовков (header spoofing)", en: "Header spoofing" },
+    short: {
+      uz: "Klient ichki servis ishonadigan header'ni, masalan X-User-Id ni o'zi yuborib, boshqa odam nomidan ishlashi. Gateway bunday header'larni har marshrutdan oldin olib tashlashi, keyin o'zinikini qo'yishi kerak.",
+      ru: "Клиент сам присылает заголовок, которому доверяет внутренний сервис, например X-User-Id, и действует от чужого имени. Gateway должен вырезать такие заголовки до любого маршрута и лишь потом ставить свои.",
+      en: "A client sends a header that an internal service trusts, such as X-User-Id, and acts as someone else. The gateway must strip such headers before any route and only then set its own.",
+    },
+    lesson: "api-gateway",
+  },
+  {
+    id: "service-mesh",
+    term: { uz: "Service mesh", ru: "Service mesh", en: "Service mesh" },
+    short: {
+      uz: "Servislar orasidagi (east-west) trafik qatlami: har servis yonidagi sidecar proxy mTLS, qayta urinish va timeout'larni bajaradi. Klientlardan keladigan (north-south) trafik esa gateway'ning ishi.",
+      ru: "Слой для трафика между сервисами (east-west): sidecar-прокси рядом с каждым сервисом берёт на себя mTLS, ретраи и таймауты. Трафик от клиентов (north-south) остаётся задачей gateway.",
+      en: "A layer for traffic between services (east-west): a sidecar proxy next to each service handles mTLS, retries and timeouts. Traffic from clients (north-south) stays the gateway's job.",
+    },
+    lesson: "api-gateway",
+  },
+  {
+    id: "kyc",
+    term: { uz: "KYC (mijozni bilish)", ru: "KYC (знай своего клиента)", en: "KYC (know your customer)" },
+    short: {
+      uz: "Mijoz pul bilan ishlashidan oldin uning shaxsini hujjat, selfi va ro'yxatlar bo'yicha tekshirish jarayoni. Natijasi statusli ariza, audit izi va tekshiruv bosqichiga bog'langan limitlar.",
+      ru: "Проверка личности клиента по документу, селфи и спискам до того, как он начнёт работать с деньгами. Результат: заявка со статусами, аудиторский след и лимиты, привязанные к уровню проверки.",
+      en: "Checking a customer's identity by document, selfie and lists before they can move money. The result is an application with statuses, an audit trail and limits tied to the verification tier.",
+    },
+    lesson: "kyc-onboarding",
+  },
+  {
+    id: "liveness-check",
+    term: { uz: "Liveness tekshiruvi", ru: "Проверка liveness", en: "Liveness check" },
+    short: {
+      uz: "Selfi oldida rasm, ekran yoki niqob emas, tirik odam turganini tekshirish. Natija ball bo'ladi; chegaradan past ball arizani qo'lda tekshiruvga yuboradi.",
+      ru: "Проверка того, что перед камерой живой человек, а не фото, экран или маска. Результат это балл; балл ниже порога отправляет заявку на ручную проверку.",
+      en: "Checking that a live person, not a photo, a screen or a mask, is in front of the camera. The result is a score; a score below the threshold sends the application to manual review.",
+    },
+    lesson: "kyc-onboarding",
+  },
+  {
+    id: "sanctions-screening",
+    term: { uz: "Sanksiya skriningi", ru: "Санкционный скрининг", en: "Sanctions screening" },
+    short: {
+      uz: "Mijozning ismi va tug'ilgan sanasini sanksiya ro'yxatlari bilan noaniq solishtirish. Moslik avtomatik rad etmaydi, odamga yuboradi; ro'yxatlar o'zgargani uchun mijozlar muntazam qayta tekshiriladi.",
+      ru: "Нечёткое сравнение имени и даты рождения клиента с санкционными списками. Совпадение не отклоняет автоматически, а отправляет человеку; списки меняются, поэтому клиентов регулярно перепроверяют.",
+      en: "Fuzzy matching of a customer's name and birth date against sanctions lists. A match does not reject automatically, it goes to a person; lists change, so customers are re-screened regularly.",
+    },
+    lesson: "kyc-onboarding",
+  },
+  {
+    id: "pep",
+    term: { uz: "PEP (siyosiy ta'sirga ega shaxs)", ru: "PEP (политически значимое лицо)", en: "PEP (politically exposed person)" },
+    short: {
+      uz: "Davlatda muhim lavozim egallagan odam yoki uning yaqinlari. Ularga xizmat ko'rsatish mumkin, lekin kuchaytirilgan tekshiruv va kuzatuv bilan.",
+      ru: "Человек на значимой государственной должности или его близкие. Обслуживать их можно, но с усиленной проверкой и мониторингом.",
+      en: "A person in a prominent public position, or their close family. They can be served, but with enhanced checks and monitoring.",
+    },
+    lesson: "kyc-onboarding",
+  },
+  {
+    id: "verification-tier",
+    term: { uz: "Tekshiruv bosqichi (tier)", ru: "Уровень верификации (tier)", en: "Verification tier" },
+    short: {
+      uz: "Mijoz qanchalik tekshirilganiga qarab beriladigan limitlar to'plami: tekshirilmagan hisob to'lay oladi, lekin pul yecha olmaydi. Pulni harakatlantiradigan servis uni har amalda serverda tekshiradi.",
+      ru: "Набор лимитов по тому, насколько проверен клиент: непроверенный аккаунт может платить, но не выводить. Сервис, двигающий деньги, проверяет его на сервере при каждой операции.",
+      en: "A set of limits based on how well a customer is verified: an unverified account can pay but not withdraw. The service that moves money checks it on the server for every operation.",
+    },
+    lesson: "kyc-onboarding",
   },
 ];

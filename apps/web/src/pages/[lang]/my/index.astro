@@ -1,0 +1,35 @@
+---
+import { LANGS, type Lang, lessons, order } from "@mufassall/content";
+import { LIBRARY_PAGE } from "@mufassall/scene-engine/author";
+import "@mufassall/scene-engine/player.css";
+import "@mufassall/scene-engine/author.css";
+import MySystems from "../../../components/MySystems";
+import Base from "../../../layouts/Base.astro";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const page = LIBRARY_PAGE[lang];
+const list = order.filter((slug) => lessons[slug]).map((slug) => ({ slug, title: lessons[slug]!.text[lang].title }));
+---
+
+<Base lang={lang} title={page.title} description={page.lead} active="my">
+  <header class="page-head">
+    <h1>{page.title}</h1>
+    <p>{page.lead}</p>
+  </header>
+  <MySystems client:only="preact" lang={lang} lessons={list}>
+    <div slot="fallback" class="lab-skeleton library-skeleton" aria-hidden="true"></div>
+  </MySystems>
+  <noscript><p>{page.noscript}</p></noscript>
+</Base>
+
+<style>
+  /* the library mounts on the client: hold its first-screen height so the footer does not jump (CLS) */
+  .library-skeleton {
+    aspect-ratio: auto;
+    min-height: 560px;
+  }
+</style>

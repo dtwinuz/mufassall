@@ -31,7 +31,6 @@ import { isBlankDraft } from "./bpmn";
 import {
   ALLOWED_UNITS,
   AUTHOR_LANGS,
-  AUTHOR_STORE_KEY,
   type AuthorLang,
   type Draft,
   type DraftExchange,
@@ -59,10 +58,46 @@ import {
   toLessonText,
   uniqueId,
 } from "./model";
+import { type StoreError, type SystemMeta, createSystem, draftTitle, listSystems, loadSystem, migrateLegacyDraft, saveSystem } from "./store";
 import { LESSON_FILES, type LessonFile, toLessonSource } from "./toLessonSource";
 import { type Issue, checkDraft, checkWire } from "./validation";
 
-export { AUTHOR_PAGE, AUTHOR_UI, type AuthorStrings } from "./author-ui";
+export { AUTHOR_PAGE, AUTHOR_UI, LIBRARY_PAGE, LIBRARY_UI, type AuthorStrings, type LibraryStrings } from "./author-ui";
+export { Library, type LibraryProps } from "./Library";
+export {
+  SYSTEMS_KEY,
+  SYSTEM_KEY_PREFIX,
+  SYSTEM_SOURCES,
+  type SystemMeta,
+  type SystemSource,
+  type StoreError,
+  type StoreResult,
+  type StorageLike,
+  listSystems,
+  getSystem,
+  loadSystem,
+  saveSystem,
+  createSystem,
+  duplicateSystem,
+  deleteSystem,
+  renameSystem,
+  migrateLegacyDraft,
+  draftTitle,
+} from "./store";
+export {
+  BUNDLE_FORMAT,
+  SHARE_MAX_CHARS,
+  type Bundle,
+  type BundleSystem,
+  makeBundle,
+  parseBundle,
+  canShare,
+  encodeShare,
+  type ShareDecoded,
+  decodeShare,
+  shareCodeFromHash,
+  shareUrl,
+} from "./bundle";
 export * from "./model";
 export { toLessonSource, printTs, LESSON_FILES, type LessonFile, type LessonSource } from "./toLessonSource";
 export { checkDraft, checkWire, type Issue, type IssueCode } from "./validation";
@@ -92,6 +127,8 @@ export interface AuthorEditorProps {
   lessons?: readonly { slug: string; title: string }[];
   /** loads one lesson on demand, so the page never ships the whole course */
   loadLesson?: (slug: string) => Promise<AuthorLessonEntry | undefined>;
+  /** the system to edit; by default `?system=` of the page URL */
+  system?: string | null;
 }
 
 const MAX_FILE = 1_000_000;
@@ -104,14 +141,31 @@ const isTyping = (t: EventTarget | null) => {
   return !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
 };
 
-function loadStored(): Draft {
-  try {
-    const raw = window.localStorage.getItem(AUTHOR_STORE_KEY);
-    if (raw) return sanitizeDraft(JSON.parse(raw)) ?? newDraft();
-  } catch {
-    /* storage blocked or junk: start fresh */
+interface Opened {
+  /** `null` when storage is blocked: the editor still works, the file is the only copy */
+  id: string | null;
+  meta?: SystemMeta;
+  draft: Draft;
+  notFound: boolean;
+  error?: StoreError;
+}
+
+/** The asked-for system, else the most recent one, else a new blank one. */
+function openSystem(asked: string | null | undefined): Opened {
+  migrateLegacyDraft();
+  const wanted = asked ?? (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("system") : null);
+  const list = listSystems();
+  if (wanted) {
+    const d = loadSystem(wanted);
+    if (d) return { id: wanted, meta: list.find((m) => m.id === wanted), draft: d, notFound: false };
   }
-  return newDraft();
+  for (const m of list) {
+    const d = loadSystem(m.id);
+    if (d) return { id: m.id, meta: m, draft: d, notFound: !!wanted };
+  }
+  const draft = newDraft();
+  const r = createSystem(draft, "blank");
+  return r.ok ? { id: r.value.id, meta: r.value, draft, notFound: !!wanted } : { id: null, draft, notFound: !!wanted, error: r.error };
 }
 
 function download(name: string, text: string, type = "text/plain") {
@@ -272,10 +326,14 @@ function previewText(d: Draft, lang: AuthorLang): LessonText<LessonInput> {
   return t;
 }
 
-export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson }: AuthorEditorProps) {
+export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson, system }: AuthorEditorProps) {
   const a = AUTHOR_UI[lang] ?? AUTHOR_UI.en;
-  const [hist, setHist] = useState<History>(() => ({ past: [], present: loadStored(), future: [] }));
+  const [opened] = useState(() => openSystem(system));
+  const [meta, setMeta] = useState<SystemMeta | undefined>(opened.meta);
+  const [storeErr, setStoreErr] = useState<StoreError | undefined>(opened.error);
+  const [hist, setHist] = useState<History>(() => ({ past: [], present: opened.draft, future: [] }));
   const draft = hist.present;
+  const saved = useRef<Draft>(opened.draft);
   const [cur, setCur] = useState(0);
   const at = Math.min(cur, draft.steps.length - 1);
   const step = draft.steps[at]!;
@@ -285,8 +343,8 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson }: Author
   const [sel, setSel] = useState<Selection>(null);
   const [forward, setForward] = useState(true);
   const [hover, setHover] = useState<Cell | null>(null);
-  const [status, setStatus] = useState("");
-  const [storageOk, setStorageOk] = useState(true);
+  const [status, setStatus] = useState(opened.notFound ? a.library.notFound : "");
+  const storageOk = !storeErr;
   const [pick, setPick] = useState(lessons[0]?.slug ?? "");
   const [busy, setBusy] = useState(false);
   const [file, setFile] = useState<LessonFile>("lesson.ts");
@@ -315,18 +373,30 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson }: Author
     setTool({ mode: "select" });
   };
 
-  // autosave, debounced; storage may be blocked (private mode), then the file is the only copy
+  // the address names the system being edited, so reload and "back" land on it
   useEffect(() => {
+    if (!opened.id) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("system") === opened.id) return;
+    url.searchParams.set("system", opened.id);
+    window.history.replaceState(window.history.state, "", url);
+  }, [opened.id]);
+
+  // autosave into the system, debounced; a full or blocked storage keeps the editor state as it is
+  useEffect(() => {
+    if (!opened.id || draft === saved.current) return;
+    const id = opened.id;
     const t = window.setTimeout(() => {
-      try {
-        window.localStorage.setItem(AUTHOR_STORE_KEY, JSON.stringify(draft));
-        setStorageOk(true);
-      } catch {
-        setStorageOk(false);
-      }
+      const r = saveSystem(id, draft);
+      if (r.ok) {
+        saved.current = draft;
+        setMeta(r.value);
+        setStoreErr(undefined);
+      } else setStoreErr(r.error);
     }, 400);
     return () => window.clearTimeout(t);
-  }, [draft]);
+  }, [draft, opened.id]);
+  const systemName = meta?.title || draftTitle(draft) || a.library.untitled;
 
   // a node or edge that vanished (undo, other step) cannot stay selected
   useEffect(() => {
@@ -639,6 +709,12 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson }: Author
 
   return (
     <div className="mf-author">
+      <div className="mf-author__system">
+        <a className="mf-author__back" href={`/${lang}/my/`}>
+          <span aria-hidden="true">←</span> {a.library.back}
+        </a>
+        <p className="mf-author__sysname">{fill(a.library.editing, { title: systemName })}</p>
+      </div>
       <div className="mf-author__top">
         <div className="mf-author__tabs" role="tablist" aria-label={a.tabsLabel} onKeyDown={onTabKey}>
           {TABS.map((t) => (
@@ -677,7 +753,7 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson }: Author
         </div>
       </div>
       <p className="mf-author__status" role="status">
-        {status || (storageOk ? "" : a.storageOff)}
+        {status || (storeErr === "quota" ? a.library.quota : storageOk ? "" : a.storageOff)}
       </p>
 
       <div id={`${idp}-panel`} role="tabpanel" aria-labelledby={`${idp}-tab-${tab}`}>
@@ -1276,7 +1352,7 @@ export function AuthorEditor({ ui, lab, lang, lessons = [], loadLesson }: Author
           <div className="mf-author__preview">
             <p className="mf-lab__muted">{a.previewNote}</p>
             {preview.lesson && preview.text ? (
-              <LessonPlayer lesson={preview.lesson} text={preview.text} ui={ui} lang={tl} />
+              <LessonPlayer lesson={preview.lesson} text={preview.text} ui={ui} lang={tl} privateContent />
             ) : (
               <p className="mf-author__bad" role="alert">
                 {fill(a.previewBroken, { x: preview.error })}

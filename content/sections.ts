@@ -9,7 +9,7 @@ export interface Section {
 
 export const sections: readonly Section[] = [
   { id: "foundations", lessons: ["request-lifecycle", "latency-throughput", "napkin-math"] },
-  { id: "scaling", lessons: ["vertical-horizontal", "load-balancing", "stateless", "caching", "cache-invalidation", "cdn"] },
+  { id: "scaling", lessons: ["vertical-horizontal", "load-balancing", "stateless", "connection-pooling", "caching", "cache-invalidation", "cdn"] },
   {
     id: "data",
     lessons: [
@@ -28,11 +28,11 @@ export const sections: readonly Section[] = [
       "files",
     ],
   },
-  { id: "communication", lessons: ["apis", "queues", "pubsub", "realtime", "callbacks", "webhooks"] },
+  { id: "communication", lessons: ["apis", "api-gateway", "queues", "pubsub", "realtime", "callbacks", "webhooks"] },
   { id: "reliability", lessons: ["redundancy", "rate-limiting", "timeouts-retries", "circuit-breaker", "observability", "slo-error-budget", "backpressure"] },
   { id: "architecture", lessons: ["microservices", "service-discovery", "sagas", "cdc", "outbox-pattern", "distributed-locks", "batch-stream", "multi-tenancy", "event-sourcing"] },
   { id: "security", lessons: ["authentication", "authorization", "encryption", "secrets-management", "pii-masking"] },
-  { id: "shipping", lessons: ["testing", "cicd", "zero-downtime-migrations", "feature-flags"] },
+  { id: "shipping", lessons: ["testing", "cicd", "graceful-shutdown", "zero-downtime-migrations", "feature-flags"] },
   {
     id: "systems",
     lessons: ["hld-lld", "design-url-shortener", "design-news-feed", "design-chat", "design-video-streaming", "design-search-autocomplete", "design-job-scheduler"],
@@ -40,7 +40,7 @@ export const sections: readonly Section[] = [
   {
     id: "business",
     lessons: [
-      "payments",
+      "payments", "kyc-onboarding",
       "money-and-rounding", "double-entry-ledger",
       "reconciliation",
       "subscription-billing",

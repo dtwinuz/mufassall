@@ -1,0 +1,73 @@
+---
+import { LANGS, type Lang } from "@mufassall/content";
+import "@mufassall/scene-engine/player.css";
+import { VIEW_UI } from "../../../../../../packages/scene-engine/src/author/view-ui";
+import SystemViewer from "../../../components/SystemViewer";
+import Base from "../../../layouts/Base.astro";
+
+export function getStaticPaths() {
+  return LANGS.map((lang) => ({ params: { lang } }));
+}
+
+const lang = Astro.params.lang as Lang;
+const v = VIEW_UI[lang];
+---
+
+<Base lang={lang} title={v.title} description={v.lead} active="my" noindex>
+  <SystemViewer client:only="preact" lang={lang}>
+    <div slot="fallback" class="lab-skeleton sysview-skeleton" aria-hidden="true"></div>
+  </SystemViewer>
+  <noscript><p>{v.noscript}</p></noscript>
+</Base>
+
+<style is:global>
+  /* the island renders nothing on the server: hold the player's height until it mounts (CLS) */
+  .sysview-skeleton,
+  .mf-sysview--loading {
+    min-height: min(760px, 120vh);
+  }
+  .mf-sysview--loading {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--stage);
+  }
+  .mf-sysview__loading {
+    margin: 0;
+    padding: 16px;
+    color: var(--muted);
+  }
+  .mf-sysview__bar,
+  .mf-sysview__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .mf-sysview__bar {
+    margin-bottom: 8px;
+  }
+  .mf-sysview__note,
+  .mf-sysview__privacy,
+  .mf-sysview__status {
+    margin: 4px 0;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .mf-sysview__status:empty {
+    display: none;
+  }
+  .mf-sysview__status--bad {
+    color: var(--bad);
+  }
+  .mf-sysview__privacy {
+    margin-bottom: 12px;
+  }
+  .mf-sysview__empty {
+    padding: 24px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+  .mf-sysview__empty > p:first-child {
+    margin-top: 0;
+  }
+</style>

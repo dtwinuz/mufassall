@@ -12,6 +12,8 @@ export interface DesStrings {
   duration: string;
   seed: string;
   newSeed: string;
+  /** "{n}": base rate at 60% of the bottleneck */
+  fit: string;
   failure: string;
   failNone: string;
   failFrom: string;
@@ -74,6 +76,7 @@ export const DES_UI: Record<"uz" | "ru" | "en", DesStrings> = {
     duration: "Davomiyligi, s",
     seed: "Urug' (seed)",
     newSeed: "Yangi urug'",
+    fit: "Sig'imning 60%: {n}",
     failure: "Blokni vaqtincha o'chirish",
     failNone: "Yo'q",
     failFrom: "Boshlanishi, s",
@@ -125,6 +128,7 @@ export const DES_UI: Record<"uz" | "ru" | "en", DesStrings> = {
     duration: "Длительность, с",
     seed: "Зерно (seed)",
     newSeed: "Новое зерно",
+    fit: "60% мощности: {n}",
     failure: "Временно выключить блок",
     failNone: "Нет",
     failFrom: "Начало, с",
@@ -176,6 +180,7 @@ export const DES_UI: Record<"uz" | "ru" | "en", DesStrings> = {
     duration: "Duration, s",
     seed: "Seed",
     newSeed: "New seed",
+    fit: "60% of capacity: {n}",
     failure: "Take a node down for a while",
     failNone: "None",
     failFrom: "From, s",

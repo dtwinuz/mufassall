@@ -17,7 +17,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@mufassall/scene-schema": "workspace:*"
+    "@mufassall/scene-schema": "workspace:*",
+    "yaml": "2.9.1"
   },
   "peerDependencies": {
     "react": "^19.0.0",
