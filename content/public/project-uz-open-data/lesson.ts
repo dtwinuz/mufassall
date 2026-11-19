@@ -69,7 +69,7 @@ export default defineLesson({
       focus: ["user", "app", "site"],
       exchange: {
         edge: "load",
-        request: { format: "http", head: "GET /demo/uz-open-data/data/mosques.geojson HTTP/1.1", headers: [["Host", "wonmor.io"]] },
+        request: { format: "http", head: "GET /demo/uz-open-data/data/mosques.geojson HTTP/1.1" },
         response: {
           format: "text",
           head: "the explorer, all in the browser",

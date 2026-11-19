@@ -49,7 +49,7 @@ export default defineLesson({
       focus: ["reader", "site"],
       exchange: {
         edge: "open",
-        request: { format: "http", head: "GET /research/honest-transliteration-eval/ HTTP/1.1", headers: [["Host", "wonmor.io"]] },
+        request: { format: "http", head: "GET /research/honest-transliteration-eval/ HTTP/1.1" },
         response: {
           format: "text",
           head: "the post's \"Reproduce this\" box",

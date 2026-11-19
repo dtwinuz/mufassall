@@ -248,7 +248,7 @@ export default defineLesson({
         edge: "originate",
         request: {
           format: "json",
-          head: "POST {DIALER_URL}/originate HTTP/1.1",
+          head: "POST <dialer-url>/originate HTTP/1.1",
           headers: [["Authorization", "***"]],
           body: `{
   "callId": "cl_9012",

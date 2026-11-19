@@ -17,7 +17,7 @@ const text: LessonText<typeof lesson> = {
     site: "wonmor-site (Caddy)",
     writer: "Редактор",
     cms: "Sveltia CMS /admin",
-    repo: "Репозиторий wonmor.io",
+    repo: "Репозиторий сайта",
     ci: "GitHub Actions",
     tokens: "design-system",
     brand: "brand",

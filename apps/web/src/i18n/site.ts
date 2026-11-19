@@ -109,6 +109,7 @@ export const site: Record<Lang, SiteStrings> = {
       systems: { title: "Butun tizimlar", text: "Hamma bilimni yig'ib, real tizimni boshidan loyihalash." },
       business: { title: "Biznes jarayonlar", text: "Real to'lov va hujjat oqimlari: pul va mol qayerda yo'qoladi." },
       cases: { title: "Real tajribalar", text: "Kompaniyalar ochiq yozgan muhandislik maqolalari asosida: muammo, qaror va natija." },
+      projects: { title: "Loyihalarim", text: "dtwinuz va wonmortech loyihalari ichidan: arxitektura, pipeline, asboblar va real holatlar, foydalanuvchi va muhandis ko'zi bilan." },
     },
     review: {
       title: "Takrorlash",
@@ -321,6 +322,7 @@ export const site: Record<Lang, SiteStrings> = {
       systems: { title: "Целые системы", text: "Собираем всё вместе и проектируем реальную систему с нуля." },
       business: { title: "Бизнес-процессы", text: "Реальные платёжные и документные потоки: где теряются деньги и товар." },
       cases: { title: "Разборы реальных систем", text: "По открытым инженерным статьям компаний: проблема, решение и результат." },
+      projects: { title: "Мои проекты", text: "Проекты dtwinuz и wonmortech изнутри: архитектура, пайплайны, инструменты и реальные случаи глазами пользователя и инженера." },
     },
     review: {
       title: "Повторение",
@@ -530,6 +532,7 @@ export const site: Record<Lang, SiteStrings> = {
       systems: { title: "Whole systems", text: "Put it all together and design a real system from scratch." },
       business: { title: "Business processes", text: "Real payment and document flows: where money and goods get lost." },
       cases: { title: "Case studies", text: "Built on public engineering write-ups: the problem, the decision and the result." },
+      projects: { title: "My projects", text: "The dtwinuz and wonmortech projects from the inside: architecture, pipelines, tools and real cases, from the user side and the engineering side." },
     },
     review: {
       title: "Review",
