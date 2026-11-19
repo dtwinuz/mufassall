@@ -510,7 +510,7 @@ export const glossary: Term[] = [
       ru: "Следующую страницу просят не через OFFSET, а курсором, указывающим на последнюю показанную запись. Новые записи не вызывают повторов и пропусков.",
       en: "The next page is requested with a cursor pointing at the last item seen, not with OFFSET. New items no longer cause repeats or gaps.",
     },
-    lesson: "apis",
+    lesson: "cursor-pagination",
   },
   {
     id: "idempotency-key",
@@ -682,7 +682,7 @@ export const glossary: Term[] = [
       ru: "Когда доля ошибок превышает порог, breaker размыкается и на время вообще не вызывает мёртвый сервис, отдавая запасной ответ. Затем в состоянии half-open одна пробная попытка решает, замкнуть его или снова разомкнуть.",
       en: "When the failure rate passes a threshold, the breaker opens and for a while does not call the dead service at all, returning a fallback. Then, half-open, one probe call decides whether it closes or opens again.",
     },
-    lesson: "timeouts-retries",
+    lesson: "circuit-breaker",
   },
   {
     id: "observability",
@@ -1981,5 +1981,200 @@ export const glossary: Term[] = [
       en: "A value a database sequence skipped: after a rollback, a cache or a crash. Sequences never go back, on purpose, for speed, so they cannot provide gapless numbers.",
     },
     lesson: "document-numbering",
+  },
+  // ---- circuit-breaker ----
+  {
+    id: "cascading-failure",
+    term: { uz: "Zanjirli nosozlik (cascading failure)", ru: "Каскадный отказ", en: "Cascading failure" },
+    short: {
+      uz: "Bitta sekin yoki o'lik servis uni chaqirayotganlarning thread va ulanishlarini egallab, ularni ham yiqitadi. Ixtiyoriy qismdagi nosozlik butun tizimga tarqaladi.",
+      ru: "Один медленный или мёртвый сервис занимает потоки и соединения тех, кто его вызывает, и роняет их тоже. Сбой необязательной части расползается на всю систему.",
+      en: "One slow or dead service takes up the threads and connections of its callers and brings them down too. A failure in a nice-to-have part spreads to the whole system.",
+    },
+    lesson: "circuit-breaker",
+  },
+  {
+    id: "half-open",
+    term: { uz: "Half-open holat", ru: "Состояние half-open", en: "Half-open state" },
+    short: {
+      uz: "Breaker ochiq turish vaqti tugagach, bir nechta sinov chaqiruvini o'tkazadigan holat. Sinovlar o'tsa breaker yopiladi, yiqilsa yana ochiladi.",
+      ru: "Состояние breaker после времени в open, когда он пропускает несколько пробных вызовов. Если пробы прошли, он замыкается, если нет, снова размыкается.",
+      en: "The breaker state after its open period, in which a few trial calls are let through. If they pass, the breaker closes; if they fail, it opens again.",
+    },
+    lesson: "circuit-breaker",
+  },
+  {
+    id: "slow-call-rate",
+    term: { uz: "Sekin chaqiruvlar ulushi", ru: "Доля медленных вызовов", en: "Slow call rate" },
+    short: {
+      uz: "Oynadagi chaqiruvlarning belgilangan chegaradan uzoq davom etganlari ulushi. Breaker ularni xato kabi sanaydi, chunki sekin javob ham thread'ni ushlab turadi.",
+      ru: "Доля вызовов в окне, длившихся дольше заданного порога. Breaker считает их отказами, потому что медленный ответ тоже держит поток.",
+      en: "The share of calls in the window that took longer than a set limit. A breaker counts them as failures, because a slow answer holds a thread too.",
+    },
+    lesson: "circuit-breaker",
+  },
+  {
+    id: "bulkhead",
+    term: { uz: "Bulkhead", ru: "Bulkhead (переборка)", en: "Bulkhead" },
+    short: {
+      uz: "Har bir servisga bir vaqtdagi chaqiruvlar uchun alohida limit. Bitta servis sekinlashsa, u faqat o'z ulushini egallaydi, qolgan thread'lar boshqa ishlarga qoladi.",
+      ru: "Отдельный лимит одновременных вызовов на каждую зависимость. Если одна из них тормозит, она занимает только свою долю, остальные потоки свободны для другой работы.",
+      en: "A separate limit on concurrent calls for each dependency. When one gets slow it can only take its own share, and the other threads stay free for other work.",
+    },
+    lesson: "circuit-breaker",
+  },
+  {
+    id: "fallback-response",
+    term: { uz: "Zaxira javob (fallback)", ru: "Запасной ответ (fallback)", en: "Fallback response" },
+    short: {
+      uz: "Servis chaqirilmaganda yoki javob bermaganda qaytariladigan javob: keshdagi qiymat, qisqartirilgan javob yoki Retry-After bilan 503. U ma'lumot to'qimasligi kerak.",
+      ru: "Ответ, который отдают, когда зависимость не вызвана или не ответила: значение из кэша, урезанный ответ или 503 с Retry-After. Он не должен выдумывать данные.",
+      en: "What is returned when a dependency is not called or does not answer: a cached value, a degraded answer or a 503 with Retry-After. It must never invent data.",
+    },
+    lesson: "circuit-breaker",
+  },
+
+  // ---- cursor-pagination ----
+  {
+    id: "offset-pagination",
+    term: { uz: "OFFSET bilan sahifalash", ru: "Пагинация через OFFSET", en: "Offset pagination" },
+    short: {
+      uz: "Sahifa \"N ta qatorni o'tkazib, keyingi 50 tasini ber\" deb so'raladi. Baza o'tkazilgan har bir qatorni o'qiydi, ma'lumot o'zgarganda esa sahifalar suriladi.",
+      ru: "Страницу просят как «пропусти N строк и дай следующие 50». База читает каждую пропущенную строку, а при изменении данных страницы сдвигаются.",
+      en: "A page is requested as \"skip N rows, give me the next 50\". The database reads every skipped row, and pages shift when the data changes.",
+    },
+    lesson: "cursor-pagination",
+  },
+  {
+    id: "keyset-pagination",
+    term: { uz: "Keyset sahifalash", ru: "Keyset-пагинация", en: "Keyset pagination" },
+    short: {
+      uz: "Keyingi sahifa oxirgi ko'rilgan qatorning kalitidan keyin olinadi: WHERE (created_at, id) < (?, ?). Mos indeks bilan har bir sahifa bir xil tez.",
+      ru: "Следующая страница берётся после ключа последней увиденной строки: WHERE (created_at, id) < (?, ?). С подходящим индексом каждая страница одинаково быстрая.",
+      en: "The next page starts after the key of the last row seen: WHERE (created_at, id) < (?, ?). With a matching index every page is equally fast.",
+    },
+    lesson: "cursor-pagination",
+  },
+  {
+    id: "opaque-cursor",
+    term: { uz: "Shaffof bo'lmagan cursor", ru: "Непрозрачный курсор", en: "Opaque cursor" },
+    short: {
+      uz: "Client faqat qaytarib yuboradigan token: ichida oxirgi kalit va filtrlar hash'i, base64 bilan joylangan va imzolangan. Server formatni ilovalarni buzmasdan o'zgartira oladi.",
+      ru: "Токен, который клиент только передаёт обратно: внутри последний ключ и хэш фильтров, упакованные в base64 и подписанные. Сервер может менять формат, не ломая приложения.",
+      en: "A token the client only passes back: the last key and a hash of the filters, packed in base64 and signed. The server can change the format without breaking apps.",
+    },
+    lesson: "cursor-pagination",
+  },
+  {
+    id: "tie-breaker",
+    term: { uz: "Tie-breaker ustun", ru: "Столбец tie-breaker", en: "Tie-breaker column" },
+    short: {
+      uz: "Saralash oxiriga qo'shiladigan noyob ustun, odatda id. Usiz teng qiymatli qatorlarning aniq tartibi bo'lmaydi va ular sahifalar orasida yo'qoladi yoki takrorlanadi.",
+      ru: "Уникальный столбец, обычно id, добавленный в конец сортировки. Без него у строк с равными значениями нет определённого порядка, и они теряются или повторяются между страницами.",
+      en: "A unique column, usually the id, added at the end of a sort. Without it rows with equal values have no defined order and get lost or repeated between pages.",
+    },
+    lesson: "cursor-pagination",
+  },
+  {
+    id: "pii",
+    term: { uz: "Shaxsiy ma'lumot (PII)", ru: "Персональные данные (PII)", en: "Personal data (PII)" },
+    short: {
+      uz: "Insonni aniqlaydigan yoki unga olib boradigan har qanday ma'lumot: ism, telefon, pasport raqami, karta raqami, manzil, IP. Asosiy bazadan tashqarida uning o'rniga id olib yuriladi.",
+      ru: "Любые данные, которые определяют человека или ведут к нему: имя, телефон, номер паспорта, номер карты, адрес, IP. За пределами основной базы вместо них носят id.",
+      en: "Any data that identifies a person or leads to them: name, phone, passport number, card number, address, IP. Outside the main database an id is carried instead.",
+    },
+    lesson: "pii-masking",
+  },
+  {
+    id: "data-masking",
+    term: { uz: "Niqoblash (masking)", ru: "Маскирование (masking)", en: "Data masking" },
+    short: {
+      uz: "Qiymatning faqat bir qismini ko'rsatish, masalan AA*****67 yoki kartaning oxirgi 4 raqami. Qaytarib bo'lmaydi, ekran va cheklar uchun.",
+      ru: "Показ только части значения, например AA*****67 или последних 4 цифр карты. Необратимо, для экранов и чеков.",
+      en: "Showing only part of a value, such as AA*****67 or the last 4 digits of a card. Irreversible, meant for screens and receipts.",
+    },
+    lesson: "pii-masking",
+  },
+  {
+    id: "tokenization",
+    term: { uz: "Tokenizatsiya", ru: "Токенизация", en: "Tokenization" },
+    short: {
+      uz: "Nozik qiymatni tasodifiy token bilan almashtirish; asl qiymat faqat alohida vault'da turadi va token boshqa joyda hech narsani anglatmaydi. Karta raqamlari uchun odatiy usul.",
+      ru: "Замена чувствительного значения случайным токеном; оригинал лежит только в отдельном хранилище (vault), а вне его токен ничего не значит. Обычный способ для номеров карт.",
+      en: "Replacing a sensitive value with a random token; the original lives only in a separate vault and the token means nothing elsewhere. The usual approach for card numbers.",
+    },
+    lesson: "pii-masking",
+  },
+  {
+    id: "keyed-hash",
+    term: { uz: "Kalitli hash (HMAC, pepper)", ru: "Хеш с ключом (HMAC, pepper)", en: "Keyed hash (HMAC, pepper)" },
+    short: {
+      uz: "Maxfiy kalit bilan hisoblangan hash. Telefon kabi kichik qiymatlar to'plamini oddiy hash'dan brute force bilan ochish mumkin, kalitsiz esa bitta taxminni ham tekshirib bo'lmaydi.",
+      ru: "Хеш, посчитанный с секретным ключом. Небольшой набор значений вроде телефонов из простого хеша вскрывается перебором, а без ключа нельзя проверить ни одной догадки.",
+      en: "A hash computed with a secret key. A small value space such as phone numbers falls to brute force from a plain hash; without the key not a single guess can be checked.",
+    },
+    lesson: "pii-masking",
+  },
+  {
+    id: "log-redaction",
+    term: { uz: "Logda yashirish (redaction)", ru: "Скрытие в логах (redaction)", en: "Log redaction" },
+    short: {
+      uz: "Logger qatorni yozishdan oldin nozik maydonlarni nomi bo'yicha [redacted] bilan almashtiradi. Faqat strukturani ko'radi: matn qatoriga aylantirilgan tana yashirilmaydi.",
+      ru: "Логгер заменяет чувствительные поля по имени на [redacted] до записи строки. Видит только структуру: тело, сплющенное в строку, не скрывается.",
+      en: "The logger replaces sensitive fields by name with [redacted] before the line is written. It sees structure only: a body flattened into a string is not redacted.",
+    },
+    lesson: "pii-masking",
+  },
+
+  // ---- business: inventory ----
+  {
+    id: "oversell",
+    term: { uz: "Ortiqcha sotuv (overselling)", ru: "Перепродажа (overselling)", en: "Overselling" },
+    short: {
+      uz: "Do'kon omborda yo'q donani sotadi, ko'pincha ikki so'rov bir xil qoldiqni o'qib, ikkalasi ham yozgani uchun.",
+      ru: "Магазин продаёт штуку, которой нет на складе, чаще всего потому, что два запроса прочитали один остаток и оба записали.",
+      en: "The shop sells a unit it does not have, most often because two requests read the same stock and both wrote.",
+    },
+    lesson: "inventory-reservation",
+  },
+  {
+    id: "atomic-decrement",
+    term: { uz: "Atomar kamaytirish", ru: "Атомарное уменьшение", en: "Atomic decrement" },
+    short: {
+      uz: "UPDATE stock SET available = available - 1 WHERE sku = ? AND available >= 1: baza joriy qiymatdan hisoblaydi va shartni yozish paytida tekshiradi. 0 qator o'zgarsa, sotilib bo'lgan.",
+      ru: "UPDATE stock SET available = available - 1 WHERE sku = ? AND available >= 1: база считает от текущего значения и проверяет условие при записи. Изменено 0 строк — продано.",
+      en: "UPDATE stock SET available = available - 1 WHERE sku = ? AND available >= 1: the database computes from the current value and checks the condition at write time. 0 rows changed means sold out.",
+    },
+    lesson: "inventory-reservation",
+  },
+  {
+    id: "stock-hold",
+    term: { uz: "Qoldiq broni (hold)", ru: "Бронь остатка (hold)", en: "Stock hold" },
+    short: {
+      uz: "Buyurtmaga muddat bilan band qilingan dona: available dan reserved ga o'tadi, to'lovda tasdiqlanadi, muddat o'tsa tozalagich uni qaytaradi.",
+      ru: "Штука, занятая под заказ на время: переходит из available в reserved, подтверждается при оплате, а по истечении срока чистильщик её возвращает.",
+      en: "A unit set aside for an order for a limited time: it moves from available to reserved, is confirmed on payment, and a sweeper returns it when the hold expires.",
+    },
+    lesson: "inventory-reservation",
+  },
+  {
+    id: "available-to-sell",
+    term: { uz: "Sotuvga ochiq qoldiq", ru: "Доступный остаток", en: "Available to sell" },
+    short: {
+      uz: "Javondagi qoldiq (on hand) minus to'lanmagan buyurtmalarga band qilingani (reserved). Sayt faqat shu raqamdan sotadi.",
+      ru: "Остаток на складе (on hand) минус занятое под неоплаченные заказы (reserved). Сайт продаёт только из этого числа.",
+      en: "Stock on hand minus what is reserved for unpaid orders. The only number the site sells from.",
+    },
+    lesson: "inventory-reservation",
+  },
+  {
+    id: "sharded-counter",
+    term: { uz: "Bo'laklangan hisoblagich", ru: "Шардированный счётчик", en: "Sharded counter" },
+    short: {
+      uz: "Bitta qizg'in hisoblagich bir nechta qatorga bo'linadi va har yozuv tasodifiy qatorni o'zgartiradi, shunda lock'lar tarqaladi. Haqiqiy qiymat qatorlar yig'indisi.",
+      ru: "Один горячий счётчик делится на несколько строк, и каждая запись меняет случайную строку, так что блокировки расходятся. Настоящее значение — сумма строк.",
+      en: "One hot counter split into several rows, each write changing a random row so locks spread out. The real value is the sum of the rows.",
+    },
+    lesson: "inventory-reservation",
   },
 ];

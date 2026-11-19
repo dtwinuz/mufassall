@@ -31,10 +31,12 @@ export const KIND_MODEL: Record<NodeKind, KindModel> = {
   external: { cap: 400, base: 120, forward: 1 },
 };
 
-const PASSING = new Set(["request", "retry", "dup"]);
-/** kinds that can answer a request themselves; anything else must pass it on or it is lost */
-const ANSWERS = new Set<NodeKind>(["service", "worker", "db", "storage", "external"]);
-const linked = (doc: LabDoc, e: { from: string; to: string }) => has(doc.nodes, e.from) && has(doc.nodes, e.to);
+/** @internal flows that carry a request onward; shared with des.ts */
+export const PASSING = new Set(["request", "retry", "dup"]);
+/** @internal kinds that can answer a request themselves; anything else must pass it on or it is lost */
+export const ANSWERS = new Set<NodeKind>(["service", "worker", "db", "storage", "external"]);
+/** @internal */
+export const linked = (doc: LabDoc, e: { from: string; to: string }) => has(doc.nodes, e.from) && has(doc.nodes, e.to);
 const MAX_RHO = 0.97;
 
 /** What-if knobs on top of the diagram, used by the chaos experiments. */
@@ -98,8 +100,8 @@ function outEdges(doc: LabDoc, id: string, drop: Set<string>) {
   return Object.values(doc.edges).filter((e) => e.from === id && PASSING.has(e.flow) && e.rate > 0 && !drop.has(e.id) && linked(doc, e));
 }
 
-/** Edges that close a cycle are ignored, so traffic always terminates. */
-function backEdges(doc: LabDoc): Set<string> {
+/** @internal Edges that close a cycle are ignored, so traffic always terminates. */
+export function backEdges(doc: LabDoc): Set<string> {
   const drop = new Set<string>();
   const state = new Map<string, 1 | 2>();
   const visit = (id: string) => {
