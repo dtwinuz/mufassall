@@ -19,7 +19,7 @@
     "mcp": "node packages/mcp/bin/server.mjs"
   },
   "devDependencies": {
-    "typescript": "~5.9.3",
+    "typescript": "~7.0.2",
     "vitest": "^5.0.0"
   }
 }
